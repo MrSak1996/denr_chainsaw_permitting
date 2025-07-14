@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import axios from 'axios';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { useForm } from '@inertiajs/vue3';
+import { useAppForm } from '@/composables/useAppForm'
+import { useApi } from '@/composables/useApi';
+
 import { ShieldAlert } from 'lucide-vue-next';
 import Fieldset from 'primevue/fieldset';
 
 import Chainsaw_operationField from './chainsaw_operationField.vue';
 
-import { ref } from 'vue';
-
-
+import { ref,watch,onMounted } from 'vue';
+const { individual_form,company_form } = useAppForm()
 const region_opts = ref([{ id: 1, name: 'CALABARZON' }]);
 const form = useForm({
     official_receipt: null,
@@ -35,24 +38,19 @@ const form = useForm({
     date_applied: '07-01-2025',
     birthdate: '07-01-2025',
 });
-
 const currentStep = ref(1);
-
 const steps = ref([
     { label: 'Applicant Details', id: 1 },
     { label: 'Chainsaw Information', id: 2 },
     { label: 'Payment of Application Fee', id: 3 },
     { label: 'Submit and Review', id: 4 },
 ]);
-
 const nextStep = () => {
     if (currentStep.value < steps.value.length) currentStep.value++;
 };
-
 const prevStep = () => {
     if (currentStep.value > 1) currentStep.value--;
 };
-
 const submitForm = () => {
     form.post('/chainsaw-permit', {
         onSuccess: () => {
@@ -160,6 +158,86 @@ const purposeOptions = [
     'Other Legal Purpose',
     'Other Supporting Documents',
 ];
+
+const { prov_name, getProvinceCode } = useApi();
+let city_mun_opts = ref<{ id: any; name: any; code: any }[]>([]);
+let barangay_opts = ref<{ id: any; name: any }[]>([]);
+
+// Set geo_code based on selected municipality
+watch(
+    () => individual_form.i_city_mun,
+    (newCityMun) => {
+        const selectedMunicipality = city_mun_opts.value.find((item) => item.id === newCityMun);
+        individual_form.geo_code = selectedMunicipality?.code ?? '';
+    },
+);
+
+// When province changes, fetch its municipalities
+watch(
+    () => individual_form.i_province,
+    async (newProvince) => {
+        if (newProvince) {
+            try {
+                const response = await axios.get(`http://127.0.0.1:8000/api/provinces/${newProvince}/cities`);
+                if (response.data && Array.isArray(response.data)) {
+                    city_mun_opts.value = response.data.map((item) => ({
+                        id: item.mun_code,
+                        name: item.mun_name,
+                        code: item.geo_code,
+                    }));
+                    individual_form.i_city_mun = ''; // Let user select city manually
+                } else {
+                    console.error('Unexpected response structure:', response);
+                    city_mun_opts.value = [];
+                }
+            } catch (error) {
+                console.error('Error fetching cities:', error);
+                city_mun_opts.value = [];
+            }
+        } else {
+            city_mun_opts.value = [];
+        }
+    },
+);
+
+// When city/municipality changes, fetch barangays
+watch(
+    () => individual_form.i_city_mun,
+    async (newCityMun) => {
+        const province = individual_form.i_province;
+        const region = individual_form.i_region;
+        if (newCityMun) {
+            try {
+                const response = await axios.get(`http://127.0.0.1:8000/api/barangays`, {
+                    params: {
+                        reg_code: region,
+                        prov_code: province,
+                        mun_code: newCityMun,
+                    },
+                });
+                if (response.data && Array.isArray(response.data)) {
+                    barangay_opts.value = response.data.map((item) => ({
+                        id: item.bgy_code,
+                        name: item.bgy_name,
+                    }));
+                    individual_form.i_barangay = '';
+                } else {
+                    console.error('Unexpected response structure:', response);
+                    barangay_opts.value = [];
+                }
+            } catch (error) {
+                console.error('Error fetching barangays:', error);
+                barangay_opts.value = [];
+            }
+        } else {
+            barangay_opts.value = [];
+        }
+    },
+);
+
+onMounted(() => {
+    getProvinceCode();
+});
 </script>
 
 <template>
@@ -191,7 +269,7 @@ const purposeOptions = [
                 <div class="mb-6 grid gap-6 md:grid-cols-3">
                     <div>
                         <FloatLabel>
-                            <InputText id="application_no" v-model="form.application_no" class="w-full font-bold"
+                            <InputText id="application_no" v-model="individual_form.application_no" class="w-full font-bold"
                                 :disabled="true" />
                             <label for="application_no">Application No.</label>
                         </FloatLabel>
@@ -204,7 +282,7 @@ const purposeOptions = [
                     <!-- Date Applied -->
                     <div>
                         <FloatLabel>
-                            <InputText id="date_applied" v-model="form.date_applied" type="date" class="w-full" />
+                            <InputText id="date_applied" v-model="individual_form.date_applied" type="date" class="w-full" />
                             <label for="date_applied">Date Applied</label>
                         </FloatLabel>
                         <InputError :message="form.errors.date_applied" />
@@ -214,7 +292,7 @@ const purposeOptions = [
                     <!-- Application No -->
                     <div>
                         <FloatLabel>
-                            <InputText id="surname" v-model="form.surname" class="w-full" />
+                            <InputText id="surname" v-model="individual_form.last_name" class="w-full" />
                             <label for="surname">Last Name</label>
                         </FloatLabel>
                         <InputError :message="form.errors.surname" />
@@ -223,7 +301,7 @@ const purposeOptions = [
                     <!-- Surname -->
                     <div>
                         <FloatLabel>
-                            <InputText id="first_name" v-model="form.first_name" class="w-full" />
+                            <InputText id="first_name" v-model="individual_form.first_name" class="w-full" />
                             <label for="first_name">First Name</label>
                         </FloatLabel>
                         <InputError :message="form.errors.first_name" />
@@ -232,7 +310,7 @@ const purposeOptions = [
                     <!-- Given Name -->
                     <div>
                         <FloatLabel>
-                            <InputText id="middlename" v-model="form.middlename" class="w-full" />
+                            <InputText id="middlename" v-model="individual_form.middle_name" class="w-full" />
                             <label for="middlename">Middle Name</label>
                         </FloatLabel>
                         <InputError :message="form.errors.middlename" />
@@ -242,29 +320,29 @@ const purposeOptions = [
                     <!-- Sex -->
                     <div>
                         <FloatLabel>
-                            <Select id="sex" v-model="form.sex" :options="['Male', 'Female', 'Prefer not to say']"
+                            <Select id="sex" v-model="individual_form.sex" :options="['Male', 'Female', 'Prefer not to say']"
                                 class="w-full" />
                             <label for="sex">Sex</label>
                         </FloatLabel>
-                        <InputError :message="form.errors.sex" />
+                        <InputError :message="individual_form.errors.sex" />
                     </div>
 
                     <!-- Gov ID Type -->
                     <div>
                         <FloatLabel>
-                            <InputText id="gov_id_type" v-model="form.gov_id_type" class="w-full" />
+                            <InputText id="gov_id_type" v-model="individual_form.gov_id_type" class="w-full" />
                             <label for="gov_id_type">Government ID Type</label>
                         </FloatLabel>
-                        <InputError :message="form.errors.gov_id_type" />
+                        <InputError :message="individual_form.errors.gov_id_type" />
                     </div>
 
                     <!-- Gov ID Number -->
                     <div>
                         <FloatLabel>
-                            <InputText id="gov_id_number" v-model="form.gov_id_number" class="w-full" />
+                            <InputText id="gov_id_number" v-model="individual_form.gov_id_number" class="w-full" />
                             <label for="gov_id_number">ID Number</label>
                         </FloatLabel>
-                        <InputError :message="form.errors.gov_id_number" />
+                        <InputError :message="individual_form.errors.gov_id_number" />
                     </div>
 
 
@@ -277,21 +355,25 @@ const purposeOptions = [
                 <div class="grid gap-6 md:grid-cols-4">
                     <div>
                         <FloatLabel>
-                            <InputText id="mobile" v-model="form.mobile" class="w-full" />
+                            <InputText id="mobile" v-model="individual_form.mobile_no" class="w-full" />
                             <label for="mobile">Mobile Number</label>
+                            <InputError :message="individual_form.errors.mobile_no" />
+
                         </FloatLabel>
                         <InputError :message="form.errors.mobile" />
                     </div>
                     <div>
                         <FloatLabel>
-                            <InputText id="municipality" v-model="form.municipality" class="w-full" />
+                            <InputText id="municipality" v-model="individual_form.telephone_no" class="w-full" />
                             <label for="municipality">Telephone Number</label>
+                        <InputError :message="individual_form.errors.telephone_no" />
+
                         </FloatLabel>
-                        <InputError :message="form.errors.municipality" />
+                        <InputError :message="individual_form.errors.telephone_no" />
                     </div>
                     <div class="md:col-span-2">
                         <FloatLabel>
-                            <InputText id="email_address" v-model="form.email_address" class="w-full" />
+                            <InputText id="email_address" v-model="individual_form.email_address" class="w-full" />
                             <label for="email_address">Email Address</label>
                         </FloatLabel>
                         <InputError :message="form.errors.email_address" />
@@ -300,57 +382,53 @@ const purposeOptions = [
             </Fieldset>
 
             <Fieldset legend="Complete Address">
-           
+                <div class="grid gap-6 md:grid-cols-4">
+                    <!-- Region -->
+                    <div>
+                        <FloatLabel>
+                            <InputText v-model="individual_form.i_region" class="w-full" :disabled="true" />
+                        </FloatLabel>
+                        <InputError :message="individual_form.errors.i_region" />
+                    </div>
 
-            <div class="grid gap-6 md:grid-cols-4">
-                <!-- Region -->
-                <div>
-                    <FloatLabel>
-                        <Select filter :options="region_opts" optionValue="id" optionLabel="name" placeholder="Region"
-                            class="w-full" />
-                    </FloatLabel>
-                    <InputError :message="form.errors.region" />
+                    <!-- Province -->
+                    <div>
+                        <FloatLabel>
+                            <Select filter v-model="individual_form.i_province" optionValue="id" :options="prov_name"
+                                optionLabel="name" placeholder="Province" class="w-full" />
+                        </FloatLabel>
+                        <InputError :message="individual_form.errors.i_province" />
+                    </div>
+
+                    <!-- Municipality -->
+                    <div>
+                        <FloatLabel>
+                            <Select filter v-model="individual_form.i_city_mun" :options="city_mun_opts" optionValue="id"
+                                optionLabel="name" placeholder="Municipality" class="w-full" />
+                        </FloatLabel>
+                        <InputError :message="individual_form.errors.i_city_mun" />
+                    </div>
+
+                    <!-- Barangay -->
+                    <div>
+                        <FloatLabel>
+                            <Select filter v-model="individual_form.i_barangay" :options="barangay_opts" optionValue="id"
+                                optionLabel="name" placeholder="Barangay" class="w-full" />
+                        </FloatLabel>
+                        <InputError :message="individual_form.errors.i_barangay" />
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label for="address" class="mb-1 block text-sm font-medium text-gray-700">Complete Address</label>
+                        <Textarea id="address" v-model="form.address" rows="6"
+                            placeholder="Complete Address (Street, Purok, etc.)"
+                            class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500" />
+                        <InputError :message="individual_form.errors.i_complete_address" />
+                    </div>
                 </div>
+            </Fieldset>
 
-                <!-- Province -->
-                <div>
-                    <FloatLabel>
-                        <Select filter :options="region_opts" optionValue="id" optionLabel="name" placeholder="Province"
-                            class="w-full" />
-                    </FloatLabel>
-                    <InputError :message="form.errors.region" />
-                </div>
-
-                <!-- Municipality -->
-                <div>
-                    <FloatLabel>
-                        <Select filter :options="region_opts" optionValue="id" optionLabel="name"
-                            placeholder="Municipality" class="w-full" />
-                    </FloatLabel>
-                    <InputError :message="form.errors.region" />
-                </div>
-
-                <!-- Barangay -->
-                <div>
-                    <FloatLabel>
-                        <Select filter :options="region_opts" optionValue="id" optionLabel="name" placeholder="Barangay"
-                            class="w-full" />
-                    </FloatLabel>
-                    <InputError :message="form.errors.region" />
-                </div>
-
-                <div class="md:col-span-2">
-                    <label for="address" class="mb-1 block text-sm font-medium text-gray-700">Complete
-                        Address</label>
-                    <Textarea id="address" v-model="form.address" rows="6"
-                        placeholder="Complete Address (Street, Purok, etc.)"
-                        class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500" />
-                    <InputError :message="form.errors.address" />
-                </div>
-            </div>
-        </Fieldset>
-
-            <Chainsaw_operationField :form="form" :region_opts="region_opts" />
+            <Chainsaw_operationField :form="company_form" />
         </div>
 
         <div v-if="currentStep === 2" class="space-y-6">

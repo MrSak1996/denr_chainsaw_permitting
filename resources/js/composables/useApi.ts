@@ -1,5 +1,5 @@
-import { ref } from 'vue';
 import axios from 'axios';
+import { ref } from 'vue';
 export function useApi() {
     interface Option {
         id: number;
@@ -12,7 +12,7 @@ export function useApi() {
 
     const prov_name = ref<Option[]>([]);
 
-      const getProvinceCode = async (): Promise<void> => {
+    const getProvinceCode = async (): Promise<void> => {
         try {
             const res = await axios.get<Province[]>('http://127.0.0.1:8000/api/getProvinces');
             prov_name.value = res.data.map((item) => ({
@@ -23,6 +23,8 @@ export function useApi() {
             console.error('Error fetching provinces:', error);
         }
     };
+
+    
     return {
         prov_name,
         getProvinceCode,

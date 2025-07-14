@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 
 class ApplicationController extends Controller
 {
+    // This controller handles application-related functionalities, including fetching geographical data.
     public function getProvinces()
     {
         $results = DB::table('geo_map')
@@ -70,5 +71,23 @@ class ApplicationController extends Controller
             ->get();
 
         return response()->json($barangays);
+    }
+
+    public function generateApplicationNumber()
+    {
+        $latestApplication = DB::table('tbl_application_checklist')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($latestApplication) {
+            $lastNumber = (int) substr($latestApplication->application_no, -4);
+            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $newNumber = '0001';
+        }
+
+        $applicationNo = 'DENR-R4A-' . date('Y') . '-' . $newNumber;
+
+        return response()->json(['application_no' => $applicationNo]);
     }
 }

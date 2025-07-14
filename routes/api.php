@@ -12,5 +12,6 @@ Route::middleware('api')->group(function () {
 Route::get('/getProvinces', [ApplicationController::class, 'getProvinces']);
 Route::get('/provinces/{provinceId}/cities', [ApplicationController::class, 'getCitiesByProvince']);
 Route::get('/barangays', [ApplicationController::class, 'getBarangays']);
+Route::get('/generateApplicationNumber', [ApplicationController::class, 'generateApplicationNumber']);
 
 });
