@@ -16,6 +16,7 @@ Route::get('/generateApplicationNumber', [ApplicationController::class, 'generat
 
 
 Route::post('/chainsaw/apply', [ApplicationController::class, 'apply']);
+Route::post('/chainsaw/company_apply', [ApplicationController::class, 'company_apply']);
 
 
 });

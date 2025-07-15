@@ -82,6 +82,58 @@ class ApplicationController extends Controller
         ], 201);
     }
 
+    public function company_apply(Request $request)
+    {
+        $validated = $request->validate([
+            'geo_code'                     => 'required|string',
+            'application_type'            => 'required|string',
+            'type_of_transaction'         => 'required|string',
+            'application_no'              => 'required|string|unique:tbl_application_checklist',
+            'date_applied'                => 'required|string',
+            'encoded_by'                  => 'nullable|integer',
+
+            'company_name'                => 'required|string',
+            'company_address'             => 'required|string',
+            'authorized_representative'   => 'nullable|string',
+
+            'c_province'                  => 'required|string',
+            'c_city_mun'                  => 'required|string',
+            'c_barangay'                  => 'required|string',
+
+            'p_place_of_operation_address'  => 'required|string',
+            'p_province'                  => 'required|string',
+            'p_city_mun'                  => 'required|string',
+            'p_barangay'                  => 'required|string',
+
+        ]);
+
+        $application = ChainsawIndividualApplication::create([
+            // '' => $validated['geo_code'],
+            'application_type'           => $validated['application_type'],
+            'transaction_type'           => $validated['type_of_transaction'],
+            'application_no'             => $validated['application_no'],
+            'date_applied'               => $validated['date_applied'],
+            'encoded_by'                 => $validated['encoded_by'] ?? null,
+
+            'company_name'               => $validated['company_name'],
+            'company_address'            => $validated['company_address'],
+            'authorized_representative'  => $validated['authorized_representative'] ?? null,
+            'company_c_province'         => $validated['c_province'],
+            'company_c_city_mun'         => $validated['c_city_mun'],
+            'company_c_barangay'         => $validated['c_barangay'],
+
+            'operation_complete_address' => $validated['p_place_of_operation_address'] ?? null,
+            'operation_province_c'       => $validated['p_province'] ?? null,
+            'operation_city_mun_c'       => $validated['p_city_mun'] ?? null,
+            'operation_brgy_c'           => $validated['p_barangay'] ?? null,
+        ]);
+
+        return response()->json([
+            'message' => 'Company application submitted successfully.',
+            'id' => $application->id,
+        ], 201);
+    }
+
 
 
 

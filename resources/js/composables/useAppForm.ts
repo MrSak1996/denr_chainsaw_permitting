@@ -2,6 +2,7 @@ import { reactive } from 'vue';
 
 interface CompanyForm {
     application_no: string;
+    application_type:string;
     date_applied: string;
     geo_code: string;
     type_of_transaction: string;
@@ -14,7 +15,7 @@ interface CompanyForm {
     c_province: null | string;
     c_city_mun: null | string;
     c_barangay: null | string;
-    place_of_operation_address: string;
+    p_place_of_operation_address: string;
     p_region: string;
     p_province: string;
     p_city_mun: string;
@@ -30,6 +31,7 @@ interface CompanyForm {
         p_province: string;
         p_city_mun: string;
         p_barangay: string;
+        p_place_of_operation_address: string;
     };
 }
 
@@ -125,7 +127,7 @@ export function useAppForm() {
         c_province: null,
         c_city_mun: null,
         c_barangay: null,
-        place_of_operation_address: '',
+        p_place_of_operation_address: '',
         p_region: 'REGION IV-A (CALABARZON)',
         p_province: '',
         p_city_mun: '',
@@ -137,6 +139,7 @@ export function useAppForm() {
             c_city_mun: '',
             c_barangay: '',
             address: '',
+            p_place_of_operation_address:'',
         },
     });
 

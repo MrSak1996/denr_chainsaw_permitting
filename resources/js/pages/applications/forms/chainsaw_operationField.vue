@@ -19,7 +19,7 @@ const props = defineProps<{
 }>();
 
 // API
-const { getProvinceCode } = useApi();
+const { getProvinceCode,prov_name } = useApi();
 
 // Options
 const city_mun_opts = ref<{ id: string; name: string; code: string }[]>([]);
@@ -121,7 +121,7 @@ onMounted(() => {
                         <Select filter v-model="props.form.p_province" optionValue="id" :options="prov_name"
                             optionLabel="name" placeholder="Province" class="w-full" />
                     </FloatLabel>
-                    <InputError :message="props.form.errors.region" />
+                    <InputError :message="props.form.errors.p_province" />
                 </div>
 
                 <!-- Municipality -->

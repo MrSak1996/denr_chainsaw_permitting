@@ -37,6 +37,12 @@ class ChainsawIndividualApplication extends Model
         'operation_city_mun_c',
         'operation_brgy_c',
         'operation_complete_address',
+        'company_name',
+        'company_address',
+        'authorized_representative',
+        'company_c_province',
+        'company_c__city_mun',
+        'company_c_barangay',
         'updated_at',
         'created_at'
     ];

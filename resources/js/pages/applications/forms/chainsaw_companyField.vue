@@ -164,7 +164,7 @@ onMounted(() => {
                     <label for="address" class="mb-1 block text-sm font-medium text-gray-700">Complete Address</label>
                     <Textarea
                         id="address"
-                        v-model="form.address"
+                        v-model="props.form.company_address"
                         rows="6"
                         placeholder="Complete Address (Street, Purok, etc.)"
                         class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500"

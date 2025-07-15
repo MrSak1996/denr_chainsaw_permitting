@@ -49,7 +49,7 @@ const form = useForm({
 });
 
 const currentStep = ref(1);
-
+const isLoading = ref(false);
 const steps = ref([
     { label: 'Applicant Details', id: 1 },
     { label: 'Chainsaw Information', id: 2 },
@@ -57,14 +57,40 @@ const steps = ref([
     { label: 'Submit and Review', id: 4 },
 ]);
 
-const nextStep = () => {
-    if (isStepValid(currentStep.value)) {
-        if (currentStep.value < steps.value.length) {
+const validateForm = () => {
+    const requiredFields = [
+        'date_applied'
+    ];
+
+    const isInvalid = requiredFields.some((key) => {
+        const value = company_form[key];
+        return typeof value === 'string' ? value.trim() === '' : !value;
+    });
+
+    if (isInvalid) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Incomplete',
+            detail: 'Please complete all required fields before proceeding.',
+            life: 3000,
+        });
+        return false;
+    }
+
+    return true;
+};
+
+
+const nextStep = async () => {
+    if (currentStep.value < steps.value.length) {
+        const isValid = validateForm();
+        if (!isValid) return;
+
+        const isSaved = await saveCompanyApplication();
+        alert('a');
+        if (isSaved) {
             currentStep.value++;
         }
-        saveCompanyApplication();
-    } else {
-        showError();
     }
 };
 
@@ -220,30 +246,36 @@ const handleStepClick = (targetStep) => {
 
 //INSERT COMPANY FORM DATA
 const saveCompanyApplication = async () => {
+    isLoading.value = true;
+
     try {
-        const response = await insertFormData(
-            'http://127.0.0.1:8000/api/chainsaw/apply',
-            company_form
-        )
+        const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/company_apply', {
+            ...company_form,
+            encoded_by: 1,
+        });
 
         toast.add({
             severity: 'success',
             summary: 'Saved',
             detail: 'Company application submitted successfully.',
-            life: 3000
-        })
+            life: 3000,
+        });
 
-        // Optionally redirect or reset form
-        console.log('Saved with ID:', response.id)
+        console.log('Saved with ID:', response.id);
+        return true;
     } catch (error) {
+        console.error('Failed to save application:', error);
         toast.add({
             severity: 'error',
             summary: 'Failed',
             detail: 'There was an error saving the application.',
-            life: 3000
-        })
+            life: 3000,
+        });
+        return false;
+    } finally {
+        isLoading.value = false;
     }
-}
+};
 
 onMounted(() => {
     getApplicationNumber(company_form);
