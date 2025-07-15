@@ -4,7 +4,8 @@ import { ShieldAlert } from 'lucide-vue-next';
 import InputError from '@/components/InputError.vue';
 
 const props = defineProps({
-    form: Object
+    form: Object,
+    application_no: String,
 });
 </script>
 <template>

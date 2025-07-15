@@ -1,94 +1,100 @@
 <script setup lang="ts">
-import Fieldset from 'primevue/fieldset';
-import { useApi } from '@/composables/useApi';
+import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
-import { onMounted, ref, watch } from 'vue';
+import Fieldset from 'primevue/fieldset';
 import InputError from '@/components/InputError.vue';
+import { useApi } from '@/composables/useApi';
 
-const props = defineProps({
-    form: Object
+// ─────────────────────────────────────────────
+// Props
+// ─────────────────────────────────────────────
+const props = defineProps<{
+    form: {
+        p_region: string;
+        p_province: string;
+        p_city_mun: string;
+        p_barangay: string;
+        geo_code: string;
+    };
+}>();
+
+// API
+const { getProvinceCode } = useApi();
+
+// Options
+const city_mun_opts = ref<{ id: string; name: string; code: string }[]>([]);
+const barangay_opts = ref<{ id: string; name: string }[]>([]);
+
+// ─────────────────────────────────────────────
+// Watchers
+// ─────────────────────────────────────────────
+
+// Update geo_code based on city/municipality
+watch(() => props.form.p_city_mun, (newCityMun) => {
+    const selected = city_mun_opts.value.find(item => item.id === newCityMun);
+    props.form.geo_code = selected?.code ?? '';
 });
 
-const { prov_name, getProvinceCode } = useApi();
-let city_mun_opts = ref<{ id: any; name: any; code: any }[]>([]);
-let barangay_opts = ref<{ id: any; name: any }[]>([]);
+// Fetch municipalities when province changes
+watch(() => props.form.p_province, async (province) => {
+    if (!province) return city_mun_opts.value = [];
 
-// Set geo_code based on selected municipality
-watch(
-    () => props.form.p_city_mun,
-    (newCityMun) => {
-        const selectedMunicipality = city_mun_opts.value.find((item) => item.id === newCityMun);
-        props.form.geo_code = selectedMunicipality?.code ?? '';
-    },
-);
-
-// When province changes, fetch its municipalities
-watch(
-    () => props.form.p_province,
-    async (newProvince) => {
-        if (newProvince) {
-            try {
-                const response = await axios.get(`http://127.0.0.1:8000/api/provinces/${newProvince}/cities`);
-                if (response.data && Array.isArray(response.data)) {
-                    city_mun_opts.value = response.data.map((item) => ({
-                        id: item.mun_code,
-                        name: item.mun_name,
-                        code: item.geo_code,
-                    }));
-                    props.form.p_city_mun = ''; // Let user select city manually
-                } else {
-                    console.error('Unexpected response structure:', response);
-                    city_mun_opts.value = [];
-                }
-            } catch (error) {
-                console.error('Error fetching cities:', error);
-                city_mun_opts.value = [];
-            }
+    try {
+        const { data } = await axios.get(`http://127.0.0.1:8000/api/provinces/${province}/cities`);
+        if (Array.isArray(data)) {
+            city_mun_opts.value = data.map(({ mun_code, mun_name, geo_code }) => ({
+                id: mun_code,
+                name: mun_name,
+                code: geo_code,
+            }));
+            props.form.p_city_mun = '';
         } else {
+            console.error('Unexpected city response format:', data);
             city_mun_opts.value = [];
         }
-    },
-);
+    } catch (err) {
+        console.error('Error fetching municipalities:', err);
+        city_mun_opts.value = [];
+    }
+});
 
-// When city/municipality changes, fetch barangays
-watch(
-    () => props.form.p_city_mun,
-    async (newCityMun) => {
-        const province = props.form.p_province;
-        const region = props.form.p_region;
-        if (newCityMun) {
-            try {
-                const response = await axios.get(`http://127.0.0.1:8000/api/barangays`, {
-                    params: {
-                        reg_code: region,
-                        prov_code: province,
-                        mun_code: newCityMun,
-                    },
-                });
-                if (response.data && Array.isArray(response.data)) {
-                    barangay_opts.value = response.data.map((item) => ({
-                        id: item.bgy_code,
-                        name: item.bgy_name,
-                    }));
-                    props.form.p_barangay = '';
-                } else {
-                    console.error('Unexpected response structure:', response);
-                    barangay_opts.value = [];
-                }
-            } catch (error) {
-                console.error('Error fetching barangays:', error);
-                barangay_opts.value = [];
-            }
+// Fetch barangays when city changes
+watch(() => props.form.p_city_mun, async (cityMun) => {
+    if (!cityMun) return barangay_opts.value = [];
+
+    try {
+        const { data } = await axios.get(`http://127.0.0.1:8000/api/barangays`, {
+            params: {
+                reg_code: props.form.p_region,
+                prov_code: props.form.p_province,
+                mun_code: cityMun,
+            },
+        });
+
+        if (Array.isArray(data)) {
+            barangay_opts.value = data.map(({ bgy_code, bgy_name }) => ({
+                id: bgy_code,
+                name: bgy_name,
+            }));
+            props.form.p_barangay = '';
         } else {
+            console.error('Unexpected barangay response format:', data);
             barangay_opts.value = [];
         }
-    },
-);
+    } catch (err) {
+        console.error('Error fetching barangays:', err);
+        barangay_opts.value = [];
+    }
+});
 
+// ─────────────────────────────────────────────
+// Lifecycle
+// ─────────────────────────────────────────────
 onMounted(() => {
     getProvinceCode();
 });
 </script>
+
 
 
 
@@ -124,7 +130,7 @@ onMounted(() => {
                         <Select filter v-model="props.form.p_city_mun" :options="city_mun_opts" optionValue="id"
                             optionLabel="name" placeholder="Municipality" class="w-full" />
                     </FloatLabel>
-                    <InputError :message="props.form.errors.region" />
+                    <InputError :message="props.form.errors.p_city_mun" />
                 </div>
 
                 <!-- Barangay -->
@@ -133,15 +139,15 @@ onMounted(() => {
                         <Select filter v-model="props.form.p_barangay" :options="barangay_opts" optionValue="id"
                             optionLabel="name" placeholder="Barangay" class="w-full" />
                     </FloatLabel>
-                    <InputError :message="props.form.errors.region" />
+                    <InputError :message="props.form.errors.p_barangay" />
                 </div>
 
                 <div class="md:col-span-2">
                     <label for="address" class="mb-1 block text-sm font-medium text-gray-700">Complete Address</label>
-                    <Textarea id="address" v-model="props.form.p_address" rows="6"
+                    <Textarea id="address" v-model="props.form.p_place_of_operation_address" rows="6"
                         placeholder="Complete Address (Street, Purok, etc.)"
                         class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500" />
-                    <InputError :message="props.form.errors.place_of_operation_address" />
+                    <InputError :message="props.form.errors.p_place_of_operation_address" />
                 </div>
             </div>
         </Fieldset>

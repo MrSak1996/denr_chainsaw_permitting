@@ -35,7 +35,9 @@ interface CompanyForm {
 
 interface IndividualForm {
     application_no: string;
+    application_type: string;
     date_applied: string;
+    type_of_transaction: string;
     geo_code: string;
     last_name: string;
     first_name: string;
@@ -63,7 +65,9 @@ interface IndividualForm {
 
     errors: {
         application_no: string;
+        application_type: string;
         date_applied: string;
+        type_of_transaction: string;
         geo_code: string;
         last_name: string;
         first_name: string;
@@ -107,7 +111,8 @@ interface IndividualForm {
 
 export function useAppForm() {
     const company_form = reactive<CompanyForm>({
-        application_no: 'DENR-R4A-2023-0001',
+        application_no: '',
+        application_type: 'Company',
         date_applied: new Date().toISOString().slice(0, 10), // auto-set to today
         geo_code: '',
         type_of_transaction: '',
@@ -136,8 +141,10 @@ export function useAppForm() {
     });
 
     const individual_form = reactive<IndividualForm>({
-        application_no: 'DENR-R4A-2023-0001',
+        application_no: '',
+        application_type: 'Individual',
         date_applied: new Date().toISOString().slice(0, 10), // auto-set to today
+        type_of_transaction: '',
         geo_code: '',
         last_name: '',
         first_name: '',
@@ -161,11 +168,14 @@ export function useAppForm() {
         encoded_by: null,
         errors: {
             application_no: '',
+            application_type: '',
             date_applied: '',
+            type_of_transaction: '',
             geo_code: '',
             last_name: '',
             first_name: '',
             middle_name: '',
+            sex:'',
             mobile_no: '',
             telephone_no: '',
             email_address: '',

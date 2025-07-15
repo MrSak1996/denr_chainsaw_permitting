@@ -26,6 +26,7 @@ import Tag from 'primevue/tag';
 import ToggleButton from 'primevue/togglebutton';
 import Select from 'primevue/select';
 import DatePicker from 'primevue/datepicker';
+import Password from 'primevue/password';
 
 
 import type { DefineComponent } from 'vue';
@@ -76,6 +77,7 @@ createInertiaApp({
             .component('ToggleButton', ToggleButton)
             .component('Select', Select)
             .component('DatePicker', DatePicker)
+            .component('Password', Password)
             .mount(el);
     },
     progress: {

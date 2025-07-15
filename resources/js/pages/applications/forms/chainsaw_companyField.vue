@@ -4,14 +4,14 @@ import axios from 'axios';
 import { onMounted, ref, watch } from 'vue';
 
 import InputError from '@/components/InputError.vue';
+import Select from 'primevue/dropdown';
 import Fieldset from 'primevue/fieldset';
+import FloatLabel from 'primevue/floatlabel';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
-import Select from 'primevue/dropdown';
-import FloatLabel from 'primevue/floatlabel';
 
 const props = defineProps({
-    form: Object
+    form: Object,
 });
 
 const { prov_name, getProvinceCode } = useApi();
@@ -115,8 +115,15 @@ onMounted(() => {
                 <!-- Province -->
                 <div>
                     <FloatLabel>
-                        <Select filter v-model="props.form.c_province" optionValue="id" :options="prov_name"
-                            optionLabel="name" placeholder="Province" class="w-full" />
+                        <Select
+                            filter
+                            v-model="props.form.c_province"
+                            optionValue="id"
+                            :options="prov_name"
+                            optionLabel="name"
+                            placeholder="Province"
+                            class="w-full"
+                        />
                     </FloatLabel>
                     <InputError :message="props.form.errors.region" />
                 </div>
@@ -124,8 +131,15 @@ onMounted(() => {
                 <!-- Municipality -->
                 <div>
                     <FloatLabel>
-                        <Select filter v-model="props.form.c_city_mun" :options="city_mun_opts" optionValue="id"
-                            optionLabel="name" placeholder="Municipality" class="w-full" />
+                        <Select
+                            filter
+                            v-model="props.form.c_city_mun"
+                            :options="city_mun_opts"
+                            optionValue="id"
+                            optionLabel="name"
+                            placeholder="Municipality"
+                            class="w-full"
+                        />
                     </FloatLabel>
                     <InputError :message="props.form.errors.region" />
                 </div>
@@ -133,17 +147,28 @@ onMounted(() => {
                 <!-- Barangay -->
                 <div>
                     <FloatLabel>
-                        <Select filter v-model="props.form.c_barangay" :options="barangay_opts" optionValue="id"
-                            optionLabel="name" placeholder="Barangay" class="w-full" />
+                        <Select
+                            filter
+                            v-model="props.form.c_barangay"
+                            :options="barangay_opts"
+                            optionValue="id"
+                            optionLabel="name"
+                            placeholder="Barangay"
+                            class="w-full"
+                        />
                     </FloatLabel>
                     <InputError :message="props.form.errors.region" />
                 </div>
 
                 <div class="md:col-span-2">
                     <label for="address" class="mb-1 block text-sm font-medium text-gray-700">Complete Address</label>
-                    <Textarea id="address" v-model="form.address" rows="6"
+                    <Textarea
+                        id="address"
+                        v-model="form.address"
+                        rows="6"
                         placeholder="Complete Address (Street, Purok, etc.)"
-                        class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500" />
+                        class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+                    />
                     <InputError :message="props.form.errors.company_address" />
                 </div>
             </div>

@@ -2,9 +2,11 @@
 // import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { useForm } from '@inertiajs/vue3';
+import { useApi } from '@/composables/useApi';
 import { ShieldAlert } from 'lucide-vue-next';
 import { useToast } from 'primevue/usetoast';
 import { useAppForm } from '@/composables/useAppForm'
+import { useFormHandler } from '@/composables/useFormHandler';
 
 import Fieldset from 'primevue/fieldset';
 
@@ -12,12 +14,12 @@ import Chainsaw_applicationField from './chainsaw_applicationField.vue';
 import Chainsaw_companyField from './chainsaw_companyField.vue';
 import Chainsaw_operationField from './chainsaw_operationField.vue';
 
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 const { company_form } = useAppForm()
+const { getApplicationNumber } = useApi();
+const { insertFormData } = useFormHandler()
 
 const toast = useToast();
-
-const region_opts = ref([{ id: 1, name: 'CALABARZON' }]);
 const form = useForm({
     official_receipt: null,
     application_no: 'DENR-IV-A-2025-07-07-0001',
@@ -60,6 +62,7 @@ const nextStep = () => {
         if (currentStep.value < steps.value.length) {
             currentStep.value++;
         }
+        saveCompanyApplication();
     } else {
         showError();
     }
@@ -164,6 +167,7 @@ const purpose = ref({
 const handlePurposeFileUpload = (event, field) => {
     purpose.value.purposeFiles[field] = event.target.files[0];
 };
+
 const showError = () => {
     toast.add({
         severity: 'error',
@@ -213,6 +217,38 @@ const handleStepClick = (targetStep) => {
     }
 };
 
+
+//INSERT COMPANY FORM DATA
+const saveCompanyApplication = async () => {
+    try {
+        const response = await insertFormData(
+            'http://127.0.0.1:8000/api/chainsaw/apply',
+            company_form
+        )
+
+        toast.add({
+            severity: 'success',
+            summary: 'Saved',
+            detail: 'Company application submitted successfully.',
+            life: 3000
+        })
+
+        // Optionally redirect or reset form
+        console.log('Saved with ID:', response.id)
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'Failed',
+            detail: 'There was an error saving the application.',
+            life: 3000
+        })
+    }
+}
+
+onMounted(() => {
+    getApplicationNumber(company_form);
+
+});
 </script>
 
 <template>
@@ -237,8 +273,8 @@ const handleStepClick = (targetStep) => {
         </div>
 
         <div v-if="currentStep === 1" class="space-y-4">
-            <Chainsaw_applicationField :form="company_form" />
-            <Chainsaw_companyField :form="company_form"/>
+            <Chainsaw_applicationField :form="company_form" :application_no="form.application_no" />
+            <Chainsaw_companyField :form="company_form" />
             <Chainsaw_operationField :form="company_form" />
         </div>
 
@@ -250,7 +286,8 @@ const handleStepClick = (targetStep) => {
                     <span> Please complete all fields to proceed with your application for a Permit to Purchase
                         Chainsaw. </span>
                 </div>
-                <div v-for="(chainsaw, index) in chainsaws" :key="index" class="relative mb-6 bg-blue-40 p-5  rounded-lg shadow">
+                <div v-for="(chainsaw, index) in chainsaws" :key="index"
+                    class="relative mb-6 bg-blue-40 p-5  rounded-lg shadow">
                     <!-- Remove Button -->
                     <button v-if="index > 0" @click="removeChainsaw(index)"
                         class="absolute top-2 right-2 text-red-600 hover:text-red-800" title="Remove">
