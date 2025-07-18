@@ -82,6 +82,7 @@ const handleFileUpload = (event: Event, field: string) => {
                     <label for="requestLetter" class="mb-2 text-sm font-medium text-gray-700">
                         Upload Application Letter / Request Letter
                     </label>
+
                     <input id="requestLetter" type="file" accept=".jpg,.jpeg,.pdf"
                         @change="(e) => handleFileUpload(e, 'request_letter')"
                         class="w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />

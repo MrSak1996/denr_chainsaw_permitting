@@ -56,10 +56,14 @@ const steps = ref([
     { label: 'Payment of Application Fee', id: 3 },
     { label: 'Submit and Review', id: 4 },
 ]);
-
 const validateForm = () => {
     const requiredFields = [
-        'date_applied'
+        'date_applied',
+        'application_type',
+        'type_of_transaction',
+        'company_name',
+        'company_address',
+        'authorized_representative',
     ];
 
     const isInvalid = requiredFields.some((key) => {
@@ -83,11 +87,10 @@ const validateForm = () => {
 
 const nextStep = async () => {
     if (currentStep.value < steps.value.length) {
-        const isValid = validateForm();
-        if (!isValid) return;
+        // const isValid = validateForm();
+        // if (!isValid) return;
 
         const isSaved = await saveCompanyApplication();
-        alert('a');
         if (isSaved) {
             currentStep.value++;
         }
