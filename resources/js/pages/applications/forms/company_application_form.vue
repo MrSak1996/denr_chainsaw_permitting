@@ -250,10 +250,13 @@ const handleStepClick = (targetStep) => {
 //INSERT COMPANY FORM DATA
 const saveCompanyApplication = async () => {
     isLoading.value = true;
-
+    const formData = new FormData();
+    formData.append('request_letter', company_form.request_letter);
+    formData.append('soc_certificate', company_form.soc_certificate);
     try {
         const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/company_apply', {
             ...company_form,
+            ...formData,
             encoded_by: 1,
         });
 
@@ -263,8 +266,6 @@ const saveCompanyApplication = async () => {
             detail: 'Company application submitted successfully.',
             life: 3000,
         });
-
-        console.log('Saved with ID:', response.id);
         return true;
     } catch (error) {
         console.error('Failed to save application:', error);
@@ -308,7 +309,7 @@ onMounted(() => {
         </div>
 
         <div v-if="currentStep === 1" class="space-y-4">
-            <Chainsaw_applicationField :form="company_form" :application_no="form.application_no" />
+            <Chainsaw_applicationField :form="company_form" :application_no="form.application_no" :insertFormData="insertFormData"/>
             <Chainsaw_companyField :form="company_form" />
             <Chainsaw_operationField :form="company_form" />
         </div>
@@ -522,6 +523,7 @@ onMounted(() => {
                 </div>
             </Fieldset>
         </div>
+            <!-- <Button class="ml-auto" @click="sec">Next</Button> -->
 
         <div class="flex justify-between pt-6">
             <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Back</Button>

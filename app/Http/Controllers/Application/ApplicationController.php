@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Application\ChainsawIndividualApplication;
-use App\Models\Application\AttachmentsModel;
+use App\Models\ApplicantAttachments\AttachmentsModel;
 use Exception;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -91,7 +91,6 @@ class ApplicationController extends Controller
     public function company_apply(Request $request)
     {
         try {
-
             $validated = $request->validate([
                 'geo_code'                     => 'required|string',
                 'application_type'            => 'required|string',
@@ -112,10 +111,9 @@ class ApplicationController extends Controller
                 'p_province'                  => 'required|string',
                 'p_city_mun'                  => 'required|string',
                 'p_barangay'                  => 'required|string',
-                'request_letter'  => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
-                'soc_certificate' => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
 
-
+                'request_letter'              => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
+                'soc_certificate'             => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
             ]);
 
             $application = ChainsawIndividualApplication::create([
@@ -136,16 +134,18 @@ class ApplicationController extends Controller
                 'operation_brgy_c'           => $request->input('p_barangay'),
             ]);
 
-
             $applicationNo = $application->application_no;
+            $applicationId = $application->id;
 
-            $this->uploadFileToDrive($request->file('soc_certificate'), $applicationNo, "Secretary's Certificate");
+            // Upload and save attachments
+            $attachments = $this->storeAttachments($request, $applicationId, $applicationNo);
 
             return response()->json([
                 'message' => 'Company application submitted successfully.',
                 'id' => $application->id,
+                'attachments' => $attachments,
             ], 201);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return response()->json([
                 'message' => 'An error occurred while processing your request.',
                 'error' => $e->getMessage(),
@@ -153,51 +153,152 @@ class ApplicationController extends Controller
         }
     }
 
+    public function storeAttachments(Request $request, $applicationId, $applicationNo)
+    {
+
+
+        $filesToUpload = [
+            'soc_certificate' => 'secretarys_certificate',
+            'request_letter'  => 'request_letter',
+        ];
+
+        $results = [];
+
+        foreach ($filesToUpload as $input => $folderName) {
+            try {
+                $file = $request->file($input);
+                $upload = $this->uploadFileToDrive($file, $applicationNo, $folderName);
+                sleep(5);
+                Log::info('Saving attachment to DB', [
+                    'application_id' => $applicationId,
+                    'file_id' => $upload['id'],
+                    'file_name' => $upload['name'],
+                    'file_url' => $upload['url'],
+                ]);
+
+                $results[$input] = $upload;
+            } catch (\Exception $e) {
+                Log::error("Upload failed for {$input}", ['error' => $e->getMessage()]);
+                $results[$input] = null;
+            }
+        }
+
+        return $results;
+    }
+
+
     private function uploadFileToDrive($file, $applicationNo, $folderType)
     {
+        if (!$file || !$applicationNo || !$folderType) {
+            throw new \Exception("Missing parameters for file upload.");
+        }
+
+        if (!$file->isValid()) {
+            throw new \Exception("Invalid file: " . $file->getErrorMessage());
+        }
+
+        $folderPath = "CHAINSAW_PERMITTING/Company Applications/{$applicationNo}/{$folderType}";
+        $this->ensureFolderExists($folderPath);
+
+        $filePrefix = str_replace(' ', '_', strtolower($folderType));
+        $fileName = $filePrefix . '_' . $file->getClientOriginalName();
+        $filePath = "{$folderPath}/{$fileName}";
+
+        Log::info("Uploading file: {$fileName}");
+
+        $fileContents = file_get_contents($file->getRealPath());
+        if ($fileContents === false) {
+            throw new \Exception("Unable to read file: {$fileName}");
+        }
+
+        $uploadResult = Storage::disk('google')->write($filePath, $fileContents);
+
+        if (!$uploadResult) {
+            throw new \Exception("Upload failed for: {$fileName}");
+        }
+
+        sleep(3); // Allow processing time
+        // $fileId = $this->getFileIdWithRetry($filePath, $fileName);
+        $files = Storage::disk('google')->listContents('', true);
+        $fileMeta = collect($files)->where('path', $filePath)->first();
+        $fileId = $fileMeta['extraMetadata']['id'] ?? null;
+
+
+        if (!$fileId) {
+            throw new \Exception("Unable to get file ID for: {$fileName}");
+        }
+
+        $publicUrl = "https://drive.google.com/file/d/{$fileId}/view";
+        print_r("File uploaded successfully: {$fileName} with ID: {$fileId}");
+        exit();
+
+        // DB::table('tbl_application_attachments')->insert([
+        //     'application_id' => 107,
+        //     'file_id' => $fileId,
+        //     'file_name' => $fileName,
+        //     'file_url' => $publicUrl,
+        //     'created_at' => now(),
+        //     'updated_at' => now(),
+        // ]);
+        
+        return [
+            'name' => $fileName,
+            'id'   => $fileId,
+            'url'  => $publicUrl,
+        ];
+    }
+
+
+    private function ensureFolderExists($folderPath)
+    {
         try {
-            //first create the folder Sec Certificate and Request Letter
-            $folderPath = "CHAINSAW_PERMITTING/Company Applications/{$applicationNo}/{$folderType}";
+            // Remove trailing slash if present
+            $folderPath = rtrim($folderPath, '/');
+            $parentDir = dirname($folderPath);
+            $dirName = basename($folderPath);
 
-            $fileName = $file->getClientOriginalName();
-            $filePath = "{$folderPath}/{$fileName}";
+            $contents = Storage::disk('google')->listContents($parentDir === '.' ? '' : $parentDir, false);
 
-            // Upload the file
-            Storage::disk('google')->write($filePath, file_get_contents($file));
+            $folder = collect($contents)->first(function ($item) use ($dirName) {
+                return $item['type'] === 'dir' && $item['basename'] === $dirName;
+            });
 
-            // Get file metadata (to get the file ID)
-            $files = Storage::disk('google')->listContents('/', true);
-            $fileMeta = collect($files)->firstWhere('path', $filePath);
-            $fileId = $fileMeta['extraMetadata']['id'] ?? null;
-
-            if (!$fileId) {
-                throw new \Exception("File upload failed: File ID for {$fileName} not found.");
+            if (!$folder) {
+                Storage::disk('google')->makeDirectory($folderPath);
+                Log::info("Created folder structure: {$folderPath}");
+                print_r("Created folder structure: {$folderPath}");
+                // Wait for Google Drive to register the new folder
+                sleep(5); // increase to 2-3 seconds if needed
             }
-
-            $publicUrl = "https://drive.google.com/file/d/{$fileId}/view";
-
-            // Store to DB
-            AttachmentsModel::create([
-                'file_name'      => $fileName,
-                'file_path'      => $filePath,
-                'application_id' => $applicationNo,
-                'folder_id'      => null,
-                'file_id'        => $fileId,
-                'public_url'     => $publicUrl,
-            ]);
-
-            Log::info("File uploaded to Google Drive: {$fileName}");
-
-            return [
-                'name' => $fileName,
-                'id'   => $fileId,
-                'url'  => $publicUrl,
-            ];
         } catch (\Exception $e) {
-            Log::error("Google Drive Upload Failed: " . $e->getMessage());
-            throw $e;
+            Log::warning("Could not create/verify folder {$folderPath}: " . $e->getMessage());
         }
     }
+
+    /**
+     * Get file ID with retry mechanism
+     */
+    private function getFileIdWithRetry($filePath, $fileName, $maxRetries = 3)
+    {
+        for ($i = 0; $i < $maxRetries; $i++) {
+            try {
+                $files = Storage::disk('google')->listContents('/', true);
+                $fileMeta = collect($files)->firstWhere('path', $filePath);
+
+                if ($fileMeta && isset($fileMeta['extraMetadata']['id'])) {
+                    return $fileMeta['extraMetadata']['id'];
+                }
+
+                sleep(2);
+            } catch (\Exception $e) {
+                Log::warning("Retry {$i} failed for {$fileName}: " . $e->getMessage());
+                sleep(2);
+            }
+        }
+
+        return null;
+    }
+
 
 
     // private function uploadSecCertToGoogleDrive($request, $applicationNo)

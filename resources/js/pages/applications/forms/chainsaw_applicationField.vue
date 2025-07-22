@@ -12,10 +12,33 @@ const handleFileUpload = (event: Event, field: string) => {
     if (target.files && target.files.length > 0) {
         props.form[field] = target.files[0];
     }
+
 };
+
+// const saveCompanyApplication = async () => {
+//     try {
+//         const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/creat_folder', {
+//             ...company_form,
+//             ...formData,
+//             encoded_by: 1,
+//         });
+
+       
+
+//         console.log('Saved with ID:', response.id);
+//         return true;
+//     } catch (error) {
+//         console.error('Failed to save application:', error);
+       
+//         return false;
+//     } finally {
+//     }
+// };
 </script>
 <template>
     <div>
+      
+
         <Fieldset legend="Chainsaw Application">
             <!-- Alert Info -->
 

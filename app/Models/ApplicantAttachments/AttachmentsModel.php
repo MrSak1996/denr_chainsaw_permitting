@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Application;
+namespace App\Models\ApplicantAttachments;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -20,8 +20,9 @@ class AttachmentsModel extends Model
         'folder_id',
         'file_id',
         'file_name',
-        'file_path',
+        'file_url',
         'updated_at',
         'created_at',
     ];
+    
 }
