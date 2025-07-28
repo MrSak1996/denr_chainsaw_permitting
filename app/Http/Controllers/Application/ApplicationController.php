@@ -91,47 +91,47 @@ class ApplicationController extends Controller
     public function company_apply(Request $request)
     {
         try {
-            $validated = $request->validate([
-                'geo_code'                     => 'required|string',
-                'application_type'            => 'required|string',
-                'type_of_transaction'         => 'required|string',
-                'application_no'              => 'required|string|unique:tbl_application_checklist',
-                'date_applied'                => 'required|string',
-                'encoded_by'                  => 'nullable|integer',
+            // $validated = $request->validate([
+            //     'geo_code'                     => 'required|string',
+            //     'application_type'            => 'required|string',
+            //     'type_of_transaction'         => 'required|string',
+            //     'application_no'              => 'required|string|unique:tbl_application_checklist',
+            //     'date_applied'                => 'required|string',
+            //     'encoded_by'                  => 'nullable|integer',
 
-                'company_name'                => 'required|string',
-                'company_address'             => 'required|string',
-                'authorized_representative'   => 'nullable|string',
+            //     'company_name'                => 'required|string',
+            //     'company_address'             => 'required|string',
+            //     'authorized_representative'   => 'nullable|string',
 
-                'c_province'                  => 'required|string',
-                'c_city_mun'                  => 'required|string',
-                'c_barangay'                  => 'required|string',
+            //     'c_province'                  => 'required|string',
+            //     'c_city_mun'                  => 'required|string',
+            //     'c_barangay'                  => 'required|string',
 
-                'p_place_of_operation_address' => 'required|string',
-                'p_province'                  => 'required|string',
-                'p_city_mun'                  => 'required|string',
-                'p_barangay'                  => 'required|string',
+            //     'p_place_of_operation_address' => 'required|string',
+            //     'p_province'                  => 'required|string',
+            //     'p_city_mun'                  => 'required|string',
+            //     'p_barangay'                  => 'required|string',
 
-                'request_letter'              => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
-                'soc_certificate'             => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
-            ]);
+            //     'request_letter'              => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
+            //     'soc_certificate'             => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
+            // ]);
 
             $application = ChainsawIndividualApplication::create([
-                'application_type'           => $request->input('application_type'),
-                'transaction_type'           => $request->input('type_of_transaction'),
+                // 'application_type'           => $request->input('application_type'),
+                // 'transaction_type'           => $request->input('type_of_transaction'),
                 'application_no'             => $request->input('application_no'),
-                'date_applied'               => $request->input('date_applied'),
-                'encoded_by'                 => $request->input('encoded_by'),
-                'company_name'               => $request->input('company_name'),
-                'company_address'            => $request->input('company_address'),
-                'authorized_representative'  => $request->input('authorized_representative'),
-                'company_c_province'         => $request->input('c_province'),
-                'company_c_city_mun'         => $request->input('c_city_mun'),
-                'company_c_barangay'         => $request->input('c_barangay'),
-                'operation_complete_address' => $request->input('p_place_of_operation_address'),
-                'operation_province_c'       => $request->input('p_province'),
-                'operation_city_mun_c'       => $request->input('p_city_mun'),
-                'operation_brgy_c'           => $request->input('p_barangay'),
+                // 'date_applied'               => $request->input('date_applied'),
+                // 'encoded_by'                 => $request->input('encoded_by'),
+                // 'company_name'               => $request->input('company_name'),
+                // 'company_address'            => $request->input('company_address'),
+                // 'authorized_representative'  => $request->input('authorized_representative'),
+                // 'company_c_province'         => $request->input('c_province'),
+                // 'company_c_city_mun'         => $request->input('c_city_mun'),
+                // 'company_c_barangay'         => $request->input('c_barangay'),
+                // 'operation_complete_address' => $request->input('p_place_of_operation_address'),
+                // 'operation_province_c'       => $request->input('p_province'),
+                // 'operation_city_mun_c'       => $request->input('p_city_mun'),
+                // 'operation_brgy_c'           => $request->input('p_barangay'),
             ]);
 
             $applicationNo = $application->application_no;
@@ -155,8 +155,6 @@ class ApplicationController extends Controller
 
     public function storeAttachments(Request $request, $applicationId, $applicationNo)
     {
-
-
         $filesToUpload = [
             'soc_certificate' => 'secretarys_certificate',
             'request_letter'  => 'request_letter',
@@ -164,88 +162,84 @@ class ApplicationController extends Controller
 
         $results = [];
 
-        foreach ($filesToUpload as $input => $folderName) {
+        foreach ($filesToUpload as $input => $folderType) {
             try {
+                if (!$request->hasFile($input)) {
+                    $results[$input] = [
+                        'error' => "No file provided for: {$input}"
+                    ];
+                    continue;
+                }
+
                 $file = $request->file($input);
-                $upload = $this->uploadFileToDrive($file, $applicationNo, $folderName);
-                sleep(5);
-                Log::info('Saving attachment to DB', [
+
+                $folderPath = "CHAINSAW_PERMITTING/Company Applications/{$applicationNo}/{$folderType}";
+                $this->ensureFolderExists($folderPath);
+
+                $filePrefix = str_replace(' ', '_', strtolower($folderType));
+                $fileName = $filePrefix . '_' . $file->getClientOriginalName();
+                $filePath = "{$folderPath}/{$fileName}";
+
+                Log::info("Uploading file: {$fileName} to: {$filePath}");
+
+                $fileId = $this->uploadToDriveAndGetFileId($file, $filePath);
+
+                if (!$fileId) {
+                    throw new \Exception("Unable to retrieve file ID for: {$fileName}");
+                }
+
+                $fileUrl = "https://drive.google.com/file/d/{$fileId}/preview";
+
+                $uploadedFile = AttachmentsModel::create([
                     'application_id' => $applicationId,
-                    'file_id' => $upload['id'],
-                    'file_name' => $upload['name'],
-                    'file_url' => $upload['url'],
+                    'file_id'        => $fileId,
+                    'file_name'      => $fileName,
+                    'file_url'       => $fileUrl,
                 ]);
 
-                $results[$input] = $upload;
+                $results[$input] = [
+                    'file_id'    => $fileId,
+                    'file_name'  => $fileName,
+                    'file_url'   => $fileUrl,
+                    'db_record'  => $uploadedFile,
+                ];
             } catch (\Exception $e) {
-                Log::error("Upload failed for {$input}", ['error' => $e->getMessage()]);
-                $results[$input] = null;
+                Log::error("Attachment upload error", ['input' => $input, 'error' => $e->getMessage()]);
+
+                $results[$input] = [
+                    'error' => $e->getMessage(),
+                ];
             }
         }
 
-        return $results;
+        return response()->json([
+            'status'  => true,
+            'message' => 'Files processed.',
+            'results' => $results,
+        ], 200, [], JSON_UNESCAPED_SLASHES);
     }
 
 
-    private function uploadFileToDrive($file, $applicationNo, $folderType)
+    private function uploadToDriveAndGetFileId($file, $filePath)
     {
-        if (!$file || !$applicationNo || !$folderType) {
-            throw new \Exception("Missing parameters for file upload.");
-        }
+        // Upload the file
+        Storage::disk('google')->write($filePath, file_get_contents($file));
 
-        if (!$file->isValid()) {
-            throw new \Exception("Invalid file: " . $file->getErrorMessage());
-        }
+        // Give Google Drive a moment to sync
+        usleep(500000); // 0.5 seconds
 
-        $folderPath = "CHAINSAW_PERMITTING/Company Applications/{$applicationNo}/{$folderType}";
-        $this->ensureFolderExists($folderPath);
+        // Search for the uploaded file in Google Drive
+        $pathParts = explode('/', $filePath);
+        array_pop($pathParts); // remove file name
+        $folderPath = implode('/', $pathParts);
 
-        $filePrefix = str_replace(' ', '_', strtolower($folderType));
-        $fileName = $filePrefix . '_' . $file->getClientOriginalName();
-        $filePath = "{$folderPath}/{$fileName}";
+        $files = Storage::disk('google')->listContents($folderPath, true);
 
-        Log::info("Uploading file: {$fileName}");
+        $fileMeta = collect($files)->first(function ($f) use ($filePath) {
+            return isset($f['path']) && $f['path'] === $filePath;
+        });
 
-        $fileContents = file_get_contents($file->getRealPath());
-        if ($fileContents === false) {
-            throw new \Exception("Unable to read file: {$fileName}");
-        }
-
-        $uploadResult = Storage::disk('google')->write($filePath, $fileContents);
-
-        if (!$uploadResult) {
-            throw new \Exception("Upload failed for: {$fileName}");
-        }
-
-        sleep(3); // Allow processing time
-        // $fileId = $this->getFileIdWithRetry($filePath, $fileName);
-        $files = Storage::disk('google')->listContents('', true);
-        $fileMeta = collect($files)->where('path', $filePath)->first();
-        $fileId = $fileMeta['extraMetadata']['id'] ?? null;
-
-
-        if (!$fileId) {
-            throw new \Exception("Unable to get file ID for: {$fileName}");
-        }
-
-        $publicUrl = "https://drive.google.com/file/d/{$fileId}/view";
-        print_r("File uploaded successfully: {$fileName} with ID: {$fileId}");
-        exit();
-
-        // DB::table('tbl_application_attachments')->insert([
-        //     'application_id' => 107,
-        //     'file_id' => $fileId,
-        //     'file_name' => $fileName,
-        //     'file_url' => $publicUrl,
-        //     'created_at' => now(),
-        //     'updated_at' => now(),
-        // ]);
-        
-        return [
-            'name' => $fileName,
-            'id'   => $fileId,
-            'url'  => $publicUrl,
-        ];
+        return $fileMeta['extraMetadata']['id'] ?? null;
     }
 
 
@@ -274,7 +268,6 @@ class ApplicationController extends Controller
             Log::warning("Could not create/verify folder {$folderPath}: " . $e->getMessage());
         }
     }
-
     /**
      * Get file ID with retry mechanism
      */
