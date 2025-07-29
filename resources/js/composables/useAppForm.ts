@@ -11,6 +11,10 @@ interface CompanyForm {
     authorized_representative: string;
     request_letter: File | null;
     soc_certificate: File | null;
+    mayorDTI: File | null;
+    affidavit: File | null;
+    otherDocs: File | null;
+    permit: File | null;
     c_region: string;
     c_province: null | string;
     c_city_mun: null | string;

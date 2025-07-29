@@ -94,10 +94,16 @@ const nextStep = async () => {
     if (currentStep.value < steps.value.length) {
         // const isValid = validateForm();
         // if (!isValid) return;
-
-        const isSaved = await saveCompanyApplication();
-        if (isSaved) {
-            currentStep.value++;
+        if (currentStep.value == 1) {
+            const isSaved = await saveCompanyApplication();
+            if (isSaved) {
+                currentStep.value++;
+            }
+        } else if (currentStep.value == 2) {
+            const isSaved = await saveChainsawInformation();
+            if (isSaved) {
+                currentStep.value++;
+            }
         }
     }
 };
@@ -266,6 +272,7 @@ const saveCompanyApplication = async () => {
     const formData = new FormData();
     formData.append('request_letter', company_form.request_letter);
     formData.append('soc_certificate', company_form.soc_certificate);
+
     try {
         const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/company_apply', {
             ...company_form,
@@ -294,9 +301,45 @@ const saveCompanyApplication = async () => {
     }
 };
 
+const saveChainsawInformation = async () => {
+    isLoading.value = true;
+    const formData = new FormData();
+    formData.append('mayorDTI', company_form.mayorDTI);
+    formData.append('affidavit', company_form.affidavit);
+    formData.append('otherDocs', company_form.otherDocs);
+    formData.append('permit', company_form.permit);
+
+    try {
+        const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/save_chainsaw_info', {
+            ...company_form,
+            ...formData,
+            encoded_by: 1,
+        });
+
+        toast.add({
+            severity: 'success',
+            summary: 'Saved',
+            detail: 'Company application submitted successfully.',
+            life: 3000,
+        });
+        return true;
+    } catch (error) {
+        console.error('Failed to save application:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Failed',
+            detail: 'There was an error saving the application.',
+            life: 3000,
+        });
+        return false;
+    } finally {
+        isLoading.value = false;
+    }
+
+};
+
 onMounted(() => {
     getApplicationNumber(company_form);
-   
 });
 </script>
 
@@ -452,7 +495,7 @@ onMounted(() => {
                             <input
                                 type="file"
                                 accept=".jpg,.jpeg,.pdf"
-                                @change="(event) => handleFileUpload(event, index)"
+                                @change="(event) => handleFileUpload(event, 'permit')"
                                 class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
                             />
                         </div>

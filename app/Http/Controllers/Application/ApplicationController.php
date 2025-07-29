@@ -142,9 +142,8 @@ class ApplicationController extends Controller
                 'request_letter' => 'Request_Letter',
                 'soc_certificate' => 'Secretary_Certificate'
             ];
-            $folderPath = 'CHAINSAW_PERMITTING/Company Applications/' . $applicationNo;
-            
 
+            $folderPath = 'CHAINSAW_PERMITTING/Company Applications/' . $applicationNo;
             $result = $driveService->storeAttachments($request, $applicationId, $folderPath, $filesToUpload);
 
             return response()->json($result);

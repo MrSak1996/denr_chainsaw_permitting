@@ -123,6 +123,4 @@ class GoogleDriveService
             Log::warning("Could not create/verify folder {$folderPath}: " . $e->getMessage());
         }
     }
-
-
 }
