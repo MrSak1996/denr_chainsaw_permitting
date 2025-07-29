@@ -1,12 +1,12 @@
 <script setup lang="ts">
 // import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
-import { useForm } from '@inertiajs/vue3';
 import { useApi } from '@/composables/useApi';
+import { useAppForm } from '@/composables/useAppForm';
+import { useFormHandler } from '@/composables/useFormHandler';
+import { useForm } from '@inertiajs/vue3';
 import { ShieldAlert } from 'lucide-vue-next';
 import { useToast } from 'primevue/usetoast';
-import { useAppForm } from '@/composables/useAppForm'
-import { useFormHandler } from '@/composables/useFormHandler';
 
 import Fieldset from 'primevue/fieldset';
 
@@ -14,10 +14,10 @@ import Chainsaw_applicationField from './chainsaw_applicationField.vue';
 import Chainsaw_companyField from './chainsaw_companyField.vue';
 import Chainsaw_operationField from './chainsaw_operationField.vue';
 
-import { ref, onMounted } from 'vue';
-const { company_form } = useAppForm()
+import { onMounted, ref } from 'vue';
+const { company_form } = useAppForm();
 const { getApplicationNumber } = useApi();
-const { insertFormData } = useFormHandler()
+const { insertFormData } = useFormHandler();
 
 const toast = useToast();
 const form = useForm({
@@ -50,12 +50,18 @@ const form = useForm({
 
 const currentStep = ref(1);
 const isLoading = ref(false);
+const topProgress = ref<InstanceType<typeof TopProgressBar> | null>(null);
 const steps = ref([
     { label: 'Applicant Details', id: 1 },
     { label: 'Chainsaw Information', id: 2 },
     { label: 'Payment of Application Fee', id: 3 },
     { label: 'Submit and Review', id: 4 },
 ]);
+
+// Progress Bar
+
+// End of Progress Bar
+
 const validateForm = () => {
     const requiredFields = [
         'date_applied',
@@ -84,7 +90,6 @@ const validateForm = () => {
     return true;
 };
 
-
 const nextStep = async () => {
     if (currentStep.value < steps.value.length) {
         // const isValid = validateForm();
@@ -96,7 +101,6 @@ const nextStep = async () => {
         }
     }
 };
-
 
 const prevStep = () => {
     if (currentStep.value > 1) currentStep.value--;
@@ -202,10 +206,9 @@ const showError = () => {
         severity: 'error',
         summary: 'Validation Error',
         detail: 'Please complete all required fields before proceeding.',
-        life: 3000
+        life: 3000,
     });
 };
-
 
 // Purpose options
 const purposeOptions = [
@@ -224,8 +227,19 @@ const isStepValid = (stepId) => {
     // Add specific validation logic for each step
     if (stepId === 3) {
         // Example: validate fields in step 1
-        return company_form.date_applied && company_form.company_name && company_form.authorized_representative && company_form.request_letter && company_form.soc_certificate && company_form.c_region
-            && company_form.c_province && company_form.c_city_mun && company_form.c_barangay && company_form.company_address && company_form.place_of_operation_address; // return true if filled
+        return (
+            company_form.date_applied &&
+            company_form.company_name &&
+            company_form.authorized_representative &&
+            company_form.request_letter &&
+            company_form.soc_certificate &&
+            company_form.c_region &&
+            company_form.c_province &&
+            company_form.c_city_mun &&
+            company_form.c_barangay &&
+            company_form.company_address &&
+            company_form.place_of_operation_address
+        ); // return true if filled
     } else if (stepId === 2) {
         // Step 2 validations (if needed)
         // return form.chainsawBrand && form.serialNumber;
@@ -245,7 +259,6 @@ const handleStepClick = (targetStep) => {
         }
     }
 };
-
 
 //INSERT COMPANY FORM DATA
 const saveCompanyApplication = async () => {
@@ -283,33 +296,32 @@ const saveCompanyApplication = async () => {
 
 onMounted(() => {
     getApplicationNumber(company_form);
-
+   
 });
 </script>
 
 <template>
     <div class="mt-10 space-y-6">
         <Toast />
-
         <!-- Stepper -->
         <div class="mb-6 flex items-center justify-between">
-            <div v-for="step in steps" :key="step.id" class="flex-1 cursor-pointer text-center"
-                @click="handleStepClick(step.id)">
-                <div :class="[
-                    'mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white',
-                    currentStep === step.id ? 'bg-green-600' : 'bg-gray-300',
-                ]">
+            <div v-for="step in steps" :key="step.id" class="flex-1 cursor-pointer text-center" @click="handleStepClick(step.id)">
+                <div
+                    :class="[
+                        'mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white',
+                        currentStep === step.id ? 'bg-green-600' : 'bg-gray-300',
+                    ]"
+                >
                     {{ step.id }}
                 </div>
-                <div class="mt-2 text-sm font-medium"
-                    :class="currentStep === step.id ? 'text-green-600' : 'text-gray-500'">
+                <div class="mt-2 text-sm font-medium" :class="currentStep === step.id ? 'text-green-600' : 'text-gray-500'">
                     {{ step.label }}
                 </div>
             </div>
         </div>
 
         <div v-if="currentStep === 1" class="space-y-4">
-            <Chainsaw_applicationField :form="company_form" :application_no="form.application_no" :insertFormData="insertFormData"/>
+            <Chainsaw_applicationField :form="company_form" :application_no="form.application_no" :insertFormData="insertFormData" />
             <Chainsaw_companyField :form="company_form" />
             <Chainsaw_operationField :form="company_form" />
         </div>
@@ -319,14 +331,16 @@ onMounted(() => {
                 <!-- Alert Info -->
                 <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                     <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
-                    <span> Please complete all fields to proceed with your application for a Permit to Purchase
-                        Chainsaw. </span>
+                    <span> Please complete all fields to proceed with your application for a Permit to Purchase Chainsaw. </span>
                 </div>
-                <div v-for="(chainsaw, index) in chainsaws" :key="index"
-                    class="relative mb-6 bg-blue-40 p-5  rounded-lg shadow">
+                <div v-for="(chainsaw, index) in chainsaws" :key="index" class="bg-blue-40 relative mb-6 rounded-lg p-5 shadow">
                     <!-- Remove Button -->
-                    <button v-if="index > 0" @click="removeChainsaw(index)"
-                        class="absolute top-2 right-2 text-red-600 hover:text-red-800" title="Remove">
+                    <button
+                        v-if="index > 0"
+                        @click="removeChainsaw(index)"
+                        class="absolute top-2 right-2 text-red-600 hover:text-red-800"
+                        title="Remove"
+                    >
                         ✕
                     </button>
 
@@ -336,7 +350,7 @@ onMounted(() => {
                         <label>Same details as first chainsaw</label>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3 mt-5">
+                    <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
                         <div>
                             <FloatLabel>
                                 <InputText v-model="chainsaw.brand" class="w-full" />
@@ -345,8 +359,7 @@ onMounted(() => {
                         </div>
                         <div>
                             <FloatLabel>
-                                <Select v-model="chainsaw.model" :options="['MS 382', 'MS 230', 'MS 162']"
-                                    class="w-full" />
+                                <Select v-model="chainsaw.model" :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
                                 <label>Model</label>
                             </FloatLabel>
                         </div>
@@ -370,10 +383,6 @@ onMounted(() => {
                             </FloatLabel>
                         </div>
 
-
-
-
-
                         <div class="space-y-4 md:col-span-3">
                             <FloatLabel>
                                 <Select v-model="chainsaw.purpose" :options="purposeOptions" class="w-full" />
@@ -382,26 +391,35 @@ onMounted(() => {
 
                             <!-- Conditional Uploads -->
                             <div
-                                v-if="chainsaw.purpose === 'For selling / re-selling' || chainsaw.purpose === 'Forestry/landscaping service provider'">
-                                <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI
-                                    Registration</label>
-                                <input type="file" accept=".jpg,.jpeg,.pdf"
+                                v-if="chainsaw.purpose === 'For selling / re-selling' || chainsaw.purpose === 'Forestry/landscaping service provider'"
+                            >
+                                <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI Registration</label>
+                                <input
+                                    type="file"
+                                    accept=".jpg,.jpeg,.pdf"
                                     @change="(e) => handlePurposeFileUpload(e, 'mayorDTI')"
-                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700" />
+                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
+                                />
                             </div>
 
                             <div v-if="chainsaw.purpose === 'Other Legal Purpose'">
                                 <label class="text-sm font-medium text-gray-700">Upload Notarized Affidavit</label>
-                                <input type="file" accept=".jpg,.jpeg,.pdf"
+                                <input
+                                    type="file"
+                                    accept=".jpg,.jpeg,.pdf"
                                     @change="(e) => handlePurposeFileUpload(e, 'affidavit')"
-                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700" />
+                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
+                                />
                             </div>
 
                             <div v-if="chainsaw.purpose === 'Other Supporting Documents'">
                                 <label class="text-sm font-medium text-gray-700">Upload Supporting Document</label>
-                                <input type="file" accept=".jpg,.jpeg,.pdf"
+                                <input
+                                    type="file"
+                                    accept=".jpg,.jpeg,.pdf"
                                     @change="(e) => handlePurposeFileUpload(e, 'otherDocs')"
-                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700" />
+                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
+                                />
                             </div>
                         </div>
 
@@ -411,7 +429,7 @@ onMounted(() => {
                                 <label>Other Details</label>
                             </FloatLabel>
                         </div>
-                        <div class="grid gap-6 md:grid-cols-2 md:col-span-3">
+                        <div class="grid gap-6 md:col-span-3 md:grid-cols-2">
                             <!-- Permit Number -->
                             <div>
                                 <FloatLabel>
@@ -431,17 +449,23 @@ onMounted(() => {
 
                         <div class="md:col-span-3">
                             <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
-                            <input type="file" accept=".jpg,.jpeg,.pdf"
+                            <input
+                                type="file"
+                                accept=".jpg,.jpeg,.pdf"
                                 @change="(event) => handleFileUpload(event, index)"
-                                class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />
+                                class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                            />
                         </div>
                     </div>
                 </div>
 
                 <!-- Add Button -->
                 <div class="flex justify-end">
-                    <button type="button" @click="addChainsaw"
-                        class="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
+                    <button
+                        type="button"
+                        @click="addChainsaw"
+                        class="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+                    >
                         <span class="text-xl">＋</span> Add Another Chainsaw
                     </button>
                 </div>
@@ -453,8 +477,7 @@ onMounted(() => {
                 <!-- Alert Info -->
                 <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                     <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
-                    <span> Please complete all fields to proceed with your application for a Permit to Purchase
-                        Chainsaw. </span>
+                    <span> Please complete all fields to proceed with your application for a Permit to Purchase Chainsaw. </span>
                 </div>
 
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -472,8 +495,12 @@ onMounted(() => {
                     </div>
                     <div class="md:col-span-3">
                         <label class="text-sm font-medium text-gray-700">Upload Scanned copy of Official Receipt</label>
-                        <input type="file" accept=".jpg,.jpeg,.pdf" @change="(event) => handleFileUpload(event, index)"
-                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />
+                        <input
+                            type="file"
+                            accept=".jpg,.jpeg,.pdf"
+                            @change="(event) => handleFileUpload(event, index)"
+                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                        />
                     </div>
                 </div>
             </Fieldset>
@@ -482,54 +509,67 @@ onMounted(() => {
         <div v-if="currentStep === 4" class="space-y-6">
             <Fieldset legend="Uploading of Requirements">
                 <!-- Upload Requirements -->
-                <h1 class="font-xl">MAGKAKARON NG CHECKLIST NG LAHAT NG MGA FOR UPLOADING NA REQUIREMENTS? GREEN IF
-                    FILLED , RED IF NOT
-
-                </h1>
+                <h1 class="font-xl">MAGKAKARON NG CHECKLIST NG LAHAT NG MGA FOR UPLOADING NA REQUIREMENTS? GREEN IF FILLED , RED IF NOT</h1>
                 <div class="grid gap-6 md:grid-cols-1">
-                    <label class="text-sm font-semibold text-gray-800">Upload Required Documents <span
-                            class="text-gray-500">(Accepted: JPG, PDF)</span></label>
+                    <label class="text-sm font-semibold text-gray-800"
+                        >Upload Required Documents <span class="text-gray-500">(Accepted: JPG, PDF)</span></label
+                    >
                     <!-- Letter of Request -->
                     <div>
-                        <label for="letterRequest" class="block text-sm font-medium text-gray-700">1. Letter of
-                            Request</label>
-                        <input id="letterRequest" type="file" accept=".jpg,.jpeg,.pdf"
-                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50" />
+                        <label for="letterRequest" class="block text-sm font-medium text-gray-700">1. Letter of Request</label>
+                        <input
+                            id="letterRequest"
+                            type="file"
+                            accept=".jpg,.jpeg,.pdf"
+                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50"
+                        />
                     </div>
 
                     <!-- 1. Payment of Fees and OR -->
                     <div>
-                        <label for="paymentFees" class="block text-sm font-medium text-gray-700">2. Payment of Fees
-                            (Permit, Application, Oath) and O.R of Cash Bond</label>
-                        <input id="paymentFees" type="file" accept=".jpg,.jpeg,.pdf"
-                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50" />
+                        <label for="paymentFees" class="block text-sm font-medium text-gray-700"
+                            >2. Payment of Fees (Permit, Application, Oath) and O.R of Cash Bond</label
+                        >
+                        <input
+                            id="paymentFees"
+                            type="file"
+                            accept=".jpg,.jpeg,.pdf"
+                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50"
+                        />
                     </div>
 
                     <!-- 2. Permit to Sell Chainsaw -->
                     <div>
-                        <label for="permitToSell" class="block text-sm font-medium text-gray-700">3. Permit to Sell
-                            Chainsaw</label>
-                        <input id="permitToSell" type="file" accept=".jpg,.jpeg,.pdf"
-                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50" />
+                        <label for="permitToSell" class="block text-sm font-medium text-gray-700">3. Permit to Sell Chainsaw</label>
+                        <input
+                            id="permitToSell"
+                            type="file"
+                            accept=".jpg,.jpeg,.pdf"
+                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50"
+                        />
                     </div>
 
                     <!-- 3. Authorization Letter -->
                     <div>
-                        <label for="authLetter" class="block text-sm font-medium text-gray-700">4. Authorization Letter
-                            from Owner (if applicant is not the owner)</label>
-                        <input id="authLetter" type="file" accept=".jpg,.jpeg,.pdf"
-                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50" />
+                        <label for="authLetter" class="block text-sm font-medium text-gray-700"
+                            >4. Authorization Letter from Owner (if applicant is not the owner)</label
+                        >
+                        <input
+                            id="authLetter"
+                            type="file"
+                            accept=".jpg,.jpeg,.pdf"
+                            class="mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 hover:bg-gray-50"
+                        />
                     </div>
                 </div>
             </Fieldset>
         </div>
-            <!-- <Button class="ml-auto" @click="sec">Next</Button> -->
+        <!-- <Button class="ml-auto" @click="sec">Next</Button> -->
 
         <div class="flex justify-between pt-6">
             <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Back</Button>
             <Button v-if="currentStep < 3" class="ml-auto" @click="nextStep">Next</Button>
-            <Button v-if="currentStep === 3" class="ml-auto" @click="submitForm" :disabled="form.processing"> Submit
-                Application </Button>
+            <Button v-if="currentStep === 3" class="ml-auto" @click="submitForm" :disabled="form.processing"> Submit Application </Button>
         </div>
     </div>
 </template>
