@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 
 interface CompanyForm {
     application_no: string;
-    application_type:string;
+    application_type: string;
     date_applied: string;
     geo_code: string;
     type_of_transaction: string;
@@ -11,10 +11,6 @@ interface CompanyForm {
     authorized_representative: string;
     request_letter: File | null;
     soc_certificate: File | null;
-    mayorDTI: File | null;
-    affidavit: File | null;
-    otherDocs: File | null;
-    permit: File | null;
     c_region: string;
     c_province: null | string;
     c_city_mun: null | string;
@@ -53,7 +49,7 @@ interface IndividualForm {
     telephone_no: string;
     email_address: string;
     gov_id_type: string;
-    gov_id_number:string;
+    gov_id_number: string;
 
     i_region: string;
     i_province: string | null;
@@ -88,7 +84,7 @@ interface IndividualForm {
         i_province: string;
         i_city_mun: string;
         i_barangay: string;
-        i_complete_address: string
+        i_complete_address: string;
         p_place_of_operation_address: string;
         p_region: string;
         p_province: string;
@@ -99,23 +95,28 @@ interface IndividualForm {
     };
 }
 
-// interface ChainsawForm {
-//     chainsaw_brand: string;
-//     chainsaw_model: string;
-//     quantity: number;
-//     supplier_name: string;
-//     transaction_type: string;
-//     permit_chainsaw_no: string;
-//     permit_validity: string;
-//     classification: string;
-//     purchase_price: number;
-//     endorsed_date: string;
-//     endorsed_by: number | null;
-//     purpose_of_use: number;
-//     permit_file: File | null;
-// }
+interface ChainsawForm {
+    application_id: number;
+    application_attachment_id: number;
+    permit_chainsaw_no: string;
+    brand: string;
+    model: string;
+    quantity: string;
+    supplier_name: string;
+    supplier_address:string;
+    purpose: string;
+    permit_validity: string;
+    others_details: string;
+    mayorDTI: File | null;
+    affidavit: File | null;
+    otherDocs: File | null;
+    permit: File | null;
+    updated_at: number | null;
+    created_at: number;
+}
 
 export function useAppForm() {
+
     const company_form = reactive<CompanyForm>({
         application_no: '',
         application_type: 'Company',
@@ -143,8 +144,27 @@ export function useAppForm() {
             c_city_mun: '',
             c_barangay: '',
             address: '',
-            p_place_of_operation_address:'',
+            p_place_of_operation_address: '',
         },
+    });
+
+    const chainsaw_form = reactive<ChainsawForm>({
+        application_id: 0,
+        application_attachment_id: 0,
+        permit_validity: new Date().toISOString().slice(0, 10), // auto-set to today
+        permit_chainsaw_no: '',
+        brand: '',
+        model: '',
+        quantity: '',
+        supplier_name: '',
+        supplier_address: '',
+        purpose: '',
+        others_details: '',
+        mayorDTI:null,
+        affidavit:null,
+        otherDocs:null,
+        permit:null,
+        errors: {},
     });
 
     const individual_form = reactive<IndividualForm>({
@@ -182,7 +202,7 @@ export function useAppForm() {
             last_name: '',
             first_name: '',
             middle_name: '',
-            sex:'',
+            sex: '',
             mobile_no: '',
             telephone_no: '',
             email_address: '',
@@ -202,5 +222,5 @@ export function useAppForm() {
         },
     });
 
-    return { company_form, individual_form };
+    return { company_form, chainsaw_form, individual_form };
 }

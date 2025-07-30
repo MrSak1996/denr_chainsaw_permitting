@@ -17,7 +17,7 @@ class ChainsawInformation extends Model
     protected $fillable = [
         'id',
         'application_id',
-        'file_id',
+        'application_attachment_id',
         'permit_chainsaw_no',
         'brand',
         'model',

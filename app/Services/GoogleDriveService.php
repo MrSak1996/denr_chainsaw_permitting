@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ApplicantAttachments\AttachmentsModel;
+use App\Models\Chainsaw\ChainsawInformation;
 
 class GoogleDriveService
 {
@@ -12,10 +13,10 @@ class GoogleDriveService
 
     public function storeAttachments($request, $applicationId, $folderStructure, $filesToUpload)
     {
-        $filesToUpload = [
-            'soc_certificate' => 'secretarys_certificate',
-            'request_letter'  => 'request_letter',
-        ];
+        // $filesToUpload = [
+        //     'soc_certificate' => 'secretarys_certificate',
+        //     'request_letter'  => 'request_letter',
+        // ];
 
         $results = [];
 
@@ -54,11 +55,19 @@ class GoogleDriveService
                     'file_url'       => $fileUrl,
                 ]);
 
+                $chainsaw = ChainsawInformation::updateOrCreate(
+                    ['application_id' => $applicationId],
+                    [
+                        'application_attachment_id'  => $applicationId,
+                    ]
+                );
+
                 $results[$input] = [
                     'file_id'    => $fileId,
                     'file_name'  => $fileName,
                     'file_url'   => $fileUrl,
                     'db_record'  => $uploadedFile,
+                    'chainsaw_info' => $chainsaw
                 ];
             } catch (\Exception $e) {
                 Log::error("Attachment upload error", ['input' => $input, 'error' => $e->getMessage()]);

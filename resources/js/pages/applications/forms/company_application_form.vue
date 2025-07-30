@@ -14,19 +14,18 @@ import Chainsaw_applicationField from './chainsaw_applicationField.vue';
 import Chainsaw_companyField from './chainsaw_companyField.vue';
 import Chainsaw_operationField from './chainsaw_operationField.vue';
 
-import { onMounted, ref } from 'vue';
-const { company_form } = useAppForm();
+import axios from 'axios';
+import { onMounted, reactive, ref } from 'vue';
+const { company_form, chainsaw_form } = useAppForm();
 const { getApplicationNumber } = useApi();
 const { insertFormData } = useFormHandler();
-
+const chainsaws = reactive<ChainsawForm[]>([{ ...JSON.parse(JSON.stringify(chainsaw_form)) }]);
 const toast = useToast();
 const form = useForm({
     official_receipt: null,
-    application_no: 'DENR-IV-A-2025-07-07-0001',
     date_applied: '07-01-2025',
     company_name: '',
     authorized_representative: '',
-
     email: '',
     surname: '',
     first_name: '',
@@ -100,7 +99,7 @@ const nextStep = async () => {
                 currentStep.value++;
             }
         } else if (currentStep.value == 2) {
-            const isSaved = await saveChainsawInformation();
+            const isSaved = await submitChainsawForm();
             if (isSaved) {
                 currentStep.value++;
             }
@@ -121,7 +120,7 @@ const submitForm = () => {
 };
 
 //CHAINSAW INFORMATION
-const chainsaws = ref([
+const chainsawss = ref([
     {
         brand: '',
         model: '',
@@ -168,26 +167,29 @@ const copyAllFields = (index) => {
 const handleFileUpload = (event, index) => {
     chainsaws.value[index].letterRequest = event.target.files[0];
 };
-
 const addChainsaw = () => {
-    chainsaws.value.push({
-        brand: '',
-        model: '',
-        quantity: 1,
-        supplierName: '',
-        supplierAddress: '',
-        type: '',
-        permitNumber: '',
-        permitValidity: null,
-        classification: '',
-        price: '',
-        dateEndorsed: null,
-        purpose: '',
-        otherDetails: '',
-        letterRequest: null,
-        copyAll: false,
-    });
+    chainsaws.push(JSON.parse(JSON.stringify(chainsaw_form)));
 };
+
+// const addChainsaw = () => {
+//     chainsaws.value.push({
+//         brand: '',
+//         model: '',
+//         quantity: 1,
+//         supplierName: '',
+//         supplierAddress: '',
+//         type: '',
+//         permitNumber: '',
+//         permitValidity: null,
+//         classification: '',
+//         price: '',
+//         dateEndorsed: null,
+//         purpose: '',
+//         otherDetails: '',
+//         letterRequest: null,
+//         copyAll: false,
+//     });
+// };
 
 const removeChainsaw = (index) => {
     if (chainsaws.value.length > 1) chainsaws.value.splice(index, 1);
@@ -203,8 +205,16 @@ const purpose = ref({
     },
 });
 
+// const handlePurposeFileUpload = (event: Event, field:string) => {
+//     const target = event.target as HTMLInputElement;
+//     if(target.files && target.files.lenght > 0){
+//         chainsaw_form[field] = target.files[0];
+//     }
+//     // purpose.value.purposeFiles[field] = event.target.files[0];
+// };
+
 const handlePurposeFileUpload = (event, field) => {
-    purpose.value.purposeFiles[field] = event.target.files[0];
+    chainsaw_form[field] = event.target.files[0];
 };
 
 const showError = () => {
@@ -233,19 +243,20 @@ const isStepValid = (stepId) => {
     // Add specific validation logic for each step
     if (stepId === 3) {
         // Example: validate fields in step 1
-        return (
-            company_form.date_applied &&
-            company_form.company_name &&
-            company_form.authorized_representative &&
-            company_form.request_letter &&
-            company_form.soc_certificate &&
-            company_form.c_region &&
-            company_form.c_province &&
-            company_form.c_city_mun &&
-            company_form.c_barangay &&
-            company_form.company_address &&
-            company_form.place_of_operation_address
-        ); // return true if filled
+        // return (
+        //     company_form.date_applied &&
+        //     company_form.company_name &&
+        //     company_form.authorized_representative &&
+        //     company_form.request_letter &&
+        //     company_form.soc_certificate &&
+        //     company_form.c_region &&
+        //     company_form.c_province &&
+        //     company_form.c_city_mun &&
+        //     company_form.c_barangay &&
+        //     company_form.company_address &&
+        //     company_form.place_of_operation_address
+        // );
+        // return true if filled
     } else if (stepId === 2) {
         // Step 2 validations (if needed)
         // return form.chainsawBrand && form.serialNumber;
@@ -300,46 +311,86 @@ const saveCompanyApplication = async () => {
         isLoading.value = false;
     }
 };
+const submitChainsawForm = async () => {
+  try {
+    for (const chainsaw of chainsaws) {
+      const formData = new FormData()
 
-const saveChainsawInformation = async () => {
-    isLoading.value = true;
-    const formData = new FormData();
-    formData.append('mayorDTI', company_form.mayorDTI);
-    formData.append('affidavit', company_form.affidavit);
-    formData.append('otherDocs', company_form.otherDocs);
-    formData.append('permit', company_form.permit);
+      // Append each field from chainsaw
+      for (const key in chainsaw) {
+        if (chainsaw[key] !== null && chainsaw[key] !== undefined) {
+          formData.append(key, chainsaw[key])
+        }
+      }
 
-    try {
-        const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/save_chainsaw_info', {
-            ...company_form,
-            ...formData,
-            encoded_by: 1,
-        });
+      // Also append application_no (from chainsaw_form or wherever it's stored)
+      if (chainsaw_form.application_no) {
+        formData.append('application_no', chainsaw_form.application_no)
+      }
 
-        toast.add({
-            severity: 'success',
-            summary: 'Saved',
-            detail: 'Company application submitted successfully.',
-            life: 3000,
-        });
-        return true;
-    } catch (error) {
-        console.error('Failed to save application:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Failed',
-            detail: 'There was an error saving the application.',
-            life: 3000,
-        });
-        return false;
-    } finally {
-        isLoading.value = false;
+      // ✅ Append files manually from chainsaw_form (if not included in chainsaw loop)
+      if (chainsaw_form.mayorDTI) formData.append('mayorDTI', chainsaw_form.mayorDTI)
+      if (chainsaw_form.affidavit) formData.append('affidavit', chainsaw_form.affidavit)
+      if (chainsaw_form.otherDocs) formData.append('otherDocs', chainsaw_form.otherDocs)
+      if (chainsaw_form.permit) formData.append('permit', chainsaw_form.permit)
+
+      const response = await axios.post(
+        'http://127.0.0.1:8000/api/chainsaw/insertChainsawInfo',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      )
+
+      console.log('Chainsaw saved:', response.data)
     }
+  } catch (error) {
+    console.error('Upload failed:', error)
+  }
+}
 
-};
+
+// const saveChainsawInformation = async () => {
+//     isLoading.value = true;
+//     const formData = new FormData();
+//     formData.append('mayorDTI', chainsaw.mayorDTI);
+//     formData.append('affidavit', chainsaw.affidavit);
+//     formData.append('otherDocs', chainsaw.otherDocs);
+//     formData.append('permit', chainsaw.permit);
+
+//     try {
+//         const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/insertChainsawInfo', {
+//             ...chainsaw_form,
+//             ...formData,
+//             encoded_by: 1,
+//         });
+
+//         toast.add({
+//             severity: 'success',
+//             summary: 'Saved',
+//             detail: 'Company application submitted successfully.',
+//             life: 3000,
+//         });
+//         return true;
+//     } catch (error) {
+//         console.error('Failed to save application:', error);
+//         toast.add({
+//             severity: 'error',
+//             summary: 'Failed',
+//             detail: 'There was an error saving the application.',
+//             life: 3000,
+//         });
+//         return false;
+//     } finally {
+//         isLoading.value = false;
+//     }
+
+// };
 
 onMounted(() => {
-    getApplicationNumber(company_form);
+    getApplicationNumber(company_form, chainsaw_form);
 });
 </script>
 
@@ -394,6 +445,12 @@ onMounted(() => {
                     </div>
 
                     <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div :hidden="false">
+                            <FloatLabel>
+                                <InputText v-model="chainsaw_form.application_no" class="w-full" />
+                                <label>Application No.</label>
+                            </FloatLabel>
+                        </div>
                         <div>
                             <FloatLabel>
                                 <InputText v-model="chainsaw.brand" class="w-full" />
@@ -415,13 +472,13 @@ onMounted(() => {
 
                         <div class="md:col-span-3">
                             <FloatLabel>
-                                <InputText v-model="chainsaw.supplierName" class="w-full" />
+                                <InputText v-model="chainsaw.supplier_name" class="w-full" />
                                 <label>Supplier Name</label>
                             </FloatLabel>
                         </div>
                         <div class="md:col-span-3">
                             <FloatLabel>
-                                <InputText v-model="chainsaw.supplierAddress" class="w-full" />
+                                <InputText v-model="chainsaw.supplier_address" class="w-full" />
                                 <label>Supplier Address</label>
                             </FloatLabel>
                         </div>
@@ -439,7 +496,7 @@ onMounted(() => {
                                 <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI Registration</label>
                                 <input
                                     type="file"
-                                    accept=".jpg,.jpeg,.pdf"
+                                    accept=".jpg,.jpeg,.pdf,.docx,.png"
                                     @change="(e) => handlePurposeFileUpload(e, 'mayorDTI')"
                                     class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
                                 />
@@ -449,7 +506,7 @@ onMounted(() => {
                                 <label class="text-sm font-medium text-gray-700">Upload Notarized Affidavit</label>
                                 <input
                                     type="file"
-                                    accept=".jpg,.jpeg,.pdf"
+                                    accept=".jpg,.jpeg,.pdf,.docx,.png"
                                     @change="(e) => handlePurposeFileUpload(e, 'affidavit')"
                                     class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
                                 />
@@ -459,7 +516,7 @@ onMounted(() => {
                                 <label class="text-sm font-medium text-gray-700">Upload Supporting Document</label>
                                 <input
                                     type="file"
-                                    accept=".jpg,.jpeg,.pdf"
+                                    accept=".jpg,.jpeg,.pdf,.docx,.png"
                                     @change="(e) => handlePurposeFileUpload(e, 'otherDocs')"
                                     class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
                                 />
@@ -468,7 +525,7 @@ onMounted(() => {
 
                         <div class="md:col-span-3">
                             <FloatLabel>
-                                <InputText v-model="chainsaw.otherDetails" class="w-full" />
+                                <InputText v-model="chainsaw.others_details" class="w-full" />
                                 <label>Other Details</label>
                             </FloatLabel>
                         </div>
@@ -476,7 +533,7 @@ onMounted(() => {
                             <!-- Permit Number -->
                             <div>
                                 <FloatLabel>
-                                    <InputText v-model="chainsaw.permitNumber" class="w-full" />
+                                    <InputText v-model="chainsaw.permit_chainsaw_no" class="w-full" />
                                     <label>Permit to Sell / Re-Sell Chainsaw No.</label>
                                 </FloatLabel>
                             </div>
@@ -484,7 +541,7 @@ onMounted(() => {
                             <!-- Permit Validity -->
                             <div>
                                 <FloatLabel>
-                                    <DatePicker v-model="chainsaw.permitValidity" class="w-full" />
+                                    <DatePicker v-model="chainsaw.permit_validity" class="w-full" />
                                     <label>Permit Validity</label>
                                 </FloatLabel>
                             </div>
@@ -494,8 +551,8 @@ onMounted(() => {
                             <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
                             <input
                                 type="file"
-                                accept=".jpg,.jpeg,.pdf"
-                                @change="(event) => handleFileUpload(event, 'permit')"
+                                accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                @change="(e) => handlePurposeFileUpload(e, 'permit')"
                                 class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
                             />
                         </div>
