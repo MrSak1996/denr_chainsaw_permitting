@@ -122,7 +122,7 @@ onMounted(() => {
                             :options="prov_name"
                             optionLabel="name"
                             placeholder="Province"
-                            class="w-full"
+                            class="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl"
                         />
                     </FloatLabel>
                     <InputError :message="props.form.errors.region" />
@@ -138,7 +138,7 @@ onMounted(() => {
                             optionValue="id"
                             optionLabel="name"
                             placeholder="Municipality"
-                            class="w-full"
+                            class="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl"
                         />
                     </FloatLabel>
                     <InputError :message="props.form.errors.region" />
@@ -154,7 +154,7 @@ onMounted(() => {
                             optionValue="id"
                             optionLabel="name"
                             placeholder="Barangay"
-                            class="w-full"
+                            class="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl"
                         />
                     </FloatLabel>
                     <InputError :message="props.form.errors.region" />
@@ -168,6 +168,7 @@ onMounted(() => {
                         rows="6"
                         placeholder="Complete Address (Street, Purok, etc.)"
                         class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
+
                     />
                     <InputError :message="props.form.errors.company_address" />
                 </div>

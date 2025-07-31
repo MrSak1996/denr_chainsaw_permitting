@@ -49,10 +49,10 @@ class ChainsawController extends Controller
 
 
             $filesToUpload = [
-                'mayorDTI' => 'mayorDTI',
-                'affidavit' => 'affidavit',
-                'otherDocs' => 'otherDocs',
-                'permit' => 'permit'
+                'mayorDTI' => 'Mayors Permit',
+                'affidavit' => 'Notarized Affidavit',
+                'otherDocs' => 'Other supporting documents',
+                'permit' => 'Permit to Sell'
             ];
 
             $folderPath = 'CHAINSAW_PERMITTING/Company Applications/' . $request->input('application_no');

@@ -140,7 +140,7 @@ class ApplicationController extends Controller
 
             $filesToUpload = [
                 'request_letter' => 'Request_Letter',
-                'soc_certificate' => 'Secretary_Certificate'
+                'soc_certificate' => 'Secretary Certificate'
             ];
 
             $folderPath = 'CHAINSAW_PERMITTING/Company Applications/' . $applicationNo;

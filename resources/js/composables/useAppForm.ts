@@ -103,7 +103,7 @@ interface ChainsawForm {
     model: string;
     quantity: string;
     supplier_name: string;
-    supplier_address:string;
+    supplier_address: string;
     purpose: string;
     permit_validity: string;
     others_details: string;
@@ -115,8 +115,16 @@ interface ChainsawForm {
     created_at: number;
 }
 
-export function useAppForm() {
+interface PaymentForm {
+    application_id: number,
+    application_attachment_id:number,
+    official_receipt:string,
+    permit_fee:number,
+    date_of_payment:string
+    or_ccopy:File | null
+}
 
+export function useAppForm() {
     const company_form = reactive<CompanyForm>({
         application_no: '',
         application_type: 'Company',
@@ -160,10 +168,10 @@ export function useAppForm() {
         supplier_address: '',
         purpose: '',
         others_details: '',
-        mayorDTI:null,
-        affidavit:null,
-        otherDocs:null,
-        permit:null,
+        mayorDTI: null,
+        affidavit: null,
+        otherDocs: null,
+        permit: null,
         errors: {},
     });
 
@@ -222,5 +230,14 @@ export function useAppForm() {
         },
     });
 
-    return { company_form, chainsaw_form, individual_form };
+    const payment_form = reactive<PaymentForm>({
+        application_id: 0,
+        application_attachment_id: 0,
+        official_receipt: '',
+        permit_fee: 0,
+        date_of_payment: new Date().toISOString().slice(0, 10),
+        or_ccopy: null
+    });
+
+    return { company_form, chainsaw_form, individual_form, payment_form};
 }

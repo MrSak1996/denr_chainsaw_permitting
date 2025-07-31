@@ -13,11 +13,6 @@ class GoogleDriveService
 
     public function storeAttachments($request, $applicationId, $folderStructure, $filesToUpload)
     {
-        // $filesToUpload = [
-        //     'soc_certificate' => 'secretarys_certificate',
-        //     'request_letter'  => 'request_letter',
-        // ];
-
         $results = [];
 
         foreach ($filesToUpload as $input => $folderType) {
@@ -31,23 +26,33 @@ class GoogleDriveService
 
                 $file = $request->file($input);
 
+                // 📁 Build folder path (e.g., CHAINSAW_PERMITTING/.../permit)
                 $folderPath = "{$folderStructure}/{$folderType}";
                 $this->ensureFolderExists($folderPath);
 
-                $filePrefix = str_replace(' ', '_', strtolower($folderType));
-                $fileName = $filePrefix . '_' . $file->getClientOriginalName();
+                // 📄 Generate filename
+                if ($input === 'permit') {
+                    $originalExt = $file->getClientOriginalExtension();
+                    $timestamp = now()->format('Ymd_His');
+                    $applicationNo = $request->input('application_no');
+                    $fileName = "permit_{$applicationNo}_{$timestamp}.{$originalExt}";
+                } else {
+                    $filePrefix = str_replace(' ', '_', strtolower($folderType));
+                    $fileName = $filePrefix . '_' . $file->getClientOriginalName();
+                }
+
                 $filePath = "{$folderPath}/{$fileName}";
 
+                // 🚀 Upload to Google Drive
                 Log::info("Uploading file: {$fileName} to: {$filePath}");
                 $fileId = $this->uploadToDriveAndGetFileId($file, $filePath);
                 if (!$fileId) {
                     throw new \Exception("Unable to retrieve file ID for: {$fileName}");
                 }
 
-
-
                 $fileUrl = "https://drive.google.com/file/d/{$fileId}/preview";
 
+                // 💾 Save attachment record
                 $uploadedFile = AttachmentsModel::create([
                     'application_id' => $applicationId,
                     'file_id'        => $fileId,
@@ -55,22 +60,27 @@ class GoogleDriveService
                     'file_url'       => $fileUrl,
                 ]);
 
-                $chainsaw = ChainsawInformation::updateOrCreate(
-                    ['application_id' => $applicationId],
-                    [
-                        'application_attachment_id'  => $applicationId,
-                    ]
-                );
+                // 🛠 Optional: Associate with ChainsawInfo (confirm logic)
+                $chainsaw = ChainsawInformation::where('application_id', $applicationId)->first();
+                if ($chainsaw) {
+                    $chainsaw->update([
+                        'application_attachment_id' => $uploadedFile->id,
+                    ]);
+                }
 
+                // ✅ Collect result
                 $results[$input] = [
-                    'file_id'    => $fileId,
-                    'file_name'  => $fileName,
-                    'file_url'   => $fileUrl,
-                    'db_record'  => $uploadedFile,
-                    'chainsaw_info' => $chainsaw
+                    'file_id'       => $fileId,
+                    'file_name'     => $fileName,
+                    'file_url'      => $fileUrl,
+                    'db_record'     => $uploadedFile,
+                    'chainsaw_info' => $chainsaw,
                 ];
             } catch (\Exception $e) {
-                Log::error("Attachment upload error", ['input' => $input, 'error' => $e->getMessage()]);
+                Log::error("Attachment upload error", [
+                    'input' => $input,
+                    'error' => $e->getMessage()
+                ]);
 
                 $results[$input] = [
                     'error' => $e->getMessage(),
@@ -84,6 +94,7 @@ class GoogleDriveService
             'results' => $results,
         ], 200, [], JSON_UNESCAPED_SLASHES);
     }
+
 
     private function uploadToDriveAndGetFileId($file, $filePath)
     {

@@ -14,9 +14,11 @@ import Chainsaw_applicationField from './chainsaw_applicationField.vue';
 import Chainsaw_companyField from './chainsaw_companyField.vue';
 import Chainsaw_operationField from './chainsaw_operationField.vue';
 
+import LoadingSpinner from '../../LoadingSpinner.vue';
+
 import axios from 'axios';
 import { onMounted, reactive, ref } from 'vue';
-const { company_form, chainsaw_form } = useAppForm();
+const { company_form, chainsaw_form, payment_form } = useAppForm();
 const { getApplicationNumber } = useApi();
 const { insertFormData } = useFormHandler();
 const chainsaws = reactive<ChainsawForm[]>([{ ...JSON.parse(JSON.stringify(chainsaw_form)) }]);
@@ -46,6 +48,7 @@ const form = useForm({
     others: '',
     birthdate: '07-01-2025',
 });
+const isloadingSpinner = ref(true)
 
 const currentStep = ref(1);
 const isLoading = ref(false);
@@ -100,6 +103,11 @@ const nextStep = async () => {
             }
         } else if (currentStep.value == 2) {
             const isSaved = await submitChainsawForm();
+            if (isSaved) {
+                currentStep.value++;
+            }
+        } else if (currentStep.value == 3) {
+            const isSaved = await submitORPayment();
             if (isSaved) {
                 currentStep.value++;
             }
@@ -192,7 +200,7 @@ const addChainsaw = () => {
 // };
 
 const removeChainsaw = (index) => {
-    if (chainsaws.value.length > 1) chainsaws.value.splice(index, 1);
+    if (chainsaws.length > 1) chainsaws.splice(index, 1);
 };
 //END OF CHAINSAW INFORMATION
 
@@ -205,16 +213,19 @@ const purpose = ref({
     },
 });
 
-// const handlePurposeFileUpload = (event: Event, field:string) => {
-//     const target = event.target as HTMLInputElement;
-//     if(target.files && target.files.lenght > 0){
-//         chainsaw_form[field] = target.files[0];
-//     }
-//     // purpose.value.purposeFiles[field] = event.target.files[0];
+// const handlePurposeFileUpload = (event, field) => {
+//     chainsaw_form[field] = event.target.files[0];
 // };
 
-const handlePurposeFileUpload = (event, field) => {
-    chainsaw_form[field] = event.target.files[0];
+const handlePurposeFileUpload = (event, fieldName, index) => {
+    const file = event.target.files[0];
+    if (file) {
+        chainsaws[index][fieldName] = file;
+    }
+};
+
+const handleORFileUpload = (event, field) => {
+    payment_form[field] = event.target.files[0];
 };
 
 const showError = () => {
@@ -311,83 +322,84 @@ const saveCompanyApplication = async () => {
         isLoading.value = false;
     }
 };
+
 const submitChainsawForm = async () => {
-  try {
-    for (const chainsaw of chainsaws) {
-      const formData = new FormData()
+    try {
+        for (let i = 0; i < chainsaws.length; i++) {
+            const chainsaw = chainsaws[i];
+            const formData = new FormData();
 
-      // Append each field from chainsaw
-      for (const key in chainsaw) {
-        if (chainsaw[key] !== null && chainsaw[key] !== undefined) {
-          formData.append(key, chainsaw[key])
+            // Append basic chainsaw fields
+            for (const key in chainsaw) {
+                if (
+                    chainsaw[key] !== null &&
+                    chainsaw[key] !== undefined &&
+                    !(chainsaw[key] instanceof File) // Exclude files for now
+                ) {
+                    formData.append(key, chainsaw[key]);
+                }
+            }
+
+            // Append application number (global/shared)
+            if (chainsaw_form.application_no) {
+                formData.append('application_no', chainsaw_form.application_no);
+            }
+
+            // Append each file with standard field name (backend expects this)
+            if (chainsaw.mayorDTI) formData.append('mayorDTI', chainsaw.mayorDTI);
+            if (chainsaw.affidavit) formData.append('affidavit', chainsaw.affidavit);
+            if (chainsaw.otherDocs) formData.append('otherDocs', chainsaw.otherDocs);
+            if (chainsaw.permit) formData.append('permit', chainsaw.permit);
+
+            await axios.post('http://127.0.0.1:8000/api/chainsaw/insertChainsawInfo', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
         }
-      }
-
-      // Also append application_no (from chainsaw_form or wherever it's stored)
-      if (chainsaw_form.application_no) {
-        formData.append('application_no', chainsaw_form.application_no)
-      }
-
-      // ✅ Append files manually from chainsaw_form (if not included in chainsaw loop)
-      if (chainsaw_form.mayorDTI) formData.append('mayorDTI', chainsaw_form.mayorDTI)
-      if (chainsaw_form.affidavit) formData.append('affidavit', chainsaw_form.affidavit)
-      if (chainsaw_form.otherDocs) formData.append('otherDocs', chainsaw_form.otherDocs)
-      if (chainsaw_form.permit) formData.append('permit', chainsaw_form.permit)
-
-      const response = await axios.post(
-        'http://127.0.0.1:8000/api/chainsaw/insertChainsawInfo',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      )
-
-      console.log('Chainsaw saved:', response.data)
+    } catch (error) {
+        console.error('Upload failed:', error);
     }
-  } catch (error) {
-    console.error('Upload failed:', error)
-  }
-}
+};
 
+const submitORPayment = async () => {
+    isLoading.value = true;
 
-// const saveChainsawInformation = async () => {
-//     isLoading.value = true;
-//     const formData = new FormData();
-//     formData.append('mayorDTI', chainsaw.mayorDTI);
-//     formData.append('affidavit', chainsaw.affidavit);
-//     formData.append('otherDocs', chainsaw.otherDocs);
-//     formData.append('permit', chainsaw.permit);
+    const formData = new FormData();
+    formData.append('official_receipt', payment_form.official_receipt);
+    formData.append('permit_fee', payment_form.permit_fee);
+    formData.append('application_no', chainsaw_form.application_no); // dynamic app no
+    formData.append('or_copy', payment_form.or_copy); // file
 
-//     try {
-//         const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/insertChainsawInfo', {
-//             ...chainsaw_form,
-//             ...formData,
-//             encoded_by: 1,
-//         });
+    try {
+        const response = await axios.post('http://127.0.0.1:8000/api/chainsaw/insert_payment', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
 
-//         toast.add({
-//             severity: 'success',
-//             summary: 'Saved',
-//             detail: 'Company application submitted successfully.',
-//             life: 3000,
-//         });
-//         return true;
-//     } catch (error) {
-//         console.error('Failed to save application:', error);
-//         toast.add({
-//             severity: 'error',
-//             summary: 'Failed',
-//             detail: 'There was an error saving the application.',
-//             life: 3000,
-//         });
-//         return false;
-//     } finally {
-//         isLoading.value = false;
-//     }
+        toast.add({
+            severity: 'success',
+            summary: 'Saved',
+            detail: 'Payment Details submitted successfully',
+            life: 3000,
+        });
 
-// };
+        return true;
+    } catch (error) {
+        console.error('Failed to save payment details:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Failed',
+            detail: 'There was an error saving the application.',
+            life: 3000,
+        });
+
+        return false;
+    } finally {
+        isLoading.value = false;
+    }
+};
 
 onMounted(() => {
     getApplicationNumber(company_form, chainsaw_form);
@@ -397,6 +409,7 @@ onMounted(() => {
 <template>
     <div class="mt-10 space-y-6">
         <Toast />
+        <LoadingSpinner :loading="isloadingSpinner"/>
         <!-- Stepper -->
         <div class="mb-6 flex items-center justify-between">
             <div v-for="step in steps" :key="step.id" class="flex-1 cursor-pointer text-center" @click="handleStepClick(step.id)">
@@ -497,8 +510,8 @@ onMounted(() => {
                                 <input
                                     type="file"
                                     accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                    @change="(e) => handlePurposeFileUpload(e, 'mayorDTI')"
-                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
+                                    class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                    @change="(e) => (chainsaws[index].mayorDTI = e.target.files[0])"
                                 />
                             </div>
 
@@ -507,8 +520,8 @@ onMounted(() => {
                                 <input
                                     type="file"
                                     accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                    @change="(e) => handlePurposeFileUpload(e, 'affidavit')"
-                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
+                                    class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                    @change="(e) => (chainsaws[index].affidavit = e.target.files[0])"
                                 />
                             </div>
 
@@ -517,8 +530,8 @@ onMounted(() => {
                                 <input
                                     type="file"
                                     accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                    @change="(e) => handlePurposeFileUpload(e, 'otherDocs')"
-                                    class="mt-1 w-full rounded border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700"
+                                    class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                    @change="(e) => (chainsaws[index].otherDocs = e.target.files[0])"
                                 />
                             </div>
                         </div>
@@ -549,11 +562,12 @@ onMounted(() => {
 
                         <div class="md:col-span-3">
                             <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
+
                             <input
                                 type="file"
                                 accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                @change="(e) => handlePurposeFileUpload(e, 'permit')"
                                 class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                @change="(e) => (chainsaws[index].permit = e.target.files[0])"
                             />
                         </div>
                     </div>
@@ -581,15 +595,21 @@ onMounted(() => {
                 </div>
 
                 <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div :hidden="false">
+                        <FloatLabel>
+                            <InputText v-model="chainsaw_form.application_no" class="w-full" />
+                            <label>Application No.</label>
+                        </FloatLabel>
+                    </div>
                     <div>
                         <FloatLabel>
-                            <InputText class="w-full" />
+                            <InputText class="w-full" v-model="payment_form.official_receipt" />
                             <label>O.R No.</label>
                         </FloatLabel>
                     </div>
                     <div>
                         <FloatLabel>
-                            <InputNumber class="w-full" />
+                            <InputNumber class="w-full" v-model="payment_form.permit_fee" />
                             <label>Permit Fee</label>
                         </FloatLabel>
                     </div>
@@ -598,7 +618,7 @@ onMounted(() => {
                         <input
                             type="file"
                             accept=".jpg,.jpeg,.pdf"
-                            @change="(event) => handleFileUpload(event, index)"
+                            @change="(e) => handleORFileUpload(e, 'or_copy')"
                             class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
                         />
                     </div>
@@ -668,8 +688,8 @@ onMounted(() => {
 
         <div class="flex justify-between pt-6">
             <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Back</Button>
-            <Button v-if="currentStep < 3" class="ml-auto" @click="nextStep">Next</Button>
-            <Button v-if="currentStep === 3" class="ml-auto" @click="submitForm" :disabled="form.processing"> Submit Application </Button>
+            <Button v-if="currentStep <= 3" class="ml-auto" @click="nextStep">Next</Button>
+            <Button v-if="currentStep === 4" class="ml-auto" @click="submitForm" :disabled="form.processing"> Submit Application </Button>
         </div>
     </div>
 </template>
