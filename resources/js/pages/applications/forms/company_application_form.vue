@@ -48,7 +48,7 @@ const form = useForm({
     others: '',
     birthdate: '07-01-2025',
 });
-const isloadingSpinner = ref(true)
+const isloadingSpinner = ref(false);
 
 const currentStep = ref(1);
 const isLoading = ref(false);
@@ -291,6 +291,8 @@ const handleStepClick = (targetStep) => {
 //INSERT COMPANY FORM DATA
 const saveCompanyApplication = async () => {
     isLoading.value = true;
+    isloadingSpinner.value = true;
+
     const formData = new FormData();
     formData.append('request_letter', company_form.request_letter);
     formData.append('soc_certificate', company_form.soc_certificate);
@@ -320,10 +322,53 @@ const saveCompanyApplication = async () => {
         return false;
     } finally {
         isLoading.value = false;
+        isloadingSpinner.value = false;
+    }
+};
+
+const submitORPayment = async () => {
+    isLoading.value = true;
+    isloadingSpinner.value = true;
+    const formData = new FormData();
+    formData.append('official_receipt', payment_form.official_receipt);
+    formData.append('permit_fee', payment_form.permit_fee);
+    formData.append('application_no', chainsaw_form.application_no); // dynamic app no
+    formData.append('or_copy', payment_form.or_copy); // file
+
+    try {
+        const response = await axios.post('http://127.0.0.1:8000/api/chainsaw/insert_payment', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
+        toast.add({
+            severity: 'success',
+            summary: 'Saved',
+            detail: 'Payment Details submitted successfully',
+            life: 3000,
+        });
+
+        return true;
+    } catch (error) {
+        console.error('Failed to save payment details:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'Failed',
+            detail: 'There was an error saving the application.',
+            life: 3000,
+        });
+
+        return false;
+    } finally {
+        isLoading.value = false;
+        isloadingSpinner.value = false;
     }
 };
 
 const submitChainsawForm = async () => {
+    isloadingSpinner.value = true;
+
     try {
         for (let i = 0; i < chainsaws.length; i++) {
             const chainsaw = chainsaws[i];
@@ -359,47 +404,10 @@ const submitChainsawForm = async () => {
         }
     } catch (error) {
         console.error('Upload failed:', error);
+    }finally{
+        isloadingSpinner.value = false;
     }
-};
-
-const submitORPayment = async () => {
-    isLoading.value = true;
-
-    const formData = new FormData();
-    formData.append('official_receipt', payment_form.official_receipt);
-    formData.append('permit_fee', payment_form.permit_fee);
-    formData.append('application_no', chainsaw_form.application_no); // dynamic app no
-    formData.append('or_copy', payment_form.or_copy); // file
-
-    try {
-        const response = await axios.post('http://127.0.0.1:8000/api/chainsaw/insert_payment', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-
-        toast.add({
-            severity: 'success',
-            summary: 'Saved',
-            detail: 'Payment Details submitted successfully',
-            life: 3000,
-        });
-
-        return true;
-    } catch (error) {
-        console.error('Failed to save payment details:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Failed',
-            detail: 'There was an error saving the application.',
-            life: 3000,
-        });
-
-        return false;
-    } finally {
-        isLoading.value = false;
-    }
-};
+}
 
 onMounted(() => {
     getApplicationNumber(company_form, chainsaw_form);
@@ -409,7 +417,7 @@ onMounted(() => {
 <template>
     <div class="mt-10 space-y-6">
         <Toast />
-        <LoadingSpinner :loading="isloadingSpinner"/>
+        <LoadingSpinner :loading="isloadingSpinner" />
         <!-- Stepper -->
         <div class="mb-6 flex items-center justify-between">
             <div v-for="step in steps" :key="step.id" class="flex-1 cursor-pointer text-center" @click="handleStepClick(step.id)">
@@ -629,7 +637,7 @@ onMounted(() => {
         <div v-if="currentStep === 4" class="space-y-6">
             <Fieldset legend="Uploading of Requirements">
                 <!-- Upload Requirements -->
-                <h1 class="font-xl">MAGKAKARON NG CHECKLIST NG LAHAT NG MGA FOR UPLOADING NA REQUIREMENTS? GREEN IF FILLED , RED IF NOT</h1>
+                <h1 class="font-xl"> <Info/> Below is the checklist of requirements currently pending approval. </h1>
                 <div class="grid gap-6 md:grid-cols-1">
                     <label class="text-sm font-semibold text-gray-800"
                         >Upload Required Documents <span class="text-gray-500">(Accepted: JPG, PDF)</span></label

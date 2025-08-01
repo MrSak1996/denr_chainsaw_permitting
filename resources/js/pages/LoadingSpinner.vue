@@ -1,14 +1,21 @@
 <template>
   <div v-if="loading" class="loading-overlay">
-    <img src="../../images/loading_trees.gif" />
-    <!-- <div class="loading-container">
+    <!-- <img src="../../images/loading_trees.gif" class="w-[250px]" /> -->
+    <div class="loading-container">
       <div class="loading-wave">
         <div class="loading-bar"></div>
         <div class="loading-bar"></div>
         <div class="loading-bar"></div>
         <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
+        <div class="loading-bar"></div>
       </div>
-    </div> -->
+    </div>
   </div>
 </template>
 
@@ -58,7 +65,7 @@ defineProps<{ loading: boolean }>()
   width: 20px;
   height: 10px;
   margin: 0 5px;
-  background-color: #3498db;
+  background-color: #28ad06;
   border-radius: 5px;
   animation: loading-wave-animation 1s ease-in-out infinite;
 }
@@ -71,6 +78,27 @@ defineProps<{ loading: boolean }>()
 }
 .loading-bar:nth-child(4) {
   animation-delay: 0.3s;
+}
+.loading-bar:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.loading-bar:nth-child(6) {
+  animation-delay: 0.5s;
+}
+.loading-bar:nth-child(7) {
+  animation-delay: 0.6s;
+}
+.loading-bar:nth-child(8) {
+  animation-delay: 0.7s;
+}
+.loading-bar:nth-child(9) {
+  animation-delay: 0.8s;
+}
+.loading-bar:nth-child(10) {
+  animation-delay: 0.9s;
+}
+.loading-bar:nth-child(11) {
+  animation-delay: 0.10s;
 }
 
 @keyframes loading-wave-animation {

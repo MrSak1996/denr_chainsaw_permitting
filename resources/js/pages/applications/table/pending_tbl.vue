@@ -15,6 +15,7 @@ const products = ref();
 const productDialog = ref(false);
 const deleteProductDialog = ref(false);
 const deleteProductsDialog = ref(false);
+const isloadingSpinner = ref(false);
 const product = ref({});
 const selectedProducts = ref();
 const filters = ref({
@@ -106,7 +107,6 @@ const deleteSelectedProducts = () => {
     selectedProducts.value = null;
     toast.add({ severity: 'success', summary: 'Successful', detail: 'Products Deleted', life: 3000 });
 };
-
 const getStatusLabel = (status) => {
     switch (status) {
         case 'INSTOCK':
@@ -122,37 +122,34 @@ const getStatusLabel = (status) => {
             return null;
     }
 };
+
+// =================================
+// FETHING APPLICATION DATA
+// Author: Mark Kim A. Sacluti
+// Date: August 01, 2024
+// =================================
+const getApplicationDetails = async () => {
+    isloadingSpinner.value = true;
+    try {
+        const response = await axios.get('http://127.0.0.1:8000/api/application-details');
+        return response.data.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        isloadingSpinner.value = false;
+    }
+};
 </script>
 
 <template>
     <div class="flex flex-col gap-4 rounded-xl p-4">
         <Toolbar>
-            <template #start>
-                <Button label="New" icon="pi pi-plus" class="mr-2" @click="openNew" />
-                <Button
-                    label="Delete"
-                    icon="pi pi-trash"
-                    severity="danger"
-                    outlined
-                    @click="confirmDeleteSelected"
-                    :disabled="!selectedProducts || !selectedProducts.length"
-                />
+            <template #end>
+                <Button label="Search Filter" icon="pi pi-search" class="mr-2"  />
+               
             </template>
 
-            <template #end>
-                <FileUpload
-                    mode="basic"
-                    accept="image/*"
-                    :maxFileSize="1000000"
-                    label="Import"
-                    customUpload
-                    chooseLabel="Import"
-                    class="mr-2"
-                    auto
-                    :chooseButtonProps="{ severity: 'secondary' }"
-                />
-                <Button label="Export" icon="pi pi-upload" severity="secondary" @click="exportCSV($event)" />
-            </template>
+          
         </Toolbar>
 
         <!-- 🛠️ Wrapped DataTable in a div with shadow and padding -->
@@ -166,6 +163,7 @@ const getStatusLabel = (status) => {
                 :paginator="true"
                 :rows="10"
                 :filters="filters"
+                filterDisplay="menu"
                 paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                 :rowsPerPageOptions="[5, 10, 25]"
                 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
@@ -174,7 +172,7 @@ const getStatusLabel = (status) => {
             >
                 <template #header>
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h4 class="m-0 font-semibold">Manage Products</h4>
+                        <!-- <h4 class="m-0 font-semibold">Manage Products</h4> -->
                         <IconField>
                             <InputIcon>
                                 <i class="pi pi-search" />
@@ -184,39 +182,34 @@ const getStatusLabel = (status) => {
                     </div>
                 </template>
 
-                <Column selectionMode="multiple" style="width: 3rem" :exportable="false" />
-                <Column field="code" header="Application No" sortable style="min-width: 12rem" />
-                <Column field="name" header="Applicant Name" sortable style="min-width: 16rem" />
-                <Column header="Date Applied">
-                    <template #body="slotProps">
-                        <img
-                            :src="`https://primefaces.org/cdn/primevue/images/product/${slotProps.data.image}`"
-                            :alt="slotProps.data.image"
-                            class="rounded"
-                            style="width: 64px"
-                        />
+                <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
+                    <template #body="{ data }">
+                        <Tag :value="data.application_no" severity="success" class="text-center" /><br />
                     </template>
                 </Column>
-                <Column field="price" header="Contact Details" sortable style="min-width: 8rem">
+                <Column field="application_type" header="Application Type" sortable style="min-width: 14rem" />
+                <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 14rem" />
+                <!-- <Column field="brand" header="Brand" sortable style="min-width: 10rem" />
+                <Column field="model" header="Model" sortable style="min-width: 10rem" />
+                <Column field="quantity" header="Quantity" sortable style="min-width: 8rem" />
+                <Column field="purpose" header="Purpose" sortable style="min-width: 12rem" />
+                <Column field="official_receipt" header="OR No." sortable style="min-width: 12rem" />
+                <Column field="permit_fee" header="Fee" sortable style="min-width: 10rem">
                     <template #body="slotProps">
-                        {{ formatCurrency(slotProps.data.price) }}
+                        {{ formatCurrency(slotProps.data.permit_fee) }}
                     </template>
-                </Column>
-                <Column field="category" header="Address" sortable style="min-width: 10rem" />
-                <Column field="rating" header="Reviews" sortable style="min-width: 12rem">
-                    <template #body="slotProps">
-                        <Rating :modelValue="slotProps.data.rating" :readonly="true" />
-                    </template>
-                </Column>
-                <Column field="inventoryStatus" header="Status" sortable style="min-width: 12rem">
-                    <template #body="slotProps">
-                        <Tag :value="slotProps.data.inventoryStatus" :severity="getStatusLabel(slotProps.data.inventoryStatus)" />
-                    </template>
-                </Column>
+                </Column> -->
+                <Column field="created_at" header="Date of Application" sortable style="min-width: 14rem" />
+                <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 12rem" />
+                <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 12rem" />
                 <Column :exportable="false" style="min-width: 8rem">
                     <template #body="slotProps">
-                        <Button outlined rounded class="mr-2" @click="editProduct(slotProps.data)"><SquarePen /></Button>
-                        <Button outlined rounded severity="danger" @click="confirmDeleteProduct(slotProps.data)"><Trash /></Button>
+                        <Button outlined rounded class="mr-2" @click="editProduct(slotProps.data)">
+                            <SquarePen />
+                        </Button>
+                        <Button outlined rounded severity="danger" @click="confirmDeleteProduct(slotProps.data)">
+                            <Trash />
+                        </Button>
                     </template>
                 </Column>
             </DataTable>

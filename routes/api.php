@@ -15,7 +15,7 @@ Route::get('/getProvinces', [ApplicationController::class, 'getProvinces']);
 Route::get('/provinces/{provinceId}/cities', [ApplicationController::class, 'getCitiesByProvince']);
 Route::get('/barangays', [ApplicationController::class, 'getBarangays']);
 Route::get('/generateApplicationNumber', [ApplicationController::class, 'generateApplicationNumber']);
-
+Route::get('/application-details', [ApplicationController::class,'showApplicationDetails']);
 
 Route::post('/chainsaw/apply', [ApplicationController::class, 'apply']);
 Route::post('/chainsaw/company_apply', [ApplicationController::class, 'company_apply']);

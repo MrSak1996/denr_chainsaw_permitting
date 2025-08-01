@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useAppForm } from '@/composables/useAppForm';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { Info, List } from 'lucide-vue-next';
 import PendingTable from './table/pending_tbl.vue';
+const { chainsaw_form, chainsaw } = useAppForm();
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Pending Applications',
@@ -20,28 +23,79 @@ const breadcrumbs: BreadcrumbItem[] = [
             <!-- Header Section -->
             <div class="flex items-center gap-2 text-sm">
                 <List class="h-5 w-5" />
-                <h1 class="text-xl font-semibold">Pending Permit Application</h1>
+                <h1 class="text-xl font-semibold">Permit Application</h1>
             </div>
 
             <!-- Table Box Section -->
             <div class="box">
                 <h2 class="title flex items-center gap-2">
                     <Info />
-                    Instruction
+                    Kindly fill out the following details below to filter and retrieve specific permit application records efficiently.
                 </h2>
-                <p class="mb-4 text-sm text-gray-700">
-                    This table displays all <strong>pending chainsaw permit applications</strong>. As an administrator, you can:
-                </p>
-                <ul class="mb-4 list-disc pl-5 text-sm text-gray-700">
-                    <li>View and review each applicant's submitted information and requirements.</li>
-                    <li>Monitor the current status and track application progress in real-time.</li>
-                    <li>Edit or update application details before approval.</li>
-                    <li>Delete invalid or duplicate entries.</li>
-                    <li>Export data for documentation and offline processing.</li>
-                </ul>
-                <p class="text-sm text-gray-600">
-                    Use the search bar to filter applications and the buttons provided to manage each entry effectively.
-                </p>
+                <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-4">
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <InputText v-model="chainsaw_form.application_no" class="w-full" />
+                            <label>Application No.</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <InputText class="w-full" />
+                            <label>Application Type</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <InputText class="w-full" />
+                            <label>Applicant Name</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <DatePicker class="w-full" />
+                            <label>Date of Application</label>
+                        </FloatLabel>
+                    </div>
+                </div>
+                <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
+                            <label>Chainsaw Number</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <InputText v-model="chainsaw_form.application_no" class="w-full" />
+                            <label>Brand</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <InputText class="w-full" />
+                            <label>Model</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
+                            <label>Office</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <InputText class="w-full" />
+                            <label>Encoded By</label>
+                        </FloatLabel>
+                    </div>
+                    <div class="mt-4">
+                        <FloatLabel>
+                            <DatePicker class="w-full" />
+                            <label>Date of Expiration</label>
+                        </FloatLabel>
+                    </div>
+                </div>
 
                 <PendingTable />
             </div>

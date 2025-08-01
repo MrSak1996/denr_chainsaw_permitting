@@ -454,8 +454,51 @@ class ApplicationController extends Controller
             $newNumber = '0001';
         }
 
-        $applicationNo = 'DENR-R4A-' . date('Y') . '-' . $newNumber;
+        $applicationNo = 'DENR-IV-A-' . date('Y') . '-' . $newNumber;
 
         return response()->json(['application_no' => $applicationNo]);
     }
+
+    public function showApplicationDetails()
+{
+    $applicationDetails = DB::table('tbl_application_checklist as ac')
+        ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
+        ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+        ->select(
+            'ac.id',
+            'ac.application_type',
+            'ac.application_no',
+            'ci.permit_chainsaw_no',
+            'ci.brand',
+            'ci.model',
+            'ci.quantity',
+            'ci.purpose',
+            'ap.official_receipt',
+            'ap.permit_fee',
+            'ap.date_of_payment',
+            'ci.permit_validity',
+            'ac.created_at'
+        )
+        ->get()
+        ->map(function ($item) {
+            $item->created_at = $item->created_at 
+                ? \Carbon\Carbon::parse($item->created_at)->format('F d, Y') 
+                : null;
+
+            $item->date_of_payment = $item->date_of_payment 
+                ? \Carbon\Carbon::parse($item->date_of_payment)->format('F d, Y') 
+                : null;
+
+            $item->permit_validity = $item->permit_validity 
+                ? \Carbon\Carbon::parse($item->permit_validity)->format('F d, Y') 
+                : null;
+
+            return $item;
+        });
+
+    return response()->json([
+        'data' => $applicationDetails
+    ]);
+}
+
 }
