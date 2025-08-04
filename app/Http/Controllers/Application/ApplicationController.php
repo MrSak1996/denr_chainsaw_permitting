@@ -55,6 +55,7 @@ class ApplicationController extends Controller
 
         // Create the application using the validated data
         $application = ChainsawIndividualApplication::create([
+            'application_status'        => 1,
             'geo_code'                   => $validated['geo_code'],
             'application_type'          => $validated['application_type'],
             'transaction_type'          => $validated['type_of_transaction'],
@@ -118,6 +119,7 @@ class ApplicationController extends Controller
             ]);
 
             $application = ChainsawIndividualApplication::create([
+                'application_status'         => 1,
                 'application_type'           => $request->input('application_type'),
                 'transaction_type'           => $request->input('type_of_transaction'),
                 'application_no'             => $request->input('application_no'),

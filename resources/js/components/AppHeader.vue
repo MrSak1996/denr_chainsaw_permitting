@@ -39,12 +39,17 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
      {
-        title: 'Applications',
+        title: 'Chainsaw Applications',
         href: '/applications/index',
         icon: Users,
     },
          {
         title: 'Pending Applications',
+        href: '/applications/pending_application',
+        icon: ListCheck,
+    },
+        {
+        title: 'Payments',
         href: '/applications/pending_application',
         icon: ListCheck,
     },
