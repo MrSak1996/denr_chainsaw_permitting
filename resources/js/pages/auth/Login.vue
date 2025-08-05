@@ -8,6 +8,10 @@ import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from 'lucide-vue-next';
+import { useAuth } from '@/composables/useAuth'
+import { usePage } from '@inertiajs/vue3'
+
+const { userId } = useAuth()
 
 defineProps<{
     status?: string;
@@ -22,13 +26,20 @@ const form = useForm({
 
 const submit = () => {
     form.post(route('login'), {
-        onFinish: () => form.reset('password'),
+        onFinish: () => {
+            form.reset('password');
+
+            const page = usePage();
+            const userId = page.props.auth.user?.id;
+
+            console.log('Logged in user ID:', userId);
+        },
     });
 };
 </script>
 
 <template>
-    <AuthBase title="Log in to your account" description="Enter your email and password below to log in">
+<AuthBase title="Log in to your account" description="Enter your email and password below to log in">
         <Head title="Log in" />
 
         <div v-if="status" class="mb-4 text-center text-sm font-medium text-green-600">

@@ -21,5 +21,13 @@ Route::get('applications/pending_application', function () {
 })->middleware(['auth', 'verified'])->name('applications.pending_application');
 
 
+Route::get('/application/index/{id}', function ($id) {
+    return Inertia::render('application/index', [
+        'id' => $id,
+    ]);
+})->middleware(['auth', 'verified'])->name('application.index');
+
+
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

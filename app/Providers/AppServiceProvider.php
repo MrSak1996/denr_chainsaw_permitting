@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Storage;
 use League\Flysystem\Filesystem;
 use Masbug\Flysystem\GoogleDrive\GoogleDriveAdapter;
 
+// FOR LOGIN 
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -34,5 +38,15 @@ class AppServiceProvider extends ServiceProvider
 
             return new Filesystem($adapter);
         });
+
+        Inertia::share([
+        'auth' => fn () => [
+            'user' => Auth::check() ? [
+                'id' => Auth::id(),
+                'name' => Auth::user()->name,
+                'email' => Auth::user()->email,
+            ] : null,
+        ],
+    ]);
     }
 }

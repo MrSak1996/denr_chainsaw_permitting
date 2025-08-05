@@ -17,6 +17,7 @@ const props = defineProps({
 const { prov_name, getProvinceCode } = useApi();
 let city_mun_opts = ref<{ id: any; name: any; code: any }[]>([]);
 let barangay_opts = ref<{ id: any; name: any }[]>([]);
+let geo_code      = ref([]);
 
 // Set geo_code based on selected municipality
 watch(
@@ -76,6 +77,7 @@ watch(
                         name: item.bgy_name,
                     }));
                     props.form.c_barangay = '';
+                    
                 } else {
                     console.error('Unexpected response structure:', response);
                     barangay_opts.value = [];

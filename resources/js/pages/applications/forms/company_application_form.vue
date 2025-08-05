@@ -1,81 +1,36 @@
 <script setup lang="ts">
 // import InputError from '@/components/InputError.vue';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { useApi } from '@/composables/useApi';
 import { useAppForm } from '@/composables/useAppForm';
 import { useFormHandler } from '@/composables/useFormHandler';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import { ShieldAlert } from 'lucide-vue-next';
 import { useToast } from 'primevue/usetoast';
+
+import Dialog from 'primevue/dialog'
 import FileCard from './file_card.vue'
-
 import Fieldset from 'primevue/fieldset';
-
 import Chainsaw_applicationField from './chainsaw_applicationField.vue';
 import Chainsaw_companyField from './chainsaw_companyField.vue';
 import Chainsaw_operationField from './chainsaw_operationField.vue';
-
 import LoadingSpinner from '../../LoadingSpinner.vue';
-
-import axios from 'axios';
 import { onMounted, reactive, ref } from 'vue';
 const { company_form, chainsaw_form, payment_form } = useAppForm();
 const { getApplicationNumber } = useApi();
 const { insertFormData } = useFormHandler();
+
 const chainsaws = reactive<ChainsawForm[]>([{ ...JSON.parse(JSON.stringify(chainsaw_form)) }]);
 const toast = useToast();
-const form = useForm({
-    official_receipt: null,
-    date_applied: '07-01-2025',
-    company_name: '',
-    authorized_representative: '',
-    email: '',
-    surname: '',
-    first_name: '',
-    middlename: '',
-    email_address: '',
-    sex: '',
-    civilStatus: '',
-    address: '',
-    mobile: '',
-    telephone: '',
-    purpose: '',
-    quantity: '',
-    brand: '',
-    model: '',
-    engineSerial: '',
-    supplier: '',
-    price: '',
-    others: '',
-    birthdate: '07-01-2025',
-});
-const files = ref([
-    {
-        name: "CALABARZON Final ICT Inventory...",
-        type: "application",
-        dateOpened: "Jul 28, 2025",
-        icon: "app",
-        thumbnail: null,
-    },
-    {
-        name: "application-5f24d921...",
-        type: "application",
-        dateOpened: "Jul 28, 2025",
-        icon: "app",
-        thumbnail: null,
-    },
-    {
-        name: "Diploma.pdf",
-        type: "application",
-        dateOpened: "Jul 16, 2025",
-        icon: "app",
-        thumbnail: null,
-    },
-])
+const page = usePage()
+const userId = page.props.auth?.user?.id;
+const files = ref([]);
 const isloadingSpinner = ref(false);
-
+const applicationData = ref([]);
 const currentStep = ref(1);
 const isLoading = ref(false);
+const errorMessage = ref('');
 const topProgress = ref<InstanceType<typeof TopProgressBar> | null>(null);
 const steps = ref([
     { label: 'Applicant Details', id: 1 },
@@ -199,6 +154,7 @@ const copyAllFields = (index) => {
 const handleFileUpload = (event, index) => {
     chainsaws.value[index].letterRequest = event.target.files[0];
 };
+
 const addChainsaw = () => {
     chainsaws.push(JSON.parse(JSON.stringify(chainsaw_form)));
 };
@@ -236,10 +192,6 @@ const purpose = ref({
         otherDocs: null,
     },
 });
-
-// const handlePurposeFileUpload = (event, field) => {
-//     chainsaw_form[field] = event.target.files[0];
-// };
 
 const handlePurposeFileUpload = (event, fieldName, index) => {
     const file = event.target.files[0];
@@ -316,7 +268,7 @@ const handleStepClick = (targetStep) => {
 const saveCompanyApplication = async () => {
     isLoading.value = true;
     isloadingSpinner.value = true;
-
+    let applicationId = null;
     const formData = new FormData();
     formData.append('request_letter', company_form.request_letter);
     formData.append('soc_certificate', company_form.soc_certificate);
@@ -325,8 +277,10 @@ const saveCompanyApplication = async () => {
         const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/company_apply', {
             ...company_form,
             ...formData,
-            encoded_by: 1,
+            encoded_by: userId,
         });
+        applicationId = response.application_id; // ✅ Extract it here
+
 
         toast.add({
             severity: 'success',
@@ -347,6 +301,7 @@ const saveCompanyApplication = async () => {
     } finally {
         isLoading.value = false;
         isloadingSpinner.value = false;
+        router.get(route('applications.index', { application_id: applicationId }))
     }
 };
 
@@ -433,8 +388,88 @@ const submitChainsawForm = async () => {
     }
 }
 
+
+const getApplicationDetails = async () => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const applicationId = urlParams.get('application_id') || urlParams.get('id')
+
+    if (!applicationId) {
+        errorMessage.value = 'No application ID found in the query.'
+        isLoading.value = false
+        return
+    }
+
+    try {
+        const response = await axios.get(`http://127.0.0.1:8000/api/getApplicationDetails/${applicationId}`)
+
+        if (response.data.data) {
+            applicationData.value = response.data.data
+        } else {
+            errorMessage.value = response.data.message || 'Failed to fetch application data.'
+        }
+    } catch (error) {
+        errorMessage.value = error.message || 'Error fetching application data.'
+    } finally {
+        isLoading.value = false
+    }
+}
+
+
+const getApplicantFile = async () => {
+    try {
+        const urlParams = new URLSearchParams(window.location.search)
+        const applicationId = urlParams.get('application_id')
+
+        if (!applicationId) return
+
+        try {
+            const response = await axios.get(`http://127.0.0.1:8000/api/getApplicantFile/${applicationId}`)
+
+            if (response.data.status && Array.isArray(response.data.data)) {
+                files.value = response.data.data.map(file => ({
+                    name: file.file_name,
+                    size: 'Unknown', // or add size if you store it
+                    dateUploaded: new Date(file.created_at).toLocaleDateString(),
+                    dateOpened: new Date().toLocaleDateString(), // or store last opened
+                    icon: 'png', // OR detect from extension like .pdf, .png
+                    thumbnail: null, // or a thumbnail generator if available
+                    url: file.file_url, // optional if you want to link/download
+                }))
+            }
+        } catch (error) {
+            console.error('Failed to fetch files:', error)
+        }
+    } catch (error) {
+        console.error("Error fetching applicant files:", error);
+    }
+}
+
+const getFileIcon = (filename) => {
+    const ext = filename.split('.').pop().toLowerCase()
+    if (['pdf'].includes(ext)) return 'pdf'
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'spreadsheet'
+    return 'app'
+}
+const showModal = ref(false)
+const selectedFile = ref(null)
+
+const openFileModal = (file) => {
+  selectedFile.value = file
+  showModal.value = true
+}
+
+const getEmbedUrl = (url) => {
+  const match = url.match(/[-\w]{25,}/)
+  const fileId = match ? match[0] : null
+  return fileId
+    ? `https://drive.google.com/file/d/${fileId}/preview`
+    
+    : ''
+}
 onMounted(() => {
     getApplicationNumber(company_form, chainsaw_form);
+    getApplicationDetails();
+    getApplicantFile();
 });
 </script>
 
@@ -460,8 +495,7 @@ onMounted(() => {
         </div>
 
         <div v-if="currentStep === 1" class="space-y-4">
-            <Chainsaw_applicationField :form="company_form" :application_no="form.application_no"
-                :insertFormData="insertFormData" />
+            <Chainsaw_applicationField :form="company_form" :insertFormData="insertFormData" />
             <Chainsaw_companyField :form="company_form" />
             <Chainsaw_operationField :form="company_form" />
         </div>
@@ -647,31 +681,31 @@ onMounted(() => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 text-sm text-gray-800 mt-6">
                     <div class="flex">
                         <span class="w-48 font-semibold">Application No:</span>
-                        <Tag value="DENR-IV-A-2025-0009" severity="success" class="text-center" /><br />
+                        <Tag :value="applicationData.application_no" severity="success" class="text-center" />
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Date Applied:</span>
-                        <span>04/08/2025</span>
+                        <span>{{ applicationData.date_applied }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Type of Transaction:</span>
-                        <span>Environmental Compliance Certificate</span>
+                        <span>{{ applicationData.transaction_type }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Company Name:</span>
-                        <span>ABC Corporation</span>
+                        <span>{{ applicationData.company_name }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Authorized Representative:</span>
-                        <span>Juan Dela Cruz</span>
+                        <span>{{ applicationData.authorized_representative }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Region:</span>
                         <span>REGION IV-A (CALABARZON)</span>
                     </div>
-                    <div class="flex">
+                    <!-- <div class="flex">
                         <span class="w-48 font-semibold">Province:</span>
-                        <span>Batangas</span>
+                        <span>{{ applicationData.prov_name }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Municipality:</span>
@@ -680,14 +714,14 @@ onMounted(() => {
                     <div class="flex">
                         <span class="w-48 font-semibold">Barangay:</span>
                         <span>Barangay 1</span>
-                    </div>
+                    </div> -->
                     <div class="flex">
                         <span class="w-48 font-semibold">Complete Address:</span>
-                        <span>1234 Main St., Purok 2, Lipa City, Batangas</span>
+                        <span>{{ applicationData.company_address }}</span>
                     </div>
-                    <div class="flex md:col-span-2">
+                    <div class="flex">
                         <span class="w-48 font-semibold">Place of Operation Address:</span>
-                        <span>1234 Main St., Purok 2, Lipa City, Batangas</span>
+                        <span>{{ applicationData.operation_complete_address }}</span>
                     </div>
                 </div>
             </Fieldset>
@@ -696,106 +730,66 @@ onMounted(() => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4 text-sm text-gray-800 mt-6">
                     <div class="flex">
                         <span class="w-48 font-semibold">Chainsaw No:</span>
-                        <Tag value="PS-123456" severity="success" class="text-center" /><br />
+                        <Tag :value="applicationData.permit_chainsaw_no" severity="success" class="text-center" /><br />
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Validity:</span>
-                        <span>2025-08-04</span>
+                        <Tag :value="applicationData.permit_validity" severity="danger" class="text-center" /><br />
+
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Brand:</span>
-                        <span>Stihl</span>
+                        <span>{{ applicationData.brand }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Model:</span>
-                        <span>MS 261</span>
+                        <span>{{ applicationData.model }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Quantity:</span>
-                        <span>5</span>
+                        <span>{{ applicationData.quantity }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Supplier Name:</span>
-                        <span>XYZ Supplies Co.</span>
+                        <span>{{ applicationData.supplier_name }}</span>
                     </div>
-                    <div class="flex">
+                    <!-- <div class="flex">
                         <span class="w-48 font-semibold">Supplier Address:</span>
                         <span>123 Supplier St., Calabarzon</span>
-                    </div>
+                    </div> -->
                     <div class="flex">
                         <span class="w-48 font-semibold">Purpose of Purchase:</span>
-                        <span>Business Use</span>
+                        <span>{{ applicationData.purpose }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Other Details:</span>
-                        <span>N/A</span>
+                        <span>{{ applicationData.other_details }}</span>
                     </div>
                 </div>
             </Fieldset>
 
-            <Fieldset legend="Uploaded Files" :toggleable="true">
-                <div class="container">
-                    <div class="file-list">
-                        <FileCard v-for="(file, index) in files" :key="index" :file="file" />
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 text-sm text-gray-800 mt-6">
+         <Fieldset legend="Uploaded Files" :toggleable="true">
+  <div class="container">
+    <div class="file-list">
+      <FileCard
+        v-for="(file, index) in files"
+        :key="index"
+        :file="file"
+        @openPreview="openFileModal"
+      />
+    </div>
+  </div>
 
-                    <!-- Applicant Uploaded Files -->
-                    <div class="flex items-center space-x-4">
-                        <span class="w-48 font-semibold">Application Letter:</span>
-                        <a href="application_letter.pdf" target="_blank" class="file-preview">
-                            <img src="/icons/pdf-icon.png" alt="PDF Icon" class="file-icon" />
-                            <span class="file-name">application_letter.pdf</span>
-                        </a>
-                    </div>
-
-                    <div class="flex items-center space-x-4">
-                        <span class="w-48 font-semibold">Business Registration:</span>
-                        <a href="business_cert.pdf" target="_blank" class="file-preview">
-                            <img src="/icons/pdf-icon.png" alt="PDF Icon" class="file-icon" />
-                            <span class="file-name">business_cert.pdf</span>
-                        </a>
-                    </div>
-
-                    <!-- Chainsaw Uploaded Files -->
-                    <div class="flex items-center space-x-4">
-                        <span class="w-48 font-semibold">Permit File:</span>
-                        <a href="permit_document.pdf" target="_blank" class="file-preview">
-                            <img src="/icons/pdf-icon.png" alt="PDF Icon" class="file-icon" />
-                            <span class="file-name">permit_document.pdf</span>
-                        </a>
-                    </div>
-
-                    <div class="flex items-center space-x-4">
-                        <span class="w-48 font-semibold">Mayor's Permit & DTE Registration:</span>
-                        <a href="dti.pdf" target="_blank" class="file-preview">
-                            <img src="/icons/pdf-icon.png" alt="PDF Icon" class="file-icon" />
-                            <span class="file-name">dti.pdf</span>
-                        </a>
-                    </div>
-
-                    <div class="flex items-center space-x-4">
-                        <span class="w-48 font-semibold">Permit:</span>
-                        <a href="dti.pdf" target="_blank" class="file-preview">
-                            <img src="/icons/pdf-icon.png" alt="PDF Icon" class="file-icon" />
-                            <span class="file-name">dti.pdf</span>
-                        </a>
-                    </div>
-
-                    <!-- Official Receipt Files -->
-                    <div class="flex items-center space-x-4">
-                        <span class="w-48 font-semibold">Upload Scanned Copy of Official Receipt:</span>
-                        <a href="official_receipt.pdf" target="_blank" class="file-preview">
-                            <img src="/icons/pdf-icon.png" alt="PDF Icon" class="file-icon" />
-                            <span class="file-name">official_receipt.pdf</span>
-                        </a>
-                    </div>
-
-                </div>
-            </Fieldset>
-
-
+  <Dialog v-model:visible="showModal" modal header="File Preview" :style="{ width: '70vw' }">
+    <iframe
+      v-if="selectedFile"
+      :src="getEmbedUrl(selectedFile.url)"
+      width="100%"
+      height="500"
+      allow="autoplay"
+    ></iframe>
+  </Dialog>
+</Fieldset>
 
 
         </div>
@@ -804,7 +798,7 @@ onMounted(() => {
         <div class="flex justify-between pt-6">
             <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Back</Button>
             <Button v-if="currentStep <= 3" class="ml-auto" @click="nextStep">Next</Button>
-            <Button v-if="currentStep === 4" class="ml-auto" @click="submitForm" :disabled="form.processing"> Submit
+            <Button v-if="currentStep === 4" class="ml-auto" @click="submitForm"> Submit
                 Application </Button>
         </div>
     </div>
@@ -858,4 +852,6 @@ onMounted(() => {
     gap: 20px;
     width: 100%;
 }
+
+
 </style>
