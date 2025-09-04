@@ -22,7 +22,7 @@ export default defineConfig({
         }),
     ],
       server: {
-    host: '10.201.12.196', // Allow connections from any IP address
+    host: '10.201.12.186', // Allow connections from any IP address
     port: 8080, // You can change the port if needed
     disableHostCheck: true, // If you face any host check issues
   },

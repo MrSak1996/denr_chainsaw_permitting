@@ -4,6 +4,7 @@ import { SquarePen, Trash } from 'lucide-vue-next';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 import { ProductService } from '../service/ProductService';
+import { router } from '@inertiajs/vue3'
 
 onMounted(() => {
     ProductService.getProducts().then((data) => (products.value = data));
@@ -62,10 +63,10 @@ const saveProduct = () => {
         product.value = {};
     }
 };
-const editProduct = (prod) => {
-    product.value = { ...prod };
-    productDialog.value = true;
-};
+// const editProduct = (prod) => {
+//     product.value = { ...prod };
+//     productDialog.value = true;
+// };
 const confirmDeleteProduct = (prod) => {
     product.value = prod;
     deleteProductDialog.value = true;
@@ -131,13 +132,19 @@ const getStatusLabel = (status) => {
 const getApplicationDetails = async () => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/application-details');
+        const response = await axios.get('http://10.201.12.186:8000/api/application-details');
         return response.data.data;
     } catch (error) {
         console.error(error);
     } finally {
         isloadingSpinner.value = false;
     }
+};
+
+const editProduct = (product) => {
+    
+  // Example: go to /applications/123/edit
+  router.visit(`/applications/${product.id}/edit`);
 };
 </script>
 
@@ -202,7 +209,7 @@ const getApplicationDetails = async () => {
                 <Column field="created_at" header="Date of Application" sortable style="min-width: 14rem" />
                 <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 12rem" />
                 <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 12rem" />
-                <Column :exportable="false" style="min-width: 8rem">
+                <Column header="Action" :exportable="false" style="min-width: 8rem">
                     <template #body="slotProps">
                         <Button outlined rounded class="mr-2" @click="editProduct(slotProps.data)">
                             <SquarePen />
@@ -212,6 +219,7 @@ const getApplicationDetails = async () => {
                         </Button>
                     </template>
                 </Column>
+                
             </DataTable>
         </div>
 
@@ -295,6 +303,7 @@ const getApplicationDetails = async () => {
             <template #footer>
                 <Button label="No" icon="pi pi-times" text @click="deleteProductDialog = false" />
                 <Button label="Yes" icon="pi pi-check" @click="deleteProduct" />
+                
             </template>
         </Dialog>
 

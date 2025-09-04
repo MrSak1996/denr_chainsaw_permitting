@@ -8,12 +8,12 @@
         class="file-thumbnail"
       />
       <div v-else class="file-placeholder">
-        <span class="file-icon-text">{{ getIcon(getFileExtension(file.file_name)) }}</span>
+        <span class="file-icon-text">{{ getIcon(getFileExtension(file.name)) }}</span>
       </div>
     </div>
 
     <div class="file-info">
-      <p class="file-name">{{ file.file_name }}</p>
+      <p class="file-name">File Name:{{ props.file.name }}</p>
       <p class="file-meta">Size: {{ file.size || '—' }}</p>
       <p class="file-meta">Uploaded: {{ file.dateUploaded || '—' }}</p>
       <p class="file-meta">You opened: {{ file.dateOpened || '—' }}</p>

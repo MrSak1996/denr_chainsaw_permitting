@@ -30,7 +30,7 @@ class ChainsawController extends Controller
             // 🟡 Fetch the application by application_no
             $application = ChainsawIndividualApplication::where('application_no', $request->input('application_no'))->first();
             if (!$application) {
-                return response()->json(['error' => 'Application not found.'], 404);
+                return response()->json(['error' => $request->input('application_no')], 404);
             }
 
             $application_id = $application->id;
@@ -42,6 +42,7 @@ class ChainsawController extends Controller
                 'model'               =>  $request->input('model'),
                 'quantity'            =>  $request->input('quantity'),
                 'supplier_name'       =>  $request->input('supplier_name'),
+                'supplier_address'    =>  $request->input('supplier_address'),
                 'purpose'             =>  $request->input('purpose'),
                 'permit_validity'     =>  $request->input('permit_validity'),
                 'other_details'       =>  $request->input('other_details'),

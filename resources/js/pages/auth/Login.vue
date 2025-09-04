@@ -31,7 +31,6 @@ const submit = () => {
 
             const page = usePage();
             const userId = page.props.auth.user?.id;
-
             console.log('Logged in user ID:', userId);
         },
     });

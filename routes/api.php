@@ -19,6 +19,8 @@ Route::get('/application-details', [ApplicationController::class,'showApplicatio
 Route::get('/getApplicationDetails/{application_id}',[ApplicationController::class,'getApplicationDetails']);
 Route::get('/getApplicantFile/{application_id}',[ApplicationController::class,'getApplicantFile']);
 
+
+
 Route::post('/chainsaw/apply', [ApplicationController::class, 'apply']);
 Route::post('/chainsaw/company_apply', [ApplicationController::class, 'company_apply']);
 Route::post('/chainsaw/insertChainsawInfo', [ChainsawController::class,'insertChainsawInfo']);

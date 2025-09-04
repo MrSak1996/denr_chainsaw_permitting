@@ -82,7 +82,7 @@ const saveCompanyApplication = async () => {
     isLoading.value = true;
 
     try {
-        const response = await insertFormData('http://127.0.0.1:8000/api/chainsaw/apply', {
+        const response = await insertFormData('http://10.201.12.186:8000/api/chainsaw/apply', {
             ...individual_form,
             encoded_by: 1,
         });
@@ -226,7 +226,7 @@ watch(() => individual_form.i_province, async (newProvince) => {
     if (!newProvince) return city_mun_opts.value = [];
 
     try {
-        const { data } = await axios.get(`http://127.0.0.1:8000/api/provinces/${newProvince}/cities`);
+        const { data } = await axios.get(`http://10.201.12.186:8000/api/provinces/${newProvince}/cities`);
         city_mun_opts.value = Array.isArray(data)
             ? data.map(({ mun_code, mun_name, geo_code }) => ({
                 id: mun_code,
@@ -245,7 +245,7 @@ watch(() => individual_form.i_city_mun, async (newCityMun) => {
     if (!newCityMun) return barangay_opts.value = [];
 
     try {
-        const { data } = await axios.get(`http://127.0.0.1:8000/api/barangays`, {
+        const { data } = await axios.get(`http://10.201.12.186:8000/api/barangays`, {
             params: {
                 reg_code: individual_form.i_region,
                 prov_code: individual_form.i_province,

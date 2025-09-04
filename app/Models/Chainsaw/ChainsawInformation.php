@@ -23,6 +23,7 @@ class ChainsawInformation extends Model
         'model',
         'quantity',
         'supplier_name',
+        'supplier_address',
         'purpose',
         'permit_validity',
         'others_details',

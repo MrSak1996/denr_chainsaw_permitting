@@ -12,6 +12,8 @@ use Exception;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Services\GoogleDriveService;
+use Inertia\Inertia;
+use Carbon\Carbon;
 
 
 
@@ -182,7 +184,6 @@ class ApplicationController extends Controller
         return null;
     }
 
-    // This controller handles application-related functionalities, including fetching geographical data.
     public function getProvinces()
     {
         $results = DB::table('geo_map')
@@ -287,6 +288,8 @@ class ApplicationController extends Controller
                 'ci.permit_validity',
                 'ac.created_at'
             )
+            ->orderBy('id','desc')
+
             ->get()
             ->map(function ($item) {
                 $item->created_at = $item->created_at
@@ -324,6 +327,7 @@ class ApplicationController extends Controller
                 'ac.company_name',
                 'ac.company_address',
                 'ac.company_c_province',
+                'ac.company_c_province as prov_code',
                 'ac.company_c_city_mun',
                 'ac.company_c_barangay',
                 'ac.operation_complete_address',
@@ -341,7 +345,7 @@ class ApplicationController extends Controller
                 'ap.permit_fee',
                 'ap.date_of_payment',
                 'ci.permit_validity',
-                'ac.created_at'
+                'ac.created_at',
             )
             ->where('ac.id', $application_id)
             ->first(); // get a single record
@@ -359,9 +363,9 @@ class ApplicationController extends Controller
                 ? \Carbon\Carbon::parse($applicationDetails->permit_validity)->format('F d, Y')
                 : null;
 
-            $applicationDetails->date_applied = $applicationDetails->date_applied
-                ? \Carbon\Carbon::parse($applicationDetails->date_applied)->format('F d, Y')
-                : null;
+            // $applicationDetails->date_applied = $applicationDetails->date_applied
+            //     ? \Carbon\Carbon::parse($applicationDetails->date_applied)->format('F d, Y')
+            //     : null;
         }
 
         return response()->json([
@@ -405,5 +409,108 @@ class ApplicationController extends Controller
         }
     }
 
+
+    // INERTIA
+    public function edit($id)
+    {
+        $applicationDetails = DB::table('tbl_application_checklist as ac')
+            ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
+            ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+            ->leftJoin('tbl_application_attachments as aa', 'aa.application_id', '=', 'ac.id')
+            ->select(
+                'ac.id',
+                'ac.company_c_province as prov_code',
+                'ac.company_c_city_mun as city_mun',
+                'ac.company_c_barangay as brgy',
+                'ac.operation_province_c',
+                'ac.operation_city_mun_c',
+                'ac.operation_brgy_c',
+                'ac.application_type',
+                'ac.application_no',
+                'ac.transaction_type',
+                'ac.company_name',
+                'ac.company_address',
+                'ac.authorized_representative',
+                'aa.file_name',
+                'ci.permit_chainsaw_no',
+                'ci.brand',
+                'ci.model',
+                'ci.quantity',
+                'ci.purpose',
+                'ap.official_receipt',
+                'ap.permit_fee',
+                'ap.date_of_payment',
+                'ci.permit_validity',
+                'ac.created_at'
+            )
+            ->where('ac.id', $id)
+            ->get();
+
+        if ($applicationDetails->isEmpty()) {
+            abort(404, 'Application not found.');
+        }
+
+        // ✅ Group and map attachments to specific fields
+        $groupedDetails = $applicationDetails->groupBy('id')->map(function ($items) {
+            $application = $items->first();
+
+            // Format dates here
+            $application->created_at = $application->created_at
+                ? Carbon::parse($application->created_at)->format('d/m/Y')
+                : null;
+
+            $application->date_of_payment = $application->date_of_payment
+                ? Carbon::parse($application->date_of_payment)->format('d/m/Y')
+                : null;
+
+            $application->permit_validity = $application->permit_validity
+                ? Carbon::parse($application->permit_validity)->format('d/m/Y')
+                : null;
+
+            // Map files to specific fields
+            $files = [
+                'request_letter' => null,
+                'secretary_certificate' => null,
+                'other_documents' => []
+            ];
+
+            foreach ($items as $item) {
+                if (!empty($item->file_name)) {
+                    if (str_contains(strtolower($item->file_name), 'request_letter')) {
+                        $files['request_letter'] = $item->file_name;
+                    } elseif (str_contains(strtolower($item->file_name), 'secretary_certificate')) {
+                        $files['secretary_certificate'] = $item->file_name;
+                    } else {
+                        $files['other_documents'][] = $item->file_name;
+                    }
+                }
+            }
+
+            return [
+                'id' => $application->id,
+                'prov_code' => $application->prov_code,
+                'city_mun' => $application->city_mun,
+                'brgy' => $application->brgy,
+                'operation_province_c' => $application->operation_province_c,
+                'operation_city_mun_c' => $application->operation_city_mun_c,
+                'operation_brgy_c' => $application->operation_brgy_c,
+                'application_type' => $application->application_type,
+                'application_no' => $application->application_no,
+                'transaction_type' => $application->transaction_type,
+                'company_name' => $application->company_name,
+                'company_address' => $application->company_address,
+                'authorized_representative' => $application->authorized_representative,
+                'created_at' => $application->created_at,
+                'date_of_payment' => $application->date_of_payment,
+                'permit_validity' => $application->permit_validity,
+                'files' => $files
+            ];
+        })->values()->first(); // Get the first grouped record
+
+        // ✅ Return grouped data to Vue
+        return Inertia::render('applications/forms/edit', [
+            'application' => $groupedDetails,
+        ]);
+    }
 
 }

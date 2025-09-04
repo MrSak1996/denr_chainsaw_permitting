@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\Application\ApplicationController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -27,6 +28,9 @@ Route::get('/application/index/{id}', function ($id) {
     ]);
 })->middleware(['auth', 'verified'])->name('application.index');
 
+
+Route::get('/applications/{id}/edit', [ApplicationController::class, 'edit'])
+    ->name('applications.edit');
 
 
 require __DIR__.'/settings.php';
