@@ -194,21 +194,12 @@ const editProduct = (product) => {
                         <Tag :value="data.application_no" severity="success" class="text-center" /><br />
                     </template>
                 </Column>
-                <Column field="application_type" header="Application Type" sortable style="min-width: 14rem" />
-                <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 14rem" />
-                <!-- <Column field="brand" header="Brand" sortable style="min-width: 10rem" />
-                <Column field="model" header="Model" sortable style="min-width: 10rem" />
-                <Column field="quantity" header="Quantity" sortable style="min-width: 8rem" />
-                <Column field="purpose" header="Purpose" sortable style="min-width: 12rem" />
-                <Column field="official_receipt" header="OR No." sortable style="min-width: 12rem" />
-                <Column field="permit_fee" header="Fee" sortable style="min-width: 10rem">
-                    <template #body="slotProps">
-                        {{ formatCurrency(slotProps.data.permit_fee) }}
-                    </template>
-                </Column> -->
-                <Column field="created_at" header="Date of Application" sortable style="min-width: 14rem" />
-                <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 12rem" />
-                <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 12rem" />
+                <Column field="application_type" header="Application Type" sortable style="min-width: 5rem" />
+                <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
+               
+                <Column field="created_at" header="Date of Application" sortable style="min-width: 4rem" />
+                <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
+                <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 4rem" />
                 <Column header="Action" :exportable="false" style="min-width: 8rem">
                     <template #body="slotProps">
                         <Button outlined rounded class="mr-2" @click="editProduct(slotProps.data)">

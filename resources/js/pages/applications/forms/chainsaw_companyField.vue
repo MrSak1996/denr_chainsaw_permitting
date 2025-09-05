@@ -253,7 +253,6 @@ onMounted(() => {
                         rows="6"
                         placeholder="Complete Address (Street, Purok, etc.)"
                         class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
-
                     />
                     <InputError :message="props.form.errors.company_address" />
                 </div>

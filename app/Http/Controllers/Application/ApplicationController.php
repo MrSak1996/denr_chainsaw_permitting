@@ -437,10 +437,13 @@ class ApplicationController extends Controller
                 'ci.model',
                 'ci.quantity',
                 'ci.purpose',
+                'ci.supplier_name',
+                'ci.supplier_address',
+                'ci.other_details',
+                'ci.permit_validity',
                 'ap.official_receipt',
                 'ap.permit_fee',
                 'ap.date_of_payment',
-                'ci.permit_validity',
                 'ac.created_at'
             )
             ->where('ac.id', $id)
@@ -466,6 +469,7 @@ class ApplicationController extends Controller
             $application->permit_validity = $application->permit_validity
                 ? Carbon::parse($application->permit_validity)->format('d/m/Y')
                 : null;
+            
 
             // Map files to specific fields
             $files = [
@@ -487,23 +491,33 @@ class ApplicationController extends Controller
             }
 
             return [
-                'id' => $application->id,
-                'prov_code' => $application->prov_code,
-                'city_mun' => $application->city_mun,
-                'brgy' => $application->brgy,
-                'operation_province_c' => $application->operation_province_c,
-                'operation_city_mun_c' => $application->operation_city_mun_c,
-                'operation_brgy_c' => $application->operation_brgy_c,
-                'application_type' => $application->application_type,
-                'application_no' => $application->application_no,
-                'transaction_type' => $application->transaction_type,
-                'company_name' => $application->company_name,
-                'company_address' => $application->company_address,
+                'id'                    => $application->id,
+                'prov_code'             => $application->prov_code,
+                'city_mun'              => $application->city_mun,
+                'brgy'                  => $application->brgy,
+                'operation_province_c'  => $application->operation_province_c,
+                'operation_city_mun_c'  => $application->operation_city_mun_c,
+                'operation_brgy_c'      => $application->operation_brgy_c,
+                'application_type'      => $application->application_type,
+                'application_no'        => $application->application_no,
+                'transaction_type'      => $application->transaction_type,
+                'company_name'          => $application->company_name,
+                'company_address'       => $application->company_address,
                 'authorized_representative' => $application->authorized_representative,
-                'created_at' => $application->created_at,
-                'date_of_payment' => $application->date_of_payment,
-                'permit_validity' => $application->permit_validity,
-                'files' => $files
+                'created_at'            => $application->created_at,
+                'date_of_payment'       => $application->date_of_payment,
+                'permit_validity'       => $application->permit_validity,
+                'permit_chainsaw_no'    => $application->permit_chainsaw_no,
+                'brand'                 => $application->brand,
+                'model'                 => $application->model,
+                'quantity'              => $application->quantity,
+                'supplier_name'         => $application->supplier_name,
+                'supplier_address'      => $application->supplier_address,
+                'purpose'               => $application->purpose,
+                'other_details'         => $application->other_details,
+                'official_receipt'      => $application->official_receipt,
+                'permit_fee'            => $application->permit_fee,
+                'files'                 => $files
             ];
         })->values()->first(); // Get the first grouped record
 
