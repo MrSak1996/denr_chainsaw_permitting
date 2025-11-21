@@ -8,6 +8,7 @@ const props = defineProps({
     app_data: Object,
     application_no: String,
 });
+
 const handleFileUpload = (event: Event, field: string) => {
     const target = event.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
@@ -25,23 +26,6 @@ const getApplicationIdFromUrl = () => {
 const application_id = getApplicationIdFromUrl();
 
 
-// const saveCompanyApplication = async () => {
-//     try {
-//         const response = await insertFormData('http://10.201.12.186:8000/api/chainsaw/creat_folder', {
-//             ...company_form,
-//             ...formData,
-//             encoded_by: 1,
-//         });
-
-//         console.log('Saved with ID:', response.id);
-//         return true;
-//     } catch (error) {
-//         console.error('Failed to save application:', error);
-
-//         return false;
-//     } finally {
-//     }
-// };
 </script>
 <template>
     <div>

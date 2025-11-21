@@ -25,7 +25,7 @@ const emit = defineEmits<{
 </script>
 <template>
     <div>
-        <Fieldset legend="Chainsaw Information">
+        <Fieldset legend="Chainsaw Informatiddn">
             <!-- Alert Info -->
             <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                 <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />

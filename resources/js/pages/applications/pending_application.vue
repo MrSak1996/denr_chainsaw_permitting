@@ -5,6 +5,7 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { Info, List } from 'lucide-vue-next';
 import PendingTable from './table/pending_tbl.vue';
+import Fieldset from 'primevue/fieldset';
 const { chainsaw_form, chainsaw } = useAppForm();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -16,6 +17,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 </script>
 
 <template>
+
     <Head title="Chainsaw Permit Application" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
@@ -30,73 +32,79 @@ const breadcrumbs: BreadcrumbItem[] = [
             <div class="box">
                 <h2 class="title flex items-center gap-2">
                     <Info />
-                    Kindly fill out the following details below to filter and retrieve specific permit application records efficiently.
+                    Kindly fill out the following details below to filter and retrieve specific permit application
+                    records efficiently.
                 </h2>
-                <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-4">
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <InputText v-model="chainsaw_form.application_no" class="w-full" />
-                            <label>Application No.</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <InputText class="w-full" />
-                            <label>Application Type</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <InputText class="w-full" />
-                            <label>Applicant Name</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <DatePicker class="w-full" />
-                            <label>Date of Application</label>
-                        </FloatLabel>
-                    </div>
-                </div>
-                <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
-                            <label>Chainsaw Number</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <InputText v-model="chainsaw_form.application_no" class="w-full" />
-                            <label>Brand</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <InputText class="w-full" />
-                            <label>Model</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
-                            <label>Office</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <InputText class="w-full" />
-                            <label>Encoded By</label>
-                        </FloatLabel>
-                    </div>
-                    <div class="mt-4">
-                        <FloatLabel>
-                            <DatePicker class="w-full" />
-                            <label>Date of Expiration</label>
-                        </FloatLabel>
-                    </div>
-                </div>
+                <Fieldset legend="Filter Application" :toggleable="true">
 
+                    <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-4">
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <InputText v-model="chainsaw_form.application_no" class="w-full" />
+                                <label>Application No.</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <InputText class="w-full" />
+                                <label>Application Type</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <InputText class="w-full" />
+                                <label>Applicant Name</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <DatePicker class="w-full" />
+                                <label>Date of Application</label>
+                            </FloatLabel>
+                        </div>
+                    </div>
+                    <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
+                                <label>Chainsaw Number</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <InputText v-model="chainsaw_form.application_no" class="w-full" />
+                                <label>Brand</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <InputText class="w-full" />
+                                <label>Model</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
+                                <label>Office</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <InputText class="w-full" />
+                                <label>Encoded By</label>
+                            </FloatLabel>
+                        </div>
+                        <div class="mt-4">
+                            <FloatLabel>
+                                <DatePicker class="w-full" />
+                                <label>Date of Expiration</label>
+                            </FloatLabel>
+                        </div>
+                    </div>
+
+                            <Button label="Search Filter" icon="pi pi-search" class="mr-2 mt-2" />
+
+                </Fieldset>
                 <PendingTable />
             </div>
         </div>

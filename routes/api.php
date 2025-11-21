@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Application\ApplicationController;
 use App\Http\Controllers\Chainsaw\ChainsawController;
 use App\Http\Controllers\Payment\PaymentController;
+use App\Http\Controllers\Dashboard\RPSChiefDashboardController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -20,10 +21,15 @@ Route::get('/getApplicationDetails/{application_id}',[ApplicationController::cla
 Route::get('/getApplicantFile/{application_id}',[ApplicationController::class,'getApplicantFile']);
 
 
+Route::get('/applicationStatus', [RPSChiefDashboardController::class,'getApplicationsByStatus']);
 
 Route::post('/chainsaw/apply', [ApplicationController::class, 'apply']);
 Route::post('/chainsaw/company_apply', [ApplicationController::class, 'company_apply']);
 Route::post('/chainsaw/insertChainsawInfo', [ChainsawController::class,'insertChainsawInfo']);
 Route::post('chainsaw/insert_payment', [PaymentController::class,'insert_payment']);
+Route::post('/files/update',[ApplicationController::class,'updateApplicantFiles']);
 
+Route::put('/updateApplicantDetails/{id}', [ChainsawController::class, 'updateApplicantDetails']);
+Route::put('/updateChainsawInformation/{id}', [ChainsawController::class, 'updateChainsawInformation']);
+Route::put('/updateApplicationStatus/{id}', [ChainsawController::class, 'updateApplicationStatus']);
 });

@@ -4,21 +4,61 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { Folder, Info } from 'lucide-vue-next';
 import ToggleButton from 'primevue/togglebutton';
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import application_form from './forms/application_form.vue';
 import company_application_form from './forms/company_application_form.vue';
 
-const checked = ref<boolean | null>(null); // no default selected
-const hasSelected = ref(false); // only show form after user clicks toggle
+// ---------------------
+// STATE
+// ---------------------
+const checked = ref<boolean | null>(null);
+const hasSelected = ref(false);
 
-watch(checked, (val) => {
-    if (val !== null) hasSelected.value = true;
-});
-
+// ---------------------
+// BREADCRUMBS
+// ---------------------
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Applications', href: '/applicants/index' },
 ];
+
+// ---------------------
+// UTILITY: Get URL Parameter Safely
+// ---------------------
+const getApplicationTypeFromUrl = (): string | null => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('type');
+};
+
+// ---------------------
+// UI REACTION: When user toggles button
+// ---------------------
+watch(checked, (value) => {
+    if (value !== null) {
+        hasSelected.value = true;
+    }
+});
+
+const showIndividualApplicant = async () => {
+    checked.value = false;
+}
+
+// ---------------------
+// AUTO-SELECT BASED ON URL
+// ---------------------
+onMounted(() => {
+    const type = getApplicationTypeFromUrl();
+  
+    if (type === 'individual') {
+        checked.value = false;
+        hasSelected.value = true;
+    }
+    else if (type === 'company') {
+        checked.value = true;
+        hasSelected.value = true;
+    }
+});
 </script>
+
 
 <style scoped>
 .box {
@@ -43,48 +83,47 @@ const breadcrumbs: BreadcrumbItem[] = [
     text-transform: uppercase;
     font-size: 10pt;
 }
+
 /* Base style for ToggleButton - Green (unchecked/default state) */
 /* Default state - Green */
 /* Base style for ToggleButton - Green (unchecked/default state) */
 .p-togglebutton {
-  font-weight: 600;
-  font-size: 1rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  border: none;
-  background-color: #22c55e; /* green-500 */
-  color: white;
-  transition: background-color 0.3s ease, filter 0.3s ease;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: #22c55e;
+    /* green-500 */
+    color: white;
+    transition: background-color 0.3s ease, filter 0.3s ease;
 }
 
 /* Hover effect */
 .p-togglebutton:hover {
-  filter: brightness(1.1);
+    filter: brightness(1.1);
 }
 
 /* Checked state - Darker green */
 .p-togglebutton.p-togglebutton-checked {
-  background-color: #15803d !important; /* green-700 */
-  border-color: #166534;
-  color: rgb(0, 0, 0);
+    background-color: #15803d !important;
+    /* green-700 */
+    border-color: #166534;
+    color: rgb(0, 0, 0);
 }
 
 /* Fix inner white background */
 .p-togglebutton.p-togglebutton-checked .p-togglebutton-content {
-  background-color: #15803d !important;
-  box-shadow: none;
-  color: white !important;
+    background-color: #15803d !important;
+    box-shadow: none;
+    color: white !important;
 }
 
 /* Ensure label and icon are white in all states */
 .p-togglebutton .p-togglebutton-icon,
 .p-togglebutton .p-togglebutton-label {
-  color: white !important;
+    color: white !important;
 }
-
-
-
-
 </style>
 
 
@@ -93,50 +132,61 @@ const breadcrumbs: BreadcrumbItem[] = [
     <Head title="Chainsaw Permit Application" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-6 rounded-xl p-4">
+
+        <div class="flex flex-col gap-6 rounded-xl p-4 sm:grid-cols-3">
             <div class="flex items-center gap-2 text-sm">
                 <Folder class="h-5 w-5" />
                 <h1 class="text-xl font-semibold">Chainsaw Permit Application Form</h1>
             </div>
 
             <div class="box">
-                <h2 class="title flex items-center justify-between gap-2">
-                    <span class="flex items-center gap-2">
-                        <Info class="text-primary" />
-                        Application Instructions
-                    </span>
 
-                    <div class="flex items-center gap-4 mb-4">
-                        <label class="text-gray-700 font-medium">Select Applicant Type:</label>
+                <!-- SHOW BUTTONS ONLY BEFORE SELECTION -->
+                <div v-if="!hasSelected" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
 
-                        <ToggleButton v-model="checked" onLabel="Company" offLabel="Individual" onIcon="pi pi-briefcase"
-                            offIcon="pi pi-user" />
+                    <!-- Individual Applicant -->
+                    <button @click="() => { checked = false; hasSelected = true; }"
+                        class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl shadow-md border hover:shadow-lg transition-all bg-white hover:bg-gray-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-600" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span class="text-lg font-semibold">Individual Applicant</span>
+                    </button>
 
-                    </div>
-                </h2>
+                    <!-- Business / Private Corporation -->
+                    <button @click="() => { checked = true; hasSelected = true; }"
+                        class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl shadow-md border hover:shadow-lg transition-all bg-white hover:bg-gray-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-600" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M3 21h18M6 21V9m12 12V5m-6 16V3" />
+                        </svg>
+                        <span class="text-lg font-semibold">Business / Private Corporation</span>
+                    </button>
 
-                <p class="mb-4 text-sm text-gray-700">
-                    Please complete all required fields in this form to apply for a <strong>Permit to Purchase
-                        Chainsaw</strong>. The information you
-                    provide must be accurate and verifiable. Incomplete or false entries may result in the disapproval
-                    of your application.
-                </p>
+                    <!-- Government Agency -->
+                    <button @click="() => { checked = true; hasSelected = true; }"
+                        class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl shadow-md border hover:shadow-lg transition-all bg-white hover:bg-gray-50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-yellow-600" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M3 10l9-7 9 7v10a2 2 0 01-2 2H5a2 2 0 01-2-2V10z" />
+                        </svg>
+                        <span class="text-lg font-semibold">Government Agency</span>
+                    </button>
 
-                <ul class="mb-4 list-disc pl-5 text-sm text-gray-700">
-                    <li>Fill in your complete name, civil status, and date of birth accurately.</li>
-                    <li>Ensure your contact details (mobile number, barangay, municipality, province, and region) are
-                        correct and reachable.</li>
-                    <li>Provide the date when the application is filed.</li>
-                    <li>Use the calendar picker to set your birthdate and application date properly.</li>
-                    <li>All fields marked as required must be completed before proceeding to the next step.</li>
-                </ul>
+                </div>
 
-                <!-- Conditional form display -->
+                <!-- SHOW FORM AFTER SELECTION -->
                 <div v-if="hasSelected">
                     <application_form v-if="checked === false" />
                     <company_application_form v-else />
                 </div>
+
             </div>
+
         </div>
     </AppLayout>
 </template>

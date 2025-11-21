@@ -2,10 +2,12 @@ import { reactive } from 'vue';
 
 interface CompanyForm {
     application_no: string;
+    permit_no: string;
     application_type: string;
     date_applied: string;
     geo_code: string;
     type_of_transaction: string;
+    classification:string;
     company_name: string;
     company_address: string;
     authorized_representative: string;
@@ -37,9 +39,11 @@ interface CompanyForm {
 
 interface IndividualForm {
     application_no: string;
+    permit_no:string;
     application_type: string;
     date_applied: string;
     type_of_transaction: string;
+    classification:string;s
     geo_code: string;
     last_name: string;
     first_name: string;
@@ -121,16 +125,19 @@ interface PaymentForm {
     official_receipt:string,
     permit_fee:number,
     date_of_payment:string
-    or_ccopy:File | null
+    or_ccopy:File | null,
+    remarks: string
 }
 
 export function useAppForm() {
     const company_form = reactive<CompanyForm>({
         application_no: '',
+        permit_no: '',
         application_type: 'Company',
         date_applied: new Date().toISOString().slice(0, 10), // auto-set to today
         geo_code: '',
         type_of_transaction: '',
+        classification: '',
         company_name: '',
         company_address: '',
         authorized_representative: '',
@@ -177,9 +184,11 @@ export function useAppForm() {
 
     const individual_form = reactive<IndividualForm>({
         application_no: '',
+        permit_no:'',
         application_type: 'Individual',
         date_applied: new Date().toISOString().slice(0, 10), // auto-set to today
         type_of_transaction: '',
+        classification: '',
         geo_code: '',
         last_name: '',
         first_name: '',
@@ -236,7 +245,8 @@ export function useAppForm() {
         official_receipt: '',
         permit_fee: 0,
         date_of_payment: new Date().toISOString().slice(0, 10),
-        or_ccopy: null
+        or_ccopy: null,
+        remarks:''
     });
 
     return { company_form, chainsaw_form, individual_form, payment_form};

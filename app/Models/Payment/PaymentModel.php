@@ -19,6 +19,7 @@ class PaymentModel extends Model
         'official_receipt',
         'permit_fee',
         'date_of_payment',
+        'remarks',
         'updated_at',
         'created_at',
     ];

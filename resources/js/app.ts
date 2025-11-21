@@ -1,4 +1,5 @@
 import '../css/app.css';
+import 'primeicons/primeicons.css';
 
 import { createInertiaApp } from '@inertiajs/vue3';
 import Aura from '@primeuix/themes/aura';
@@ -27,13 +28,14 @@ import ToggleButton from 'primevue/togglebutton';
 import Select from 'primevue/select';
 import DatePicker from 'primevue/datepicker';
 import Password from 'primevue/password';
-
+import ConfirmDialog from 'primevue/confirmdialog';
+import ConfirmationService from 'primevue/confirmationservice'
+import DialogService from 'primevue/dialogservice'
 
 import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
-
 
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -59,6 +61,8 @@ createInertiaApp({
             })
             .use(ZiggyVue)
             .use(ToastService)
+            .use(DialogService)
+            .use(ConfirmationService)
             .component('Toast', Toast)
             .component('FloatLabel', FloatLabel)
             .component('InputText', InputText)
@@ -80,6 +84,7 @@ createInertiaApp({
             .component('Select', Select)
             .component('DatePicker', DatePicker)
             .component('Password', Password)
+            .component('ConfirmDialog', ConfirmDialog)
             .mount(el);
     },
     progress: {

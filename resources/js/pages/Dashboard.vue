@@ -102,7 +102,7 @@ const activeTab = ref<'my' | 'office'>('my');
                     <h4 class="title mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-[#432c0b] uppercase">
                         Programs and Projects</h4>
 
-                    <ul class="list-disc space-y-2 pl-5 text-sm text-gray-700">
+                    <!-- <ul class="list-disc space-y-2 pl-5 text-sm text-gray-700">
                         <li>
                             <a href="https://riis.denrcalabarzon.com" title="Document Management System" target="_blank"
                                 class="transition hover:text-green-700 hover:underline">
@@ -139,7 +139,7 @@ const activeTab = ref<'my' | 'office'>('my');
                                 Travel Order Management System
                             </a>
                         </li>
-                    </ul>
+                    </ul> -->
                 </div>
 
                 <!-- Middle box (takes 3 columns - wider) -->

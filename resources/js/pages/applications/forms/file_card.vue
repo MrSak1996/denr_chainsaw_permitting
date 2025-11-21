@@ -1,5 +1,6 @@
 <template>
-  <div class="file-card" @click="handleClick">
+  <div class="file-card">
+    <!-- File Thumbnail / Icon -->
     <div class="file-icon">
       <img
         v-if="file.thumbnail"
@@ -12,11 +13,17 @@
       </div>
     </div>
 
+    <!-- File Details -->
     <div class="file-info">
-      <p class="file-name">File Name:{{ props.file.name }}</p>
+      <p class="file-name">File Name: {{ file.name }}</p>
       <p class="file-meta">Size: {{ file.size || '—' }}</p>
       <p class="file-meta">Uploaded: {{ file.dateUploaded || '—' }}</p>
       <p class="file-meta">You opened: {{ file.dateOpened || '—' }}</p>
+
+      <div class="flex gap-2 mt-2">
+        <Button size="sm" @click="$emit('openPreview', file)">Preview</Button>
+        <Button size="sm" variant="secondary" @click="$emit('updateFile', file)">Update</Button>
+      </div>
     </div>
   </div>
 </template>
@@ -31,11 +38,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['openPreview'])
-
-const handleClick = () => {
-  emit('openPreview', props.file)
-}
+const emit = defineEmits(['openPreview', 'updateFile'])
 
 // Extract extension from filename
 const getFileExtension = (filename) => {
@@ -75,13 +78,13 @@ const getIcon = (ext) => {
 <style scoped>
 .file-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 1px rgba(0, 0, 0, 0.1);
-  padding: 6px;
+  padding: 10px;
   transition: all 0.3s ease;
-  cursor: pointer;
+  gap: 16px;
 }
 
 .file-card:hover {
@@ -105,7 +108,6 @@ const getIcon = (ext) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
 }
 
 .file-placeholder {
@@ -121,14 +123,12 @@ const getIcon = (ext) => {
 }
 
 .file-info {
-  margin-left: 16px;
   flex: 1;
 }
 
 .file-name {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: bold;
-  margin-bottom: 4px;
 }
 
 .file-meta {

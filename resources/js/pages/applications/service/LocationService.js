@@ -1,7 +1,7 @@
 // src/services/LocationService.js
 import axios from 'axios';
 
-const API_BASE_URL = 'http://10.201.12.186:8000/api'; // Replace with your Laravel backend URL
+const API_BASE_URL = 'http://10.201.13.78:8000/api'; // Replace with your Laravel backend URL
 
 export const LocationService = {
   // Fetch list of provinces

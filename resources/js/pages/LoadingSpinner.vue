@@ -1,7 +1,9 @@
 <template>
   <div v-if="loading" class="loading-overlay">
-    <!-- <img src="../../images/loading_trees.gif" class="w-[250px]" /> -->
-    <div class="loading-container">
+    <!-- <img src="../../images/loader.gif" class="w-[250px]" /> -->
+    <iframe src="https://lottie.host/embed/5b253b52-23b4-4159-9737-5046b887113a/Z7u8A5Ls6E.lottie"
+      style="width: 1000px;height: 1000px"></iframe>
+    <!-- <div class="loading-container">
       <div class="loading-wave">
         <div class="loading-bar"></div>
         <div class="loading-bar"></div>
@@ -15,11 +17,12 @@
         <div class="loading-bar"></div>
         <div class="loading-bar"></div>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 
 <script setup lang="ts">
+
 defineProps<{ loading: boolean }>()
 </script>
 
@@ -73,30 +76,39 @@ defineProps<{ loading: boolean }>()
 .loading-bar:nth-child(2) {
   animation-delay: 0.1s;
 }
+
 .loading-bar:nth-child(3) {
   animation-delay: 0.2s;
 }
+
 .loading-bar:nth-child(4) {
   animation-delay: 0.3s;
 }
+
 .loading-bar:nth-child(5) {
   animation-delay: 0.4s;
 }
+
 .loading-bar:nth-child(6) {
   animation-delay: 0.5s;
 }
+
 .loading-bar:nth-child(7) {
   animation-delay: 0.6s;
 }
+
 .loading-bar:nth-child(8) {
   animation-delay: 0.7s;
 }
+
 .loading-bar:nth-child(9) {
   animation-delay: 0.8s;
 }
+
 .loading-bar:nth-child(10) {
   animation-delay: 0.9s;
 }
+
 .loading-bar:nth-child(11) {
   animation-delay: 0.10s;
 }
@@ -105,17 +117,29 @@ defineProps<{ loading: boolean }>()
   0% {
     height: 10px;
   }
+
   50% {
     height: 50px;
   }
+
   100% {
     height: 10px;
   }
 }
 
 @keyframes shake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-1.5deg); }
-  75% { transform: rotate(1.5deg); }
+
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(-1.5deg);
+  }
+
+  75% {
+    transform: rotate(1.5deg);
+  }
 }
 </style>

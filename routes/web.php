@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Application\ApplicationController;
+use App\Http\Controllers\Dashboard\RPSChiefDashboardController; // if you have a controller
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
@@ -13,6 +14,17 @@ Route::get('dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 
+
+
+Route::get('rps-chief-dashboard', function () {
+    return Inertia::render('RPSChiefDashboard');
+})->middleware(['auth', 'verified'])->name('rps.chief.dashboard');
+
+Route::get('rps-staff-dashboard', function () {
+    return Inertia::render('RPSStaffDashboard');
+})->middleware(['auth', 'verified'])->name('rps.staff.dashboard');
+
+
 Route::get('applications/index', function () {
     return Inertia::render('applications/index');
 })->middleware(['auth', 'verified'])->name('applications.index');
@@ -20,6 +32,14 @@ Route::get('applications/index', function () {
 Route::get('applications/pending_application', function () {
     return Inertia::render('applications/pending_application');
 })->middleware(['auth', 'verified'])->name('applications.pending_application');
+
+Route::prefix('applications')->group(function () {
+    Route::get('{id}/view', [ApplicationController::class, 'view'])
+        ->name('applications.view');
+
+    Route::get('{id}/edit', [ApplicationController::class, 'edit'])
+        ->name('applications.edit');
+});
 
 
 Route::get('/application/index/{id}', function ($id) {
@@ -33,5 +53,15 @@ Route::get('/applications/{id}/edit', [ApplicationController::class, 'edit'])
     ->name('applications.edit');
 
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+
+Route::post('/applications/updateStatus', [ApplicationController::class, 'updateStatus'])
+    ->name('applications.updateStatus');
+
+
+
+Route::post('/applications/return', [ApplicationController::class, 'returnApplication'])
+    ->middleware(['auth', 'verified'])
+    ->name('applications.return');  
+
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';

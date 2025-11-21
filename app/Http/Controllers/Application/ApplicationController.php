@@ -29,20 +29,17 @@ class ApplicationController extends Controller
             'geo_code' => 'required|string',
             'application_type' => 'required|string',
             'type_of_transaction' => 'required|string',
-            'application_no' => 'required|string|unique:tbl_application_checklist',
+            'application_no' => 'required',
             'date_applied' => 'required|string',
             'encoded_by' => 'nullable|integer',
 
             'last_name' => 'required|string',
             'first_name' => 'required|string',
             'middle_name' => 'nullable|string',
-            'sex' => 'required|string|in:Male,Female,Other',
+            'sex' => 'required|string|in:male,female,Other',
             'gov_id_type' => 'nullable|string',
             'gov_id_number' => 'nullable|string',
-            'mobile_no' => 'nullable|string',
-            'telephone_no' => 'nullable|string',
-            'email_address' => 'nullable|email',
-
+            'classification' => 'required',
             'i_province' => 'required|string',
             'i_city_mun' => 'required|string',
             'i_barangay' => 'required|string',
@@ -57,14 +54,14 @@ class ApplicationController extends Controller
 
         // Create the application using the validated data
         $application = ChainsawIndividualApplication::create([
-            'application_status' => 1,
+            'application_status' => null,
             'geo_code' => $validated['geo_code'],
             'application_type' => $validated['application_type'],
             'transaction_type' => $validated['type_of_transaction'],
             'application_no' => $validated['application_no'],
             'date_applied' => $validated['date_applied'],
             'encoded_by' => $validated['encoded_by'] ?? null,
-
+            'classification' => $validated['classification'] ?? null,
             'applicant_lastname' => $validated['last_name'],
             'applicant_firstname' => $validated['first_name'],
             'applicant_middlename' => $validated['middle_name'] ?? null,
@@ -88,7 +85,7 @@ class ApplicationController extends Controller
 
         return response()->json([
             'message' => 'Application submitted successfully.',
-            'id' => $application->id,
+            'application_id' => $application->id,
         ], 201);
     }
 
@@ -111,17 +108,17 @@ class ApplicationController extends Controller
                 'c_city_mun' => 'required|string',
                 'c_barangay' => 'required|string',
 
-                'p_place_of_operation_address' => 'required|string',
-                'p_province' => 'required|string',
-                'p_city_mun' => 'required|string',
-                'p_barangay' => 'required|string',
+                // 'p_place_of_operation_address' => 'required|string',
+                // 'p_province' => 'required|string',
+                // 'p_city_mun' => 'required|string',
+                // 'p_barangay' => 'required|string',
 
                 'request_letter' => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
                 'soc_certificate' => 'required|file|mimes:jpg,png,jpeg,gif,pdf|max:2048',
             ]);
 
             $application = ChainsawIndividualApplication::create([
-                'application_status' => 1,
+                'application_status' => null,
                 'application_type' => $request->input('application_type'),
                 'transaction_type' => $request->input('type_of_transaction'),
                 'application_no' => $request->input('application_no'),
@@ -143,12 +140,12 @@ class ApplicationController extends Controller
             $applicationId = $application->id;
 
             $filesToUpload = [
-                'request_letter' => 'Request_Letter',
+                'request_letter' => 'Request Letter',
                 'soc_certificate' => 'Secretary Certificate'
             ];
 
             $folderPath = 'CHAINSAW_PERMITTING/Company Applications/' . $applicationNo;
-            $result = $driveService->storeAttachments($request, $applicationId, $folderPath, $filesToUpload);
+            $result = $driveService->storeAttachments($request->input('application_no'), $request, $applicationId, $folderPath, $filesToUpload);
 
             return response()->json([
                 'application_id' => $application->id,
@@ -273,8 +270,12 @@ class ApplicationController extends Controller
         $applicationDetails = DB::table('tbl_application_checklist as ac')
             ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
             ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+            ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
+
             ->select(
                 'ac.id',
+                's.status_title',
+                'ac.application_status',
                 'ac.application_type',
                 'ac.application_no',
                 'ci.permit_chainsaw_no',
@@ -286,14 +287,19 @@ class ApplicationController extends Controller
                 'ap.permit_fee',
                 'ap.date_of_payment',
                 'ci.permit_validity',
-                'ac.created_at'
+                'ac.created_at',
+                'ac.date_applied',
             )
-            ->orderBy('id','desc')
+            ->orderBy('id', 'desc')
 
             ->get()
             ->map(function ($item) {
                 $item->created_at = $item->created_at
                     ? \Carbon\Carbon::parse($item->created_at)->format('F d, Y')
+                    : null;
+
+                $item->date_applied = $item->date_applied
+                    ? \Carbon\Carbon::parse($item->date_applied)->format('F d, Y')
                     : null;
 
                 $item->date_of_payment = $item->date_of_payment
@@ -318,9 +324,28 @@ class ApplicationController extends Controller
             ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
             ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
             ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
+            ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
             ->select(
                 'ac.id',
+                'ac.applicant_lastname as last_name',
+                'ac.applicant_firstname as first_name',
+                'ac.applicant_middlename as middle_name',
+                'ac.sex',
+                'ac.government_id as gov_id_type',
+                'ac.gov_id_number as gov_id_number',
+                'ac.applicant_contact_details as mobile_no',
+                'ac.applicant_telephone_no as telephone_no',
+                'ac.applicant_email_address as email_address',
+                'ac.applicant_province_c as i_province',
+                'ac.applicant_city_mun_c as i_city_mun',
+                'ac.applicant_brgy_c as i_barangay',
+                'ac.applicant_complete_address',
+                'ac.classification',
+                's.status_title',
+                'ac.return_reason',
                 'ac.application_no',
+                'ac.permit_no',
+                'ac.application_status',
                 'ac.application_type',
                 'ac.authorized_representative',
                 'ac.date_applied',
@@ -331,7 +356,7 @@ class ApplicationController extends Controller
                 'ac.company_c_city_mun',
                 'ac.company_c_barangay',
                 'ac.operation_complete_address',
-                'ac.transaction_type',
+                'ac.transaction_type as type_of_transaction',
                 'g.prov_name',
 
                 'ci.supplier_name',
@@ -353,6 +378,10 @@ class ApplicationController extends Controller
         if ($applicationDetails) {
             $applicationDetails->created_at = $applicationDetails->created_at
                 ? \Carbon\Carbon::parse($applicationDetails->created_at)->format('F d, Y')
+                : null;
+
+            $applicationDetails->date_applied = $applicationDetails->date_applied
+                ? \Carbon\Carbon::parse($applicationDetails->date_applied)->format('d/m/Y')
                 : null;
 
             $applicationDetails->date_of_payment = $applicationDetails->date_of_payment
@@ -380,6 +409,7 @@ class ApplicationController extends Controller
                 ->leftJoin('tbl_application_checklist as ac', 'ac.id', '=', 'aa.application_id')
                 ->select(
                     'ac.application_no',
+                    'aa.id',
                     'aa.application_id',
                     'aa.file_name',
                     'aa.file_id',
@@ -415,8 +445,6 @@ class ApplicationController extends Controller
     {
         $applicationDetails = DB::table('tbl_application_checklist as ac')
             ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
-            ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
-            ->leftJoin('tbl_application_attachments as aa', 'aa.application_id', '=', 'ac.id')
             ->select(
                 'ac.id',
                 'ac.company_c_province as prov_code',
@@ -431,100 +459,283 @@ class ApplicationController extends Controller
                 'ac.company_name',
                 'ac.company_address',
                 'ac.authorized_representative',
-                'aa.file_name',
-                'ci.permit_chainsaw_no',
                 'ci.brand',
                 'ci.model',
                 'ci.quantity',
                 'ci.purpose',
-                'ci.supplier_name',
-                'ci.supplier_address',
-                'ci.other_details',
-                'ci.permit_validity',
-                'ap.official_receipt',
-                'ap.permit_fee',
-                'ap.date_of_payment',
                 'ac.created_at'
             )
             ->where('ac.id', $id)
-            ->get();
+            ->first();
 
-        if ($applicationDetails->isEmpty()) {
+        if (!$applicationDetails) {
             abort(404, 'Application not found.');
         }
 
-        // ✅ Group and map attachments to specific fields
-        $groupedDetails = $applicationDetails->groupBy('id')->map(function ($items) {
-            $application = $items->first();
+        // Format dates (only created_at is allowed)
+        $applicationDetails->created_at = $applicationDetails->created_at
+            ? Carbon::parse($applicationDetails->created_at)->format('d/m/Y')
+            : null;
 
-            // Format dates here
-            $application->created_at = $application->created_at
-                ? Carbon::parse($application->created_at)->format('d/m/Y')
-                : null;
-
-            $application->date_of_payment = $application->date_of_payment
-                ? Carbon::parse($application->date_of_payment)->format('d/m/Y')
-                : null;
-
-            $application->permit_validity = $application->permit_validity
-                ? Carbon::parse($application->permit_validity)->format('d/m/Y')
-                : null;
-            
-
-            // Map files to specific fields
-            $files = [
-                'request_letter' => null,
-                'secretary_certificate' => null,
-                'other_documents' => []
-            ];
-
-            foreach ($items as $item) {
-                if (!empty($item->file_name)) {
-                    if (str_contains(strtolower($item->file_name), 'request_letter')) {
-                        $files['request_letter'] = $item->file_name;
-                    } elseif (str_contains(strtolower($item->file_name), 'secretary_certificate')) {
-                        $files['secretary_certificate'] = $item->file_name;
-                    } else {
-                        $files['other_documents'][] = $item->file_name;
-                    }
-                }
-            }
-
-            return [
-                'id'                    => $application->id,
-                'prov_code'             => $application->prov_code,
-                'city_mun'              => $application->city_mun,
-                'brgy'                  => $application->brgy,
-                'operation_province_c'  => $application->operation_province_c,
-                'operation_city_mun_c'  => $application->operation_city_mun_c,
-                'operation_brgy_c'      => $application->operation_brgy_c,
-                'application_type'      => $application->application_type,
-                'application_no'        => $application->application_no,
-                'transaction_type'      => $application->transaction_type,
-                'company_name'          => $application->company_name,
-                'company_address'       => $application->company_address,
-                'authorized_representative' => $application->authorized_representative,
-                'created_at'            => $application->created_at,
-                'date_of_payment'       => $application->date_of_payment,
-                'permit_validity'       => $application->permit_validity,
-                'permit_chainsaw_no'    => $application->permit_chainsaw_no,
-                'brand'                 => $application->brand,
-                'model'                 => $application->model,
-                'quantity'              => $application->quantity,
-                'supplier_name'         => $application->supplier_name,
-                'supplier_address'      => $application->supplier_address,
-                'purpose'               => $application->purpose,
-                'other_details'         => $application->other_details,
-                'official_receipt'      => $application->official_receipt,
-                'permit_fee'            => $application->permit_fee,
-                'files'                 => $files
-            ];
-        })->values()->first(); // Get the first grouped record
-
-        // ✅ Return grouped data to Vue
-        return Inertia::render('applications/forms/edit', [
-            'application' => $groupedDetails,
+        // Return ONLY the allowed safe fields
+        return Inertia::render('applications/form_edit/index', [
+            'application' => [
+                'id' => $applicationDetails->id,
+                'prov_code' => $applicationDetails->prov_code,
+                'city_mun' => $applicationDetails->city_mun,
+                'brgy' => $applicationDetails->brgy,
+                'operation_province_c' => $applicationDetails->operation_province_c,
+                'operation_city_mun_c' => $applicationDetails->operation_city_mun_c,
+                'operation_brgy_c' => $applicationDetails->operation_brgy_c,
+                'application_type' => $applicationDetails->application_type,
+                'application_no' => $applicationDetails->application_no,
+                'transaction_type' => $applicationDetails->transaction_type,
+                'company_name' => $applicationDetails->company_name,
+                'company_address' => $applicationDetails->company_address,
+                'authorized_representative' => $applicationDetails->authorized_representative,
+                'created_at' => $applicationDetails->created_at,
+                'brand' => $applicationDetails->brand,
+                'model' => $applicationDetails->model,
+                'quantity' => $applicationDetails->quantity,
+                'purpose' => $applicationDetails->purpose,
+            ],
         ]);
     }
+
+
+    public function updateApplicantFiles(Request $request, GoogleDriveService $driveService)
+    {
+        try {
+            // ✅ Step 1. Validate input
+            $validated = $request->validate([
+                'application_id' => 'required|exists:tbl_application_checklist,id',
+                'attachment_id' => 'required|integer|exists:tbl_application_attachments,id',
+                'file' => 'required|file|max:2048',
+                'name' => 'required|string'
+            ]);
+
+            // ✅ Step 2. Fetch application details
+            $application = DB::table('tbl_application_checklist')
+                ->where('id', $request->application_id)
+                ->first();
+
+            if (!$application) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Application not found.'
+                ], 404);
+            }
+
+            // ✅ Step 3. Fetch old attachment record
+            $oldAttachment = DB::table('tbl_application_attachments')
+                ->where('id', $request->attachment_id)
+                ->first();
+
+            if (!$oldAttachment) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Attachment not found.'
+                ], 404);
+            }
+
+            // Step 4. Folder map for file types
+            $folderMap = [
+                'permit' => ['folder' => 'Permit to Sell', 'prefix' => 'permit'],
+                'mayors' => ['folder' => 'Mayors Permit', 'prefix' => 'mayors_permit'],
+                'notarized' => ['folder' => 'Notarized Affidavit', 'prefix' => 'notarized_documents'],
+                'official' => ['folder' => 'Official Receipts', 'prefix' => 'official_receipts'],
+                'request' => ['folder' => 'Request_Letter', 'prefix' => 'request_letter'],
+                'secretary_certificate' => ['folder' => 'Secretary Certificate', 'prefix' => 'secretary_certificate'],
+                'othersDocs' => ['folder' => 'Other supporting documents', 'prefix' => 'others'],
+            ];
+
+            // Always treat the provided "name" as a full filename
+            $rawName = strtolower(trim($request->name));
+
+            // Extract only the first segment before the first underscore
+            $fileType = explode('_', $rawName)[0];
+
+            if (!isset($folderMap[$fileType])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => "Invalid file type provided: {$fileType}",
+                ], 400);
+            }
+
+            $subFolder = $folderMap[$fileType]['folder'];
+            $filePrefix = $folderMap[$fileType]['prefix'];
+
+
+            // ✅ Step 5. Build Google Drive folder path
+            $folderPath = "CHAINSAW_PERMITTING/Company Applications/{$application->application_no}/{$subFolder}";
+
+            // ✅ Step 6. Call service to replace file
+            $result = $driveService->replaceAttachment(
+                $folderPath,
+                $oldAttachment->file_id,
+                $request->file('file'),
+                $application->application_no,
+                $filePrefix
+            );
+
+            if (!$result['status']) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $result['message'] ?? 'Failed to replace the file on Google Drive.'
+                ], 500);
+            }
+
+            // ✅ Step 7. Update database record
+            DB::table('tbl_application_attachments')
+                ->where('id', $request->attachment_id)
+                ->update([
+                    'file_name' => $result['file_name'],
+                    'file_id' => $result['file_id'],
+                    'file_url' => $result['file_url'],
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'File replaced successfully.',
+                'data' => [
+                    'file_name' => $result['file_name'],
+                    'file_url' => $result['file_url'],
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error updating applicant file: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while updating the file.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function returnApplication(Request $request)
+    {
+        $request->validate([
+            'application_id' => 'required|exists:tbl_application_checklist,id',
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        try {
+            // Update the application status to 'returned'
+            DB::table('tbl_application_checklist')
+                ->where('id', $request->application_id)
+                ->update([
+                    'application_status' => 0,
+                    'return_reason' => $request->reason,
+                    'updated_at' => now(),
+                ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Application marked as returned successfully.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function view($id)
+    {
+        $application = ChainsawIndividualApplication::findOrFail($id);
+
+        return Inertia::render('Applications/Form', [
+            'application' => $application,
+            'mode' => 'view'
+        ]);
+    }
+
+    public function updateStatus(Request $request)
+    {
+        $app = ChainsawIndividualApplication::findOrFail($request->id);
+        $app->application_status = $request->status;
+        $app->save();
+
+        return response()->json(['message' => 'Status updated successfully.']);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // public function updateApplication(Request $request, $id)
+    // {
+    //     try {
+    //         DB::beginTransaction(); // Begin transaction at the start
+
+    //         // Find the application
+    //         $application = ChainsawIndividualApplication::findOrFail($id);
+
+    //         // Clone all request data
+    //         $data = $request->all();
+
+    //         // Check and format the date_applied field using Carbon, then add 1 day
+    //         if (!empty($data['date_applied'])) {
+    //             $data['date_applied'] = Carbon::parse($data['date_applied'])
+    //                 ->addDay()
+    //                 ->format('Y-m-d');
+    //         }
+    //         if (!empty($data['permit_validity'])) {
+    //             $data['permit_validity'] = Carbon::parse($data['permit_validity'])
+    //                 ->addDay()
+    //                 ->format('Y-m-d');
+    //         }
+
+    //         // Update the application table
+    //         $application->update($data);
+
+    //         // UPDATE CHAINSAW INFORMATION based on reference (e.g., application_id)
+    //         $updateResult = DB::table('tbl_chainsaw_information')
+    //             ->where('application_id', $id) // <-- IMPORTANT: Add WHERE condition
+    //             ->update([
+    //                 'permit_chainsaw_no' => $request->input('permit_chainsaw_no'),
+    //                 'brand' => $request->input('brand'),
+    //                 'model' => $request->input('model'),
+    //                 'quantity' => $request->input('quantity'),
+    //                 'updated_at' => now(),
+    //             ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => $updateResult
+    //                 ? 'Application and chainsaw information updated successfully.'
+    //                 : 'No changes detected or record not found.',
+    //         ], 200);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack(); // Rollback transaction if something goes wrong
+
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
 
 }
