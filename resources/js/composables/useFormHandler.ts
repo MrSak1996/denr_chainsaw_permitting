@@ -26,6 +26,22 @@ export function useFormHandler() {
             throw error;
         }
     };
+const updateFormData = async (url: string, form: any) => {
+    const formData = new FormData();
+    for (const key in form) {
+        if (form[key] !== null && form[key] !== undefined) {
+            formData.append(key, form[key]);
+        }
+    }
 
-    return { insertFormData };
+    const response = await axios.put(url, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    return response.data;
+};
+
+
+
+    return { insertFormData, updateFormData };
 }

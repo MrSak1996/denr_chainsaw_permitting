@@ -12,12 +12,10 @@ import { usePage  } from '@inertiajs/vue3';
 
 
 const props = defineProps<{
-    form: any,
+    form: Object,
     city_mun: any,
-    app_data: Object,
     insertFormData: Function,
     getProvinceCode: Function,
-    getApplicationNumber: Function,
     prov_name: Array
 }>()
 
@@ -50,7 +48,7 @@ const getApplicationIdFromUrl = () => {
 const application_id = getApplicationIdFromUrl()
 
 // Main source of data (form or app_data)
-const formData = computed(() => application_id ? props.app_data : props.form)
+const formData = computed(() => props.form)
 ///how can i add application data in this if else
 
 // Dropdown options
@@ -202,7 +200,7 @@ watch(() => formData.value.i_city_mun, (val) => {
                     <label for="application_no">Application No.</label>
                 </FloatLabel>
                 <FloatLabel>
-                    <InputText id="permit_no" v-model="applicationNo" class="w-full font-bold" />
+                    <InputText id="permit_no" v-model="formData.permit_no" class="w-full font-bold" />
                     <label for="permit_no">Permit No.</label>
                 </FloatLabel>
 
@@ -329,7 +327,7 @@ watch(() => formData.value.i_city_mun, (val) => {
                 <label for="address" class="mb-1 block text-sm font-medium text-gray-700">
                     Complete Address
                 </label>
-                <Textarea id="address" rows="6" v-model="formData.i_complete_address"
+                <Textarea id="address" rows="6" v-model="formData.applicant_complete_address"
                     placeholder="Complete Address (Street, Purok, etc.)"
                     class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm" />
             </div>

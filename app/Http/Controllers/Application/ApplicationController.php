@@ -26,7 +26,7 @@ class ApplicationController extends Controller
     {
         // Validate the incoming request; this will automatically return 422 on failure
         $validated = $request->validate([
-            'geo_code' => 'required|string',
+            // 'geo_code' => 'required|string',
             'application_type' => 'required|string',
             'type_of_transaction' => 'required|string',
             'application_no' => 'required',
@@ -55,7 +55,7 @@ class ApplicationController extends Controller
         // Create the application using the validated data
         $application = ChainsawIndividualApplication::create([
             'application_status' => null,
-            'geo_code' => $validated['geo_code'],
+            // 'geo_code' => $validated['geo_code'],
             'application_type' => $validated['application_type'],
             'transaction_type' => $validated['type_of_transaction'],
             'application_no' => $validated['application_no'],
@@ -445,25 +445,56 @@ class ApplicationController extends Controller
     {
         $applicationDetails = DB::table('tbl_application_checklist as ac')
             ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
+            ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+            ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
+            ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
             ->select(
                 'ac.id',
-                'ac.company_c_province as prov_code',
-                'ac.company_c_city_mun as city_mun',
-                'ac.company_c_barangay as brgy',
-                'ac.operation_province_c',
-                'ac.operation_city_mun_c',
-                'ac.operation_brgy_c',
-                'ac.application_type',
+                'ac.applicant_lastname as last_name',
+                'ac.applicant_firstname as first_name',
+                'ac.applicant_middlename as middle_name',
+                'ac.sex',
+                'ac.government_id as gov_id_type',
+                'ac.gov_id_number as gov_id_number',
+                'ac.applicant_contact_details as mobile_no',
+                'ac.applicant_telephone_no as telephone_no',
+                'ac.applicant_email_address as email_address',
+                'ac.applicant_province_c as i_province',
+                'ac.applicant_city_mun_c as i_city_mun',
+                'ac.applicant_brgy_c as i_barangay',
+                'ac.applicant_complete_address as i_complete_address',
+                'ac.classification',
+                's.status_title',
+                'ac.return_reason',
                 'ac.application_no',
-                'ac.transaction_type',
+                'ac.permit_no',
+                'ac.application_status',
+                'ac.application_type',
+                'ac.authorized_representative',
+                'ac.date_applied',
                 'ac.company_name',
                 'ac.company_address',
-                'ac.authorized_representative',
+                'ac.company_c_province',
+                'ac.company_c_province as prov_code',
+                'ac.company_c_city_mun',
+                'ac.company_c_barangay',
+                'ac.operation_complete_address',
+                'ac.transaction_type as type_of_transaction',
+                'g.prov_name',
+                'ci.supplier_name',
+                'ci.supplier_address',
+                'ci.permit_chainsaw_no',
                 'ci.brand',
                 'ci.model',
                 'ci.quantity',
                 'ci.purpose',
-                'ac.created_at'
+                'ci.other_details',
+                'ap.official_receipt',
+                'ap.permit_fee',
+                'ap.remarks',
+                'ap.date_of_payment',
+                'ci.permit_validity',
+                'ac.created_at',
             )
             ->where('ac.id', $id)
             ->first();
@@ -481,15 +512,28 @@ class ApplicationController extends Controller
         return Inertia::render('applications/form_edit/index', [
             'application' => [
                 'id' => $applicationDetails->id,
+                'permit_no' => $applicationDetails->permit_no,
+                'last_name' => $applicationDetails->last_name,
+                'first_name' => $applicationDetails->first_name,
+                'middle_name' => $applicationDetails->middle_name,
+                'sex' => $applicationDetails->sex,
+                'gov_id_type' => $applicationDetails->gov_id_type,
+                'gov_id_number' => $applicationDetails->gov_id_number,
+                'mobile_no' => $applicationDetails->mobile_no,
+                'telephone_no' => $applicationDetails->telephone_no,
+                'email_address' => $applicationDetails->email_address,
+                'date_applied' => $applicationDetails->date_applied,
                 'prov_code' => $applicationDetails->prov_code,
-                'city_mun' => $applicationDetails->city_mun,
-                'brgy' => $applicationDetails->brgy,
-                'operation_province_c' => $applicationDetails->operation_province_c,
-                'operation_city_mun_c' => $applicationDetails->operation_city_mun_c,
-                'operation_brgy_c' => $applicationDetails->operation_brgy_c,
+                'company_c_city_mun' => $applicationDetails->company_c_city_mun,
+                'company_c_barangay' => $applicationDetails->company_c_barangay,
                 'application_type' => $applicationDetails->application_type,
                 'application_no' => $applicationDetails->application_no,
-                'transaction_type' => $applicationDetails->transaction_type,
+                'i_province' => $applicationDetails->i_province,
+                'i_city_mun' => $applicationDetails->i_city_mun,
+                'i_barangay' => $applicationDetails->i_barangay,
+                'i_complete_address' => $applicationDetails->i_complete_address,
+                'type_of_transaction' => $applicationDetails->type_of_transaction,
+                'classification' => $applicationDetails->classification,
                 'company_name' => $applicationDetails->company_name,
                 'company_address' => $applicationDetails->company_address,
                 'authorized_representative' => $applicationDetails->authorized_representative,
@@ -498,9 +542,120 @@ class ApplicationController extends Controller
                 'model' => $applicationDetails->model,
                 'quantity' => $applicationDetails->quantity,
                 'purpose' => $applicationDetails->purpose,
+                'supplier_name' => $applicationDetails->supplier_name,
+                'supplier_address' => $applicationDetails->supplier_address,
+                'status_title' => $applicationDetails->status_title,
+                'official_receipt' => $applicationDetails->official_receipt,
+                'permit_fee' => $applicationDetails->permit_fee,
+                'remarks' => $applicationDetails->remarks,
+                'permit_validity' => $applicationDetails->permit_validity,
+                'other_details' => $applicationDetails->other_details
             ],
         ]);
     }
+public function updateIndividualApplicant(Request $request, $id)
+{
+    try {
+        // Begin transaction
+        DB::beginTransaction();
+
+        // Update the application row
+        $updateResult = DB::table('tbl_application_checklist')
+            ->where('id', $id)
+            ->update([
+                'application_status' => 1,
+                'application_type' => $request->input('application_type', 'Individual'),
+                'applicant_lastname' => $request->input('last_name'),
+                'applicant_firstname' => $request->input('first_name'),
+                'applicant_middlename' => $request->input('middle_name'),
+                'transaction_type' => $request->input('type_of_transaction'),
+                'date_applied' => $request->input('date_applied'),
+                'gov_id_number' => $request->input('gov_id_number'),
+                'encoded_by' => $request->input('encoded_by'),
+                'updated_at' => now(),
+            ]);
+
+        DB::commit();
+
+        return response()->json([
+            'status' => $updateResult ? 'success' : 'error',
+            'message' => $updateResult ? 'Application updated successfully' : 'No changes were made',
+        ]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
+    // public function updateIndividualApplicant(Request $request, $id)
+    // {
+
+
+    //     try {
+    //         DB::enableQueryLog();
+
+    //         DB::table('tbl_application_checklist')
+    //             ->where('id', $id)
+    //             ->update([
+    //                 'application_status' => 1,
+    //                 'application_type' => 'Individual',
+    //                 'applicant_lastname' => $request->input('last_name'),
+    //                 'applicant_firstname' => $request->input('first_name'),
+    //                 'applicant_middlename' => $request->input('middle_name') ?? null,
+
+    //                 'transaction_type' => $request->input('type_of_transaction'),
+    //                 'date_applied' => $request->input('date_applied'),
+    //                 'gov_id_number' => $request->input('gov_id_number'),
+
+    //                 'updated_at' => now(),
+
+
+    //                 // $application->update([
+
+    //                 // Add all other required fields here...
+    //                 // 'encoded_by' => $request->input('encoded_by') ?? null,
+    //                 // 'classification' => $request->input('classification') ?? null,
+
+    //                 // 'sex' => $request->input('sex'),
+    //                 // 'government_id' => $request->input('gov_id_type') ?? null,
+    //                 // 'applicant_contact_details' => $request->input('mobile_no') ?? null,
+    //                 // 'applicant_telephone_no' => $request->input('telephone_no') ?? null,
+    //                 // 'applicant_email_address' => $request->input('email_address') ?? null,
+
+    //                 // 'applicant_province_c' => $request->input('i_province'),
+    //                 // 'applicant_city_mun_c' => $request->input('i_city_mun'),
+    //                 // 'applicant_brgy_c' => $request->input('i_barangay'),
+    //                 // 'applicant_complete_address' => $request->input('i_complete_address'),
+
+    //                 // 'operation_complete_address' => $request->input('p_place_of_operation_address') ?? null,
+    //                 // 'operation_province_c' => $request->input('p_province') ?? null,
+    //                 // 'operation_city_mun_c' => $request->input('p_city_mun') ?? null,
+    //                 // 'operation_brgy_c' => $request->input('p_barangay') ?? null,
+    //             ]);
+    //         dd(DB::getQueryLog());
+
+
+    //         return response()->json([
+    //             'message' => 'Application updated successfully',
+
+    //         ], 200);
+
+
+
+
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'message' => 'Update failed',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+
 
 
     public function updateApplicantFiles(Request $request, GoogleDriveService $driveService)

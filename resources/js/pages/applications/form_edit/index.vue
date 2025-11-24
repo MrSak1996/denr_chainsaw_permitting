@@ -5,6 +5,8 @@ import { Head } from '@inertiajs/vue3';
 import { Folder, Info } from 'lucide-vue-next';
 import { ref, watch, onMounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
+import individial_form_edit from './individual_edit.vue';
+import company_form_edit from './company_edit.vue';
 
 const page = usePage();
 
@@ -184,11 +186,10 @@ onMounted(() => {
 
                 <!-- SHOW FORM AFTER SELECTION -->
                 <div v-if="application.application_type == 'Individual'">
-                    a
+                    <individial_form_edit/>
                 </div>
                 <div v-else>
-                  b 
-
+                    <company_form_edit/>
                 </div>
 
             </div>

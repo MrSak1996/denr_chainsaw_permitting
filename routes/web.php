@@ -52,7 +52,10 @@ Route::get('/application/index/{id}', function ($id) {
 Route::get('/applications/{id}/edit', [ApplicationController::class, 'edit'])
     ->name('applications.edit');
 
-
+Route::put(
+    '/applications/{id}/update-applicant-data',
+    [ApplicationController::class, 'updateIndividualApplicant']
+)->name('applications.update.individual.data');
 
 Route::post('/applications/updateStatus', [ApplicationController::class, 'updateStatus'])
     ->name('applications.updateStatus');
@@ -61,7 +64,7 @@ Route::post('/applications/updateStatus', [ApplicationController::class, 'update
 
 Route::post('/applications/return', [ApplicationController::class, 'returnApplication'])
     ->middleware(['auth', 'verified'])
-    ->name('applications.return');  
+    ->name('applications.return');
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
