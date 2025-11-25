@@ -512,99 +512,82 @@ onMounted(() => {
                 :getProvinceCode="getProvinceCode" :city_mun="i_city_mun" :prov_name="prov_name" />
         </div>
 
-        <div v-if="currentStep === 2" class="space-y-6">
+        <div v-if="currentStep === 2" class="space-y-4">
             <Fieldset legend="Chainsaw Information">
                 <div class="relative">
-
                     <div class="ribbon">
                         {{ page.props.application.status_title || 'DRAFT' }}
                     </div>
-
-                    <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
-                        <ShieldAlert class="h-5 w-5 text-blue-600" />
-                        <span>
-                            Please complete all fields to proceed with your application for a Permit to Purchase
-                            Chainsaw.
-                        </span>
-                    </div>
-
                     <div v-for="(chainsaw, index) in chainsaws" :key="index" class="p-4 rounded-lg mb-6 relative">
-                        <Fieldset legend="Chainsaw # 1" :toggleable="true">
-                            <!-- Remove Button -->
-                            <button v-if="index > 0" @click="chainsaws.splice(index, 1)"
-                                class="absolute top-2 right-2 text-red-600 hover:text-red-800">
-                                ✕
-                            </button>
+                        <!-- Remove Button -->
+                        <button v-if="index > 0" @click="chainsaws.splice(index, 1)"
+                            class="absolute top-2 right-2 text-red-600 hover:text-red-800">
+                            ✕
+                        </button>
 
-                            <!-- COPY ALL FROM FIRST -->
-                            <div v-if="index > 0" class="mb-4 flex items-center gap-2 text-sm text-gray-600">
-                                <input type="checkbox" v-model="chainsaw_form.copyAll" @change="copyAllFields(index)" />
-                                <label>Same details as first chainsaw</label>
+                        <!-- COPY ALL FROM FIRST -->
+                        <div v-if="index > 0" class="mb-4 flex items-center gap-2 text-sm text-gray-600">
+                            <input type="checkbox" v-model="chainsaw_form.copyAll" @change="copyAllFields(index)" />
+                            <label>Same details as first chainsaw</label>
+                        </div>
+
+                        <!-- FORM CONTENT -->
+                        <div class="mb-6 grid gap-6 md:grid-cols-3">
+                            <FloatLabel>
+                                <InputText v-model="chainsaw_form.application_no" class="w-full font-bold" disabled />
+                                <label>Application No.</label>
+                            </FloatLabel>
+                            <div>
+                                <FloatLabel>
+                                    <InputText v-model="chainsaw_form.permit_no" class="w-full font-bold" />
+                                    <label>Permit No.</label>
+                                </FloatLabel>
                             </div>
 
-                            <!-- FORM CONTENT -->
-                            <div class=" mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
+                            <div></div>
 
-                                <div>
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.application_no" class="w-full font-bold"
-                                            disabled />
-                                        <label>Application No.</label>
-                                    </FloatLabel>
-                                </div>
+                            <div>
+                                <FloatLabel>
+                                    <InputText v-model="chainsaw_form.quantity" type="number" class="w-full" />
+                                    <label>Quantity</label>
+                                </FloatLabel>
+                            </div>
 
-                                <div>
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.permit_no" class="w-full font-bold" />
-                                        <label>Permit No.</label>
-                                    </FloatLabel>
-                                </div>
+                            <div>
+                                <FloatLabel>
+                                    <InputText v-model="chainsaw_form.brand" class="w-full" />
+                                    <label>Brand</label>
+                                </FloatLabel>
+                            </div>
 
-                                <div></div>
+                            <div>
+                                <FloatLabel>
+                                    <InputText v-model="chainsaw_form.model" class="w-full" />
+                                    <label>Model</label>
+                                </FloatLabel>
+                            </div>
 
-                                <div>
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.quantity" type="number" class="w-full" />
-                                        <label>Quantity</label>
-                                    </FloatLabel>
-                                </div>
+                            <div class="md:col-span-3">
+                                <FloatLabel>
+                                    <InputText v-model="chainsaw_form.supplier_name" class="w-full" />
+                                    <label>Supplier Name</label>
+                                </FloatLabel>
+                            </div>
 
-                                <div>
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.brand" class="w-full" />
-                                        <label>Brand</label>
-                                    </FloatLabel>
-                                </div>
+                            <div class="md:col-span-3">
+                                <Textarea v-model="chainsaw_form.supplier_address" rows="6"
+                                    placeholder="Complete Address"
+                                    class="w-full rounded-md border border-gray-300 p-2 text-sm" />
+                            </div>
 
-                                <div>
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.model" class="w-full" />
-                                        <label>Model</label>
-                                    </FloatLabel>
-                                </div>
+                            <div class="space-y-4 md:col-span-3">
+                                <FloatLabel>
+                                    <Select v-model="chainsaw_form.purpose" :options="purposeOptions" class="w-full" />
+                                    <label>Purpose of Purchase</label>
+                                </FloatLabel>
 
-                                <div class="md:col-span-3">
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.supplier_name" class="w-full" />
-                                        <label>Supplier Name</label>
-                                    </FloatLabel>
-                                </div>
-
-                                <div class="md:col-span-3">
-                                    <Textarea v-model="chainsaw_form.supplier_address" rows="6"
-                                        placeholder="Complete Address"
-                                        class="w-full rounded-md border border-gray-300 p-2 text-sm" />
-                                </div>
-
-                                <div class="space-y-4 md:col-span-3">
-                                    <FloatLabel>
-                                        <Select v-model="chainsaw_form.purpose" :options="purposeOptions"
-                                            class="w-full" />
-                                        <label>Purpose of Purchase</label>
-                                    </FloatLabel>
-
-                                    <!-- Conditional Uploads -->
-                                    <!-- <div v-if="
+                                <!-- Conditional Uploads -->
+                                <!-- <div v-if="
                                         page.props.application.purpose === 'For selling / re-selling' ||
                                         page.props.application.purpose === 'Forestry/landscaping service provider'
                                     ">
@@ -630,39 +613,39 @@ onMounted(() => {
                                             class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
                                             @change="(e) => (chainsaws[index].otherDocs = e.target.files[0])" />
                                     </div> -->
-                                </div>
+                            </div>
 
-                                <div class="md:col-span-3">
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.other_details" class="w-full" />
-                                        <label>Other Details</label>
-                                    </FloatLabel>
-                                </div>
-                                <div class="grid gap-6 md:col-span-3 md:grid-cols-2">
-                                    <!-- Permit Number -->
-                                    <!-- <div>
+                            <div class="md:col-span-3">
+                                <FloatLabel>
+                                    <InputText v-model="chainsaw_form.other_details" class="w-full" />
+                                    <label>Other Details</label>
+                                </FloatLabel>
+                            </div>
+                            <div class="grid gap-6 md:col-span-3 md:grid-cols-2">
+                                <!-- Permit Number -->
+                                <!-- <div>
                                     <FloatLabel>
                                         <InputText v-model="chainsaw.permit_chainsaw_no" class="w-full" />
                                         <label>Permit to Sell / Re-Sell Chainsaw No.</label>
                                     </FloatLabel>
                                 </div> -->
 
-                                    <!-- Permit Validity -->
-                                    <div>
-                                        <FloatLabel>
-                                            <InputText v-model="chainsaw_form.permit_chainsaw_no" class="w-full" />
-                                            <label>Permit to Sell No.</label>
-                                        </FloatLabel>
-                                    </div>
-                                    <div>
-                                        <FloatLabel>
-                                            <DatePicker type="date" id="permit_validity"
-                                                v-model="chainsaw_form.permit_validity" class="w-full" />
-                                            <label>Permit Validity</label>
-                                        </FloatLabel>
-                                    </div>
+                                <!-- Permit Validity -->
+                                <div>
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.permit_chainsaw_no" class="w-full" />
+                                        <label>Permit to Sell No.</label>
+                                    </FloatLabel>
                                 </div>
-                                <!-- 
+                                <div>
+                                    <FloatLabel>
+                                        <DatePicker type="date" id="permit_validity"
+                                            v-model="chainsaw_form.permit_validity" class="w-full" />
+                                        <label>Permit Validity</label>
+                                    </FloatLabel>
+                                </div>
+                            </div>
+                            <!-- 
                                 <div class="md:col-span-3">
                                     <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
 
@@ -671,11 +654,8 @@ onMounted(() => {
                                         @change="(e) => (chainsaws[index].permit = e.target.files[0])" />
                                 </div> -->
 
-                            </div>
-                        </Fieldset>
+                        </div>
                     </div>
-
-                    <!-- ADD BUTTON -->
                     <div class="flex justify-end">
                         <button type="button" @click="addChainsaw"
                             class="mt-4 inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
@@ -684,7 +664,6 @@ onMounted(() => {
                     </div>
                 </div>
             </Fieldset>
-
         </div>
 
         <div v-if="currentStep === 3" class="space-y-6">
@@ -693,11 +672,7 @@ onMounted(() => {
                     <div class="ribbon">
                         {{ page.props.application.status_title || 'DRAFT' }}
                     </div>
-                    <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
-                        <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
-                        <span> Please complete all fields to proceed with your application for a Permit to Purchase
-                            Chainsaw. </span>
-                    </div>
+                    
 
                     <div class="mt-2 grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div>
@@ -724,16 +699,16 @@ onMounted(() => {
                                 <label>Permit Fee</label>
                             </FloatLabel>
                         </div>
-                        <div class="md:col-span-3">
+                        <!-- <div class="md:col-span-3">
                             <label class="text-sm font-medium text-gray-700">Upload Scanned copy of Official
                                 Receipt</label>
                             <input type="file" accept=".jpg,.jpeg,.pdf"
                                 @change="(e) => handleORFileUpload(e, 'or_copy')"
                                 class="w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />
-                        </div>
+                        </div> -->
                         <div>
                             <FloatLabel>
-                                <Textarea rows="6" class="w-[70rem]" v-model="payment_form.remarks" />
+                                <Textarea rows="6" class="w-[73rem]" v-model="payment_form.remarks" />
                                 <label>Remarks (Memorandum/Electronic Message and Date of Compliance)</label>
                             </FloatLabel>
                         </div>
@@ -754,7 +729,8 @@ onMounted(() => {
                     <div class="grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
                             <span class="w-48 font-bold">Application No:</span>
-                            <Tag :value="individual_form.application_no" severity="success" class="text-center font-extrabold" />
+                            <Tag :value="individual_form.application_no" severity="success"
+                                class="text-center font-extrabold" />
                         </div>
 
                         <div class="flex">
@@ -810,7 +786,7 @@ onMounted(() => {
                     </div>
                 </div>
             </Fieldset>
-             <Fieldset legend="Chainsaw Information" :toggleable="true">
+            <Fieldset legend="Chainsaw Information" :toggleable="true">
                 <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit No:</span>
@@ -862,8 +838,7 @@ onMounted(() => {
                     </div>
                 </div>
             </Fieldset>
-                        <Fieldset legend="Uploaded Files" :toggleable="true">
-
+            <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="overflow-x-auto mt-4">
                     <table class="min-w-full border border-gray-300 rounded-lg bg-white">
                         <thead class="bg-gray-100">
@@ -914,11 +889,6 @@ onMounted(() => {
                 </Dialog>
 
             </Fieldset>
-
-
-
-           
-
         </div>
 
         <div class="flex justify-between pt-6">
