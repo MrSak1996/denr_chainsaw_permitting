@@ -585,7 +585,7 @@ const handleFileUpdate = async (event) => {
     <div class="flex flex-col gap-4 rounded-xl p-4">
         <Toast />
         <div
-            class="box border-sidebar-border/70 dark:border-sidebar-border col-span-4 flex h-[590px] flex-col overflow-hidden rounded-xl border p-4">
+            class="">
             <!-- Tabs -->
             <div class="mb-4 flex border-b border-gray-200">
                 <!-- For Review / Evaluation Tab -->
@@ -682,18 +682,13 @@ const handleFileUpdate = async (event) => {
                                 <template #body="{ data }">
                                     <div class="relative flex flex-col items-center space-y-2">
                                         <!-- Ribbon if status is Approved -->
-                                        <div v-if="data.status_title === 'Approved'" class="approved_ribbon">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
+                                        <div v-if="data.status_title === 'Approved'">
+                                             <Tag><i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
                                         </div>
 
 
-                                        <div v-else class="approved_ribbon" :style="{
-                                            backgroundColor:
-                                                data.status_title === 'Return for Compliance'
-                                                    ? '#B71C1C'
-                                                    : '#0f766e',
-                                        }">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
+                                        <div v-else >
+                                           <Tag> <i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
                                         </div>
 
                                         <span class="ml-1 text-gray-800 font-bold">

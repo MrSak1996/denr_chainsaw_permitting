@@ -14,7 +14,6 @@ import chainsaw_individualInfoField from '../forms/chainsaw_individualInfoField.
 import FileCard from '../forms/file_card.vue';
 import ConfirmModal from '../modal/confirmation_modal.vue';
 
-
 // Composables
 import { useAppForm } from '@/composables/useAppForm';
 import { useFormHandler } from '@/composables/useFormHandler';
@@ -26,23 +25,28 @@ const props = defineProps({
     mode: String,
 });
 const toast = useToast();
-const { individual_form, chainsaw_form, payment_form } = useAppForm();
+const { createChainsaw, individual_form, chainsaw_form, payment_form } = useAppForm();
 const page = usePage();
 
-// Extract your application data
-Object.assign(individual_form, page.props.application);
-
+// Merge incoming application props into individual_form (if you want to prefill)
+Object.assign(individual_form, page.props.application || {});
+Object.assign(chainsaw_form, page.props.application || {});
+Object.assign(payment_form, page.props.application || {});
 
 const { insertFormData, updateFormData } = useFormHandler();
 const { getProvinceCode, getApplicationNumber, prov_name } = useApi();
 const isLoading = ref(false);
-const applicationData = ref([]);
-const files = ref([]);
-const i_city_mun = ref(0);
+const applicationData = ref<any>({});
+const files = ref<any[]>([]);
+const i_city_mun = ref<number | string>(0);
 const errorMessage = ref('');
 const currentStep = ref(1);
-const chainsaws = reactive<ChainsawForm[]>([{ ...JSON.parse(JSON.stringify(chainsaw_form)) }]);
-const userId = page.props.auth?.user?.id;
+
+// IMPORTANT: initialize chainsaws correctly using createChainsaw()
+// Use ref (so handlers calling chainsaws.value.push(...) work)
+const chainsaws = ref<ReturnType<typeof createChainsaw>[]>([createChainsaw()]);
+
+const userId = page.props.auth?.user?.id ?? null;
 const selectedFile = ref(null);
 const showModal = ref(false);
 
@@ -50,7 +54,7 @@ const showModal = ref(false);
 // STEPPER
 // ─────────────────────────────────────────────────────────────
 const steps = ref([
-    { label: 'Applicant Details', id: 1 },
+    { label: 'Applicant Form', id: 1 },
     { label: 'Permit to Sell', id: 2 },
     { label: 'Payment of Application Fee', id: 3 },
     { label: 'Submit and Review', id: 4 },
@@ -58,7 +62,7 @@ const steps = ref([
 
 const formValidationRules = {
     1: {
-        form: 'individual_form', // ✅ new step for individual form
+        form: 'individual_form',
         fields: [
             'date_applied',
             'application_type',
@@ -66,7 +70,7 @@ const formValidationRules = {
             'geo_code',
             'last_name',
             'first_name',
-            'sex'
+            'sex',
         ],
         labels: {
             date_applied: 'Date Applied',
@@ -75,8 +79,8 @@ const formValidationRules = {
             geo_code: 'Geo Code',
             last_name: 'Last Name',
             first_name: 'First Name',
-            sex: 'Sex'
-        }
+            sex: 'Sex',
+        },
     },
 
     2: {
@@ -89,7 +93,7 @@ const formValidationRules = {
             'quantity',
             'supplier_name',
             'supplier_address',
-            'purpose'
+            'purpose',
         ],
         labels: {
             permit_validity: 'Permit Validity',
@@ -99,58 +103,53 @@ const formValidationRules = {
             quantity: 'Quantity',
             supplier_name: 'Supplier Name',
             supplier_address: 'Supplier Address',
-            purpose: 'Purpose'
-        }
+            purpose: 'Purpose',
+        },
     },
     3: {
         form: 'payment_form',
-        fields: [
-            'official_receipt',
-            'permit_fee',
-            'date_of_payment'
-        ],
+        fields: ['official_receipt', 'permit_fee', 'date_of_payment'],
         labels: {
             official_receipt: 'Official Receipt',
             permit_fee: 'Permit Fee',
-            date_of_payment: 'Date of Payment'
-        }
-    }
+            date_of_payment: 'Date of Payment',
+        },
+    },
 };
-
 
 // -------------------------
 // Individual Form Validation
 // -------------------------
 const validateForm = () => {
-    const stepRules = formValidationRules[currentStep.value]
+    const stepRules = formValidationRules[currentStep.value];
 
-    if (!stepRules || !stepRules.fields || stepRules.fields.length === 0) return true
+    if (!stepRules || !stepRules.fields || stepRules.fields.length === 0) return true;
 
-    let formToCheck: any[] = []
+    let formToCheck: any[] = [];
 
     // Determine which form to validate
     if (stepRules.form === 'individual_form') {
-        formToCheck = [individual_form]
+        formToCheck = [individual_form];
     } else if (stepRules.form === 'chainsaw_form') {
-        formToCheck = chainsaws
+        formToCheck = chainsaws.value;
     } else if (stepRules.form === 'payment_form') {
-        formToCheck = [payment_form]
+        formToCheck = [payment_form];
     }
 
-    const missingFields: string[] = []
+    const missingFields: string[] = [];
 
     formToCheck.forEach((form, index) => {
         stepRules.fields.forEach((field) => {
             if (form[field] === '' || form[field] === null || form[field] === undefined) {
-                const label = stepRules.labels[field] || field
+                const label = stepRules.labels[field] || field;
                 if (formToCheck.length > 1) {
-                    missingFields.push(`${label} (Chainsaw ${index + 1})`)
+                    missingFields.push(`${label} (Chainsaw ${index + 1})`);
                 } else {
-                    missingFields.push(label)
+                    missingFields.push(label);
                 }
             }
-        })
-    })
+        });
+    });
 
     if (missingFields.length > 0) {
         toast.add({
@@ -158,69 +157,61 @@ const validateForm = () => {
             summary: 'Incomplete Fields',
             detail: `Please fill out the following fields: ${missingFields.join(', ')}`,
             life: 5000,
-        })
-        return false
+        });
+        return false;
     }
 
-    return true
-}
+    return true;
+};
 
-const openFileModal = (file) => {
+const openFileModal = (file: any) => {
     selectedFile.value = file;
     showModal.value = true;
 };
 
-const handleORFileUpload = (event, field) => {
-    payment_form[field] = event.target.files[0];
+const handleORFileUpload = (event: Event, field: string) => {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files[0]) {
+        (payment_form as any)[field] = target.files[0];
+    }
 };
+
 // -------------------------
 // Next Step Logic
 // -------------------------
 const nextStep = async () => {
-    // If already at the last step, stop
     if (currentStep.value >= steps.value.length) return;
 
     isLoading.value = true;
 
-    // Step-specific save handlers
-    const handlers = {
+    const handlers: Record<number, Function> = {
         1: saveIndividualApplication,
-        2: submitChainsawInfo,
-        3: submitORPayment
-        // Step 4 has no draft-saving handler
+        2: updateChainsawInfo,
+        3: submitORPayment,
     };
 
     const handler = handlers[currentStep.value];
 
-    // If the current step has a save handler → run it
     if (handler) {
         const isSaved = await handler();
 
-        // Stop here if save failed
         if (!isSaved) {
             isLoading.value = false;
             return;
         }
 
-        // Refresh application data after saving
         await getApplicationDetails();
 
-        // If application data did not load properly, stop
         if (!applicationData.value || !applicationData.value.application_no) {
-            console.error("Application details missing after save. Step will not advance.");
+            console.error('Application details missing after save. Step will not advance.');
             isLoading.value = false;
             return;
         }
     }
 
-    // Move to the next step
     currentStep.value++;
-
     isLoading.value = false;
 };
-
-
-
 
 const prevStep = () => {
     if (currentStep.value > 1) currentStep.value--;
@@ -229,167 +220,116 @@ const prevStep = () => {
 // ─────────────────────────────────────────────────────────────
 // FORM SUBMISSION
 // ─────────────────────────────────────────────────────────────
-const saveIndividualApplication = async() => {
-    console.log(individual_form);
+
+const saveIndividualApplication = async () => {
     isLoading.value = true;
+    const applicationId = page.props.application.id;
+
     try {
-        // PUT request with JSON
-        const response = await axios.put(
-            `/applications/${props.page.application.id}/update-applicant-data`,
-            {
-                application_type: 'Individual',
-                last_name: individual_form.last_name,
-                first_name: individual_form.first_name,
-                middle_name: individual_form.middle_name,
-                type_of_transaction: individual_form.type_of_transaction,
-                date_applied: individual_form.date_applied,
-                gov_id_number: individual_form.gov_id_number,
-                encoded_by: userId,
-            }
-        );
+        const response = await axios.put(`/applications/${applicationId}/update-applicant-data`, {
+            application_type: 'Individual',
+            last_name: individual_form.last_name,
+            first_name: individual_form.first_name,
+            middle_name: individual_form.middle_name,
+            type_of_transaction: individual_form.type_of_transaction,
+            date_applied: individual_form.date_applied,
+            gov_id_number: individual_form.gov_id_number,
+            government_id: individual_form.gov_id_type,
+            sex: individual_form.sex,
+            applicant_contact_details: individual_form.mobile_no,
+            applicant_telephone_no: individual_form.telephone_no,
+            applicant_email_address: individual_form.email_address,
+            applicant_province_c: individual_form.i_province,
+            applicant_city_mun_c: individual_form.i_city_mun,
+            applicant_brgy_c: individual_form.i_barangay,
+            applicant_complete_address: individual_form.i_complete_address,
+            encoded_by: userId,
+        });
 
         if (response.data.status === 'success') {
-            toast.add({
-                severity: 'success',
-                summary: 'Updated',
-                detail: 'Individual application updated successfully.',
-                life: 3000,
-            });
+            toast.add({ severity: 'success', summary: 'Updated', detail: 'Individual application updated successfully.', life: 3000 });
             return true;
         } else {
-            toast.add({
-                severity: 'warn',
-                summary: 'No Changes',
-                detail: response.data.message,
-                life: 3000,
-            });
+            toast.add({ severity: 'warn', summary: 'No Changes', detail: response.data.message, life: 3000 });
             return false;
         }
-    } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'Failed',
-            detail: error.message || 'Error saving application.',
-            life: 3000,
-        });
+    } catch (error: any) {
+        toast.add({ severity: 'error', summary: 'Failed', detail: error.message || 'Error saving the application.', life: 3000 });
         console.error(error);
         return false;
     } finally {
         isLoading.value = false;
     }
-}
+};
 
-
-
-
-const submitChainsawInfo = async () => {
+const updateChainsawInfo = async (chainsawForm) => {
     isLoading.value = true;
-
-    // 🔥 Get type from URL
-    const routeParams = new URLSearchParams(window.location.search);
-    const applicantType = routeParams.get("type");
-    const applicationId = routeParams.get("application_id");
-
+    const applicationId = page.props.application.id;
     try {
-        for (const chainsaw of chainsaws) {
-            const formData = new FormData();
 
-            Object.entries(chainsaw).forEach(([key, value]) => {
-                if (value !== null && value !== undefined && !(value instanceof File)) {
-                    formData.append(key, value);
-                }
-            });
+        const response = await axios.put(
+            `/applications/${applicationId}/update-chainsaw-info`, {
+            application_id: applicationId,
+            permit_chainsaw_no: chainsaw_form.permit_chainsaw_no,
+            permit_validity: chainsaw_form.permit_validity,
+            brand: chainsaw_form.brand,
+            model: chainsaw_form.model,
+            quantity: chainsaw_form.quantity,
+            supplier_name: chainsaw_form.supplier_name,
+            supplier_address: chainsaw_form.supplier_address,
+            purpose: chainsaw_form.purpose,
+            other_details: chainsaw_form.other_details,
+        });
 
-            // Existing data
-            formData.append('application_no', applicationData.value.application_no);
-
-            // 🔥 Add applicant type
-            formData.append('applicant_type', applicantType);
-            formData.append('application_id', applicationId);
-
-            // Attach files
-            ['mayorDTI', 'affidavit', 'otherDocs', 'permit'].forEach((fileKey) => {
-                if (chainsaw[fileKey]) formData.append(fileKey, chainsaw[fileKey]);
-            });
-
-            // Send to API
-            await axios.post(
-                'http://10.201.13.78:8000/api/chainsaw/insertChainsawInfo',
-                formData,
-                {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                }
-            );
+        if (response.data.status === 'success') {
+            toast.add({ severity: 'success', summary: 'Updated', detail: 'Chainsaw Information updated successfully.', life: 3000 });
+            return true;
+        } else {
+            toast.add({ severity: 'warn', summary: 'No Changes', detail: response.data.message, life: 3000 });
+            return false;
         }
-
-        return true;
     } catch (error) {
         console.error(error);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.message || 'Failed to update chainsaw info',
+            life: 4000,
+        });
+        return null;
     }
 };
 
 
 const submitORPayment = async () => {
     isLoading.value = true;
-
-    const formData = new FormData();
-    const routeParams = new URLSearchParams(window.location.search);
-    const applicantType = routeParams.get("type");
-    const applicationId = routeParams.get("application_id");
-
-    formData.append('official_receipt', payment_form.official_receipt);
-    formData.append('permit_fee', payment_form.permit_fee);
-    formData.append('permit_no', applicationData.value.permit_no);
-    formData.append('or_copy', payment_form.or_copy);
-    formData.append('applicant_type', applicantType);
-    formData.append('application_id', applicationId);
+    const applicationId = page.props.application.id;
     try {
-
-        const response = await axios.post(
-            'http://10.201.13.78:8000/api/chainsaw/insert_payment',
-            formData,
-            { headers: { 'Content-Type': 'multipart/form-data' } }
-        );
-
-        toast.add({
-            severity: 'success',
-            summary: 'Saved',
-            detail: 'Payment Details submitted successfully',
-            life: 3000
+        const response = await axios.put(
+            `/applications/${applicationId}/update-payment-info`, {
+            official_receipt: payment_form.official_receipt,
+            permit_fee: payment_form.permit_fee,
+            or_copy: payment_form.or_ccopy,
+            application_id: applicationId,
+            application_no: payment_form.application_no,
         });
 
-        // FIXED: Accessing correct response field
-        const newUrl = route('applications.index', {
-            application_id: response.data.application_id,
-            type: 'individual'
-        });
+        if (response.data.status === 'success') {
+            toast.add({ severity: 'success', summary: 'Updated', detail: 'Payment Information updated successfully.', life: 3000 });
+            return true;
+        } else {
+            toast.add({ severity: 'warn', summary: 'No Changes', detail: response.data.message, life: 3000 });
+            return false;
+        }
 
-        window.history.pushState({}, '', newUrl);
-
-        return true;  // <-- THIS WILL NOW WORK
+        return true;
     } catch (error) {
         console.error('Failed to save payment details:', error);
-
-        toast.add({
-            severity: 'error',
-            summary: 'Failed',
-            detail: 'There was an error saving the application.',
-            life: 3000
-        });
-
+        toast.add({ severity: 'error', summary: 'Failed', detail: 'There was an error saving the application.', life: 3000 });
         return false;
     } finally {
         isLoading.value = false;
     }
-};
-
-
-const submitForm = () => {
-    form.post('/chainsaw-permit', {
-        onSuccess: () => {
-            alert('Application submitted successfully!');
-        },
-    });
 };
 
 const getApplicationIdFromUrl = () => {
@@ -409,27 +349,24 @@ const getApplicationDetails = async () => {
     }
 
     try {
-
         const response = await axios.get(`http://10.201.13.78:8000/api/getApplicationDetails/${applicationId}`);
-        applicationData.value = response.data.data || [];
-        i_city_mun.value = response.data.data.i_city_mun;
-    } catch (error) {
+        applicationData.value = response.data.data ?? {};
+        i_city_mun.value = response.data.data?.i_city_mun ?? i_city_mun.value;
+    } catch (error: any) {
         errorMessage.value = error.message || 'Error fetching application data.';
     } finally {
         isLoading.value = false;
-
     }
 };
 
-
 const getApplicantFile = async () => {
-    const applicationId = application.id;
+    const applicationId = page.props.application.id;
     if (!applicationId) return;
 
     try {
         const response = await axios.get(`http://10.201.13.78:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
-            files.value = response.data.data.map((file) => ({
+            files.value = response.data.data.map((file: any) => ({
                 name: file.file_name,
                 size: 'Unknown',
                 dateUploaded: new Date(file.created_at).toLocaleDateString(),
@@ -439,43 +376,25 @@ const getApplicantFile = async () => {
                 url: file.file_url,
             }));
         } else {
-            console.log("kim")
+            console.log('No files');
         }
     } catch (error) {
         console.error('Failed to fetch files:', error);
     }
 };
 
-const getEmbedUrl = (url) => {
+const getEmbedUrl = (url: string) => {
     const match = url.match(/[-\w]{25,}/);
     const fileId = match ? match[0] : null;
     return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : '';
 };
 
-
 // ─────────────────────────────────────────────────────────────
 // CHAINSaw Section
 // ─────────────────────────────────────────────────────────────
 
-
 const addChainsaw = () => {
-    chainsaws.value.push({
-        brand: '',
-        model: '',
-        quantity: 1,
-        supplierName: '',
-        supplierAddress: '',
-        type: '',
-        permitNumber: '',
-        permitValidity: null,
-        classification: '',
-        price: '',
-        dateEndorsed: null,
-        purpose: '',
-        otherDetails: '',
-        letterRequest: null,
-        copyAll: false,
-    });
+    chainsaws.value.push(createChainsaw());
 };
 
 const removeChainsaw = (index: number) => {
@@ -492,12 +411,10 @@ const copyAllFields = (index: number) => {
     }
 };
 
-const handleFileUpload = (event: Event, index: number) => {
+const handleFileUpload = (event: Event, index: number, field = 'letterRequest') => {
     const file = (event.target as HTMLInputElement).files?.[0] ?? null;
-    chainsaws.value[index].letterRequest = file;
+    (chainsaws.value[index] as any)[field] = file;
 };
-
-
 
 // ─────────────────────────────────────────────────────────────
 // PURPOSE Section
@@ -513,14 +430,12 @@ const purpose = ref({
 
 const handlePurposeFileUpload = (event: Event, field: string) => {
     const file = (event.target as HTMLInputElement).files?.[0] ?? null;
-    purpose.value.purposeFiles[field] = file;
+    (purpose.value.purposeFiles as any)[field] = file;
 };
 
-const isStepValid = (stepId) => {
-    return true;
-};
+const isStepValid = (stepId: number) => true;
 
-const handleStepClick = (targetStep) => {
+const handleStepClick = (targetStep: number) => {
     if (targetStep <= currentStep.value || isStepValid(currentStep.value)) {
         currentStep.value = targetStep;
     } else {
@@ -529,12 +444,7 @@ const handleStepClick = (targetStep) => {
 };
 
 const showError = () => {
-    toast.add({
-        severity: 'error',
-        summary: 'Validation Error',
-        detail: 'Please complete all required fields before proceeding.',
-        life: 3000,
-    });
+    toast.add({ severity: 'error', summary: 'Validation Error', detail: 'Please complete all required fields before proceeding.', life: 3000 });
 };
 
 const purposeOptions = [
@@ -548,41 +458,33 @@ const purposeOptions = [
     'Other Legal Purpose',
     'Other Supporting Documents',
 ];
-const getDocumentTitle = (fileName) => {
-    if (!fileName) return "";
 
+const getDocumentTitle = (fileName?: string) => {
+    if (!fileName) return '';
     const name = fileName.toLowerCase();
-
-    if (name.startsWith("permit_")) return "Permit to Purchase / Chainsaw Permit";
-    if (name.startsWith("mayors_")) return "Mayor’s Permit";
-    if (name.startsWith("notarized_")) return "Notarized Application Form";
-    if (name.startsWith("official_")) return "Official Receipt";
-    if (name.startsWith("request_")) return "Request Letter";
-    if (name.startsWith("secretary_")) return "Secretary’s Certificate";
-
-    return "Supporting Document";
+    if (name.startsWith('permit_')) return 'Permit to Purchase / Chainsaw Permit';
+    if (name.startsWith('mayors_')) return 'Mayor’s Permit';
+    if (name.startsWith('notarized_')) return 'Notarized Application Form';
+    if (name.startsWith('official_')) return 'Official Receipt';
+    if (name.startsWith('request_')) return 'Request Letter';
+    if (name.startsWith('secretary_')) return 'Secretary’s Certificate';
+    return 'Supporting Document';
 };
 
-const getFileType = (fileName) => {
-    if (!fileName) return "";
-    return fileName.split('.').pop().toLowerCase();
-}
-
-
-
+const getFileType = (fileName?: string) => {
+    if (!fileName) return '';
+    return fileName.split('.').pop()?.toLowerCase() ?? '';
+};
 
 onMounted(() => {
     if (props.mode === 'view') {
-        currentStep.value = 4; // Jump to last step
+        currentStep.value = 4;
     }
-
-
-    // getApplicationNumber(individual_form, chainsaw_form);
-    // getApplicationDetails();
     getProvinceCode();
     getApplicantFile();
 });
 </script>
+
 
 
 <template>
@@ -613,164 +515,183 @@ onMounted(() => {
         <div v-if="currentStep === 2" class="space-y-6">
             <Fieldset legend="Chainsaw Information">
                 <div class="relative">
+
                     <div class="ribbon">
-                        {{ application.status_title || 'DRAFT' }}
+                        {{ page.props.application.status_title || 'DRAFT' }}
                     </div>
 
                     <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                         <ShieldAlert class="h-5 w-5 text-blue-600" />
-                        <span> Please complete all fields to proceed with your application for a Permit to Purchase
-                            Chainsaw. </span>
+                        <span>
+                            Please complete all fields to proceed with your application for a Permit to Purchase
+                            Chainsaw.
+                        </span>
                     </div>
-                    <div v-for="(chainsaw, index) in chainsaws" :key="index">
-                        <!-- Remove Button -->
-                        <button v-if="index > 0" @click="removeChainsaw(index)"
-                            class="absolute top-2 right-2 text-red-600 hover:text-red-800" title="Remove">
-                            ✕
-                        </button>
 
-                        <!-- Copy All Checkbox -->
-                        <div v-if="index > 0" class="mb-4 flex items-center gap-2 text-sm text-gray-600">
-                            <input type="checkbox" v-model="chainsaw.copyAll" @change="copyAllFields(index)" />
-                            <label>Same details as first chainsaw</label>
-                        </div>
+                    <div v-for="(chainsaw, index) in chainsaws" :key="index" class="p-4 rounded-lg mb-6 relative">
+                        <Fieldset legend="Chainsaw # 1" :toggleable="true">
+                            <!-- Remove Button -->
+                            <button v-if="index > 0" @click="chainsaws.splice(index, 1)"
+                                class="absolute top-2 right-2 text-red-600 hover:text-red-800">
+                                ✕
+                            </button>
 
-                        <div class="mt-2 grid grid-cols-1 gap-6 md:grid-cols-3">
-                            <div>
-                                <FloatLabel>
-                                    <InputText v-model="application.application_no" class="w-full" disabled />
-                                    <label>Application No.</label>
-                                </FloatLabel>
-                            </div>
-                            <!-- <div v-if="applicationData.permit_no">
-                                <FloatLabel>
-                                    <InputText v-model="applicationData.permit_no" class="w-full" />
-                                    <label>Permit No.</label>
-                                </FloatLabel>
-                            </div> -->
-                            <div>
-
-                            </div>
-                            <div>
-
-                            </div>
-                            <div>
-                                <FloatLabel>
-                                    <InputText v-model="application.quantity" type="number" class="w-full" />
-                                    <label>Quantity</label>
-                                </FloatLabel>
-                            </div>
-                            <div>
-                                <FloatLabel>
-                                    <InputText v-model="application.brand" class="w-full" />
-                                    <label>Brand</label>
-                                </FloatLabel>
-                            </div>
-                            <FloatLabel>
-                                <InputText v-model="application.model" class="w-full" />
-                                <label>Model</label>
-                            </FloatLabel>
-
-                            <div class="md:col-span-3">
-                                <FloatLabel>
-                                    <InputText v-model="application.supplier_name" class="w-full" />
-                                    <label>Supplier Name</label>
-                                </FloatLabel>
-                            </div>
-                            <div>
-
-                            </div>
-                            <div class="md:col-span-3">
-
-                                <Textarea id="address" v-model="application.supplier_address" rows="6" cols="3"
-                                    placeholder="Complete Address (Street, Purok, etc.)"
-                                    class="w-[70.5rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500" />
+                            <!-- COPY ALL FROM FIRST -->
+                            <div v-if="index > 0" class="mb-4 flex items-center gap-2 text-sm text-gray-600">
+                                <input type="checkbox" v-model="chainsaw_form.copyAll" @change="copyAllFields(index)" />
+                                <label>Same details as first chainsaw</label>
                             </div>
 
+                            <!-- FORM CONTENT -->
+                            <div class=" mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
 
-                            <div class="space-y-4 md:col-span-3">
-                                <FloatLabel>
-                                    <Select v-model="application.purpose" :options="purposeOptions" class="w-full" />
-                                    <label>Purpose of Purchase</label>
-                                </FloatLabel>
-
-                                <!-- Conditional Uploads -->
-                                <div v-if="
-                                    application.purpose === 'For selling / re-selling' ||
-                                    application.purpose === 'Forestry/landscaping service provider'
-                                ">
-                                    <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI
-                                        Registration</label>
-                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                        class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                        @change="(e) => (chainsaws[index].mayorDTI = e.target.files[0])" />
+                                <div>
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.application_no" class="w-full font-bold"
+                                            disabled />
+                                        <label>Application No.</label>
+                                    </FloatLabel>
                                 </div>
 
-                                <div v-if="application.purpose === 'Other Legal Purpose'">
-                                    <label class="text-sm font-medium text-gray-700">Upload Notarized Affidavit</label>
-                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                        class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                        @change="(e) => (chainsaws[index].affidavit = e.target.files[0])" />
+                                <div>
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.permit_no" class="w-full font-bold" />
+                                        <label>Permit No.</label>
+                                    </FloatLabel>
                                 </div>
 
-                                <div v-if="application.purpose === 'Other Supporting Documents'">
-                                    <label class="text-sm font-medium text-gray-700">Upload Supporting Document</label>
-                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                        class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                        @change="(e) => (chainsaws[index].otherDocs = e.target.files[0])" />
-                                </div>
-                            </div>
+                                <div></div>
 
-                            <div class="md:col-span-3">
-                                <FloatLabel>
-                                    <InputText v-model="application.others_details" class="w-full" />
-                                    <label>Other Details</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="grid gap-6 md:col-span-3 md:grid-cols-2">
-                                <!-- Permit Number -->
-                                <!-- <div>
+                                <div>
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.quantity" type="number" class="w-full" />
+                                        <label>Quantity</label>
+                                    </FloatLabel>
+                                </div>
+
+                                <div>
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.brand" class="w-full" />
+                                        <label>Brand</label>
+                                    </FloatLabel>
+                                </div>
+
+                                <div>
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.model" class="w-full" />
+                                        <label>Model</label>
+                                    </FloatLabel>
+                                </div>
+
+                                <div class="md:col-span-3">
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.supplier_name" class="w-full" />
+                                        <label>Supplier Name</label>
+                                    </FloatLabel>
+                                </div>
+
+                                <div class="md:col-span-3">
+                                    <Textarea v-model="chainsaw_form.supplier_address" rows="6"
+                                        placeholder="Complete Address"
+                                        class="w-full rounded-md border border-gray-300 p-2 text-sm" />
+                                </div>
+
+                                <div class="space-y-4 md:col-span-3">
+                                    <FloatLabel>
+                                        <Select v-model="chainsaw_form.purpose" :options="purposeOptions"
+                                            class="w-full" />
+                                        <label>Purpose of Purchase</label>
+                                    </FloatLabel>
+
+                                    <!-- Conditional Uploads -->
+                                    <!-- <div v-if="
+                                        page.props.application.purpose === 'For selling / re-selling' ||
+                                        page.props.application.purpose === 'Forestry/landscaping service provider'
+                                    ">
+                                        <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI
+                                            Registration</label>
+                                        <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                            @change="(e) => (chainsaws[index].mayorDTI = e.target.files[0])" />
+                                    </div>
+
+                                    <div v-if="page.props.application.purpose === 'Other Legal Purpose'">
+                                        <label class="text-sm font-medium text-gray-700">Upload Notarized
+                                            Affidavit</label>
+                                        <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                            @change="(e) => (chainsaws[index].affidavit = e.target.files[0])" />
+                                    </div>
+
+                                    <div v-if="page.props.application.purpose === 'Other Supporting Documents'">
+                                        <label class="text-sm font-medium text-gray-700">Upload Supporting
+                                            Document</label>
+                                        <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                            @change="(e) => (chainsaws[index].otherDocs = e.target.files[0])" />
+                                    </div> -->
+                                </div>
+
+                                <div class="md:col-span-3">
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.other_details" class="w-full" />
+                                        <label>Other Details</label>
+                                    </FloatLabel>
+                                </div>
+                                <div class="grid gap-6 md:col-span-3 md:grid-cols-2">
+                                    <!-- Permit Number -->
+                                    <!-- <div>
                                     <FloatLabel>
                                         <InputText v-model="chainsaw.permit_chainsaw_no" class="w-full" />
                                         <label>Permit to Sell / Re-Sell Chainsaw No.</label>
                                     </FloatLabel>
                                 </div> -->
 
-                                <!-- Permit Validity -->
-                                <div>
-                                    <FloatLabel>
-                                        <DatePicker v-model="application.permit_validity" class="w-full" />
-                                        <label>Valid until:</label>
-                                    </FloatLabel>
+                                    <!-- Permit Validity -->
+                                    <div>
+                                        <FloatLabel>
+                                            <InputText v-model="chainsaw_form.permit_chainsaw_no" class="w-full" />
+                                            <label>Permit to Sell No.</label>
+                                        </FloatLabel>
+                                    </div>
+                                    <div>
+                                        <FloatLabel>
+                                            <DatePicker type="date" id="permit_validity"
+                                                v-model="chainsaw_form.permit_validity" class="w-full" />
+                                            <label>Permit Validity</label>
+                                        </FloatLabel>
+                                    </div>
                                 </div>
-                            </div>
+                                <!-- 
+                                <div class="md:col-span-3">
+                                    <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
 
-                            <div class="md:col-span-3">
-                                <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
+                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                        class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
+                                        @change="(e) => (chainsaws[index].permit = e.target.files[0])" />
+                                </div> -->
 
-                                <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                    class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                    @change="(e) => (chainsaws[index].permit = e.target.files[0])" />
                             </div>
-                        </div>
+                        </Fieldset>
                     </div>
 
-                    <!-- Add Button -->
+                    <!-- ADD BUTTON -->
                     <div class="flex justify-end">
                         <button type="button" @click="addChainsaw"
-                            class="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
+                            class="mt-4 inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
                             <span class="text-xl">＋</span> Add Another Chainsaw
                         </button>
                     </div>
                 </div>
             </Fieldset>
+
         </div>
 
         <div v-if="currentStep === 3" class="space-y-6">
             <Fieldset legend="Payment of Application Fee">
                 <div class="relative">
                     <div class="ribbon">
-                        {{ application.status_title || 'DRAFT' }}
+                        {{ page.props.application.status_title || 'DRAFT' }}
                     </div>
                     <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                         <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
@@ -781,25 +702,25 @@ onMounted(() => {
                     <div class="mt-2 grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div>
                             <FloatLabel>
-                                <InputText v-model="application.application_no" class="w-full" />
+                                <InputText v-model="payment_form.application_no" class="w-full font-bold" />
                                 <label>Application No.</label>
                             </FloatLabel>
                         </div>
-                        <div v-if="application.permit_no">
+                        <div v-if="payment_form.permit_no">
                             <FloatLabel>
-                                <InputText v-model="application.permit_no" class="w-full" />
+                                <InputText v-model="payment_form.permit_no" class="w-full font-bold" />
                                 <label>Permit No.</label>
                             </FloatLabel>
                         </div>
                         <div>
                             <FloatLabel>
-                                <InputText class="w-full" v-model="application.official_receipt" />
+                                <InputText class="w-full" v-model="payment_form.official_receipt" />
                                 <label>O.R No.</label>
                             </FloatLabel>
                         </div>
                         <div>
                             <FloatLabel>
-                                <InputNumber class="w-full" v-model="application.permit_fee" />
+                                <InputNumber class="w-full" v-model="payment_form.permit_fee" />
                                 <label>Permit Fee</label>
                             </FloatLabel>
                         </div>
@@ -812,7 +733,7 @@ onMounted(() => {
                         </div>
                         <div>
                             <FloatLabel>
-                                <Textarea rows="6" class="w-[70rem]" v-model="application.remarks" />
+                                <Textarea rows="6" class="w-[70rem]" v-model="payment_form.remarks" />
                                 <label>Remarks (Memorandum/Electronic Message and Date of Compliance)</label>
                             </FloatLabel>
                         </div>
@@ -827,42 +748,42 @@ onMounted(() => {
                 <!-- <h1 class="font-xl">Below is the checklist of requirements currently pending approval.</h1> -->
                 <div class="relative">
                     <div class="ribbon">
-                        {{ application.status_title ?? "DRAFT" }}
+                        {{ individual_form.status_title ?? "DRAFT" }}
                     </div>
 
                     <div class="grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
-                            <span class="w-48 font-semibold">Application No:</span>
-                            <Tag :value="application.application_no" severity="success" class="text-center" />
+                            <span class="w-48 font-bold">Application No:</span>
+                            <Tag :value="individual_form.application_no" severity="success" class="text-center font-extrabold" />
                         </div>
 
                         <div class="flex">
                             <span class="w-48 font-semibold">Date Applied:</span>
-                            <span>{{ application.date_applied }}</span>
+                            <span>{{ individual_form.date_applied }}</span>
                         </div>
 
                         <div class="flex">
                             <span class="w-48 font-semibold">Type of Transaction:</span>
-                            <span>{{ application.type_of_transaction }}</span>
+                            <span>{{ individual_form.type_of_transaction }}</span>
                         </div>
                         <div class="flex">
                             <span class="w-48 font-semibold">Classification:</span>
-                            <span>{{ application.classification }}</span>
+                            <span>{{ individual_form.classification }}</span>
                         </div>
                         <div class="flex">
                             <span class="w-48 font-semibold">Contact Details:</span>
-                            <span>{{ application.mobile_no }}</span>
+                            <span>{{ individual_form.mobile_no }}</span>
                         </div>
 
                         <div class="flex">
                             <span class="w-48 font-semibold">Applicant Name:</span>
-                            <span>{{ application.first_name }} {{ application.middle_name }} {{
-                                application.last_name }}</span>
+                            <span>{{ individual_form.first_name }} {{ individual_form.middle_name }} {{
+                                individual_form.last_name }}</span>
                         </div>
 
                         <div class="flex">
                             <span class="w-48 font-semibold">Email Address:</span>
-                            <span>{{ application.email_address }}</span>
+                            <span>{{ individual_form.email_address }}</span>
                         </div>
                         <div class="flex">
                             <span class="w-48 font-semibold">Region:</span>
@@ -882,39 +803,38 @@ onMounted(() => {
                     </div> -->
                         <div class="flex">
                             <span class="w-48 font-semibold">Complete Address:</span>
-                            <span>{{ application.applicant_complete_address }}</span>
+                            <span>{{ individual_form.i_complete_address }}</span>
                         </div>
 
 
                     </div>
                 </div>
             </Fieldset>
-
-            <Fieldset legend="Chainsaw Information" :toggleable="true">
+             <Fieldset legend="Chainsaw Information" :toggleable="true">
                 <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit No:</span>
-                        <Tag :value="application.permit_no" severity="success" class="text-center" /><br />
+                        <Tag :value="chainsaw_form.permit_no" severity="success" class="text-center" /><br />
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Validity:</span>
-                        <Tag :value="application.permit_validity" severity="danger" class="text-center" /><br />
+                        <Tag :value="chainsaw_form.permit_validity" severity="danger" class="text-center" /><br />
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Brand:</span>
-                        <span>{{ application.brand }}</span>
+                        <span>{{ chainsaw_form.brand }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Model:</span>
-                        <span>{{ application.model }}</span>
+                        <span>{{ chainsaw_form.model }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Quantity:</span>
-                        <span>{{ application.quantity }}</span>
+                        <span>{{ chainsaw_form.quantity }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Supplier Name:</span>
-                        <span>{{ application.supplier_name }}</span>
+                        <span>{{ chainsaw_form.supplier_name }}</span>
                     </div>
                     <!-- <div class="flex">
                         <span class="w-48 font-semibold">Supplier Address:</span>
@@ -922,28 +842,27 @@ onMounted(() => {
                     </div> -->
                     <div class="flex">
                         <span class="w-48 font-semibold">Purpose of Purchase:</span>
-                        <span>{{ application.purpose }}</span>
+                        <span>{{ chainsaw_form.purpose }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Other Details:</span>
-                        <span>{{ application.other_details }}</span>
+                        <span>{{ chainsaw_form.other_details }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Official Receipt:</span>
-                        <Tag :value="application.official_receipt" severity="success" class="text-center" /><br />
+                        <Tag :value="chainsaw_form.official_receipt" severity="success" class="text-center" /><br />
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Fee:</span>
-                        <span>₱ {{ application.permit_fee }}</span>
+                        <span>₱ {{ chainsaw_form.permit_fee }}</span>
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Remarks:</span>
-                        <span>{{ application.remarks }}</span>
+                        <span>{{ chainsaw_form.remarks }}</span>
                     </div>
                 </div>
             </Fieldset>
-
-            <Fieldset legend="Uploaded Files" :toggleable="true">
+                        <Fieldset legend="Uploaded Files" :toggleable="true">
 
                 <div class="overflow-x-auto mt-4">
                     <table class="min-w-full border border-gray-300 rounded-lg bg-white">
@@ -995,6 +914,10 @@ onMounted(() => {
                 </Dialog>
 
             </Fieldset>
+
+
+
+           
 
         </div>
 

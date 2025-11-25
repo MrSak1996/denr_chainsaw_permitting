@@ -78,6 +78,13 @@ const mainNavItems = computed<NavItem[]>(() => {
         items = items.filter(item => item.title !== 'Monitoring' && item.title !== 'Payments');
     }
 
+
+
+    // Hide Chainsaw Applications for RPS Chief (role 4)
+    if (roleId === 4) {
+        items = items.filter(item => item.title !== 'Chainsaw Applications');
+    }
+
     return items;
 });
 

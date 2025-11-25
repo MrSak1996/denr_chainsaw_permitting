@@ -122,37 +122,41 @@ class ChainsawController extends Controller
         try {
             DB::beginTransaction();
 
-            // Prepare inputs
-            $permitValidity = $request->input('permit_validity');
-
-
+            $applicationId = $id; // use the URL param
+            // Or use $request->input('application_id') if you prefer the payload
 
             // Format permit_validity if provided
+            $permitValidity = $request->input('permit_validity');
             if (!empty($permitValidity)) {
                 $permitValidity = Carbon::parse($permitValidity)
-                    ->addDay() // Add 1 day
-                    ->format('Y-m-d'); // Format to Y-m-d
+                    ->addDay()
+                    ->format('Y-m-d');
             }
 
             // Update the record
             $updateResult = DB::table('tbl_chainsaw_information')
-                ->where('application_id', $id)
+                ->where('application_id', 2) // use payload instead of route param
                 ->update([
                     'permit_chainsaw_no' => $request->input('permit_chainsaw_no'),
-                    'permit_validity' => $permitValidity,
                     'brand' => $request->input('brand'),
                     'model' => $request->input('model'),
                     'quantity' => $request->input('quantity'),
+                    'supplier_name' => $request->input('supplier_name'),
+                    'supplier_address' => $request->input('supplier_address'),
+                    'purpose' => $request->input('purpose'),
+                    'permit_validity' => $permitValidity,
+                    'other_details' => $request->input('other_details'),
                     'updated_at' => now(),
                 ]);
+
+
+
 
             DB::commit();
 
             return response()->json([
                 'status' => $updateResult ? 'success' : 'error',
-                'message' => $updateResult
-                    ? 'Chainsaw information updated successfully.'
-                    : 'No updates were made. Please check your data.',
+                'message' => $updateResult ? 'Chainsaw info updated successfully' : 'No updates were made. Please check your data.',
             ], $updateResult ? 200 : 400);
 
         } catch (\Exception $e) {
@@ -160,10 +164,11 @@ class ChainsawController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
+
 
     public function updateApplicationStatus(Request $request, $id)
     {

@@ -27,7 +27,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <div class="box col-span-4 flex flex-col overflow-hidden rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
                                 <h4 class="title flex mb-4 gap-2"> <Info/> List of Applicants Submitted</h4>
 
-                    <Fieldset legend="Filter Application" :toggleable="true">
+                    <!-- <Fieldset legend="Filter Application" :toggleable="true">
                         <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-4">
                             <div class="mt-4">
                                 <FloatLabel>
@@ -94,7 +94,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                         </div>
 
                         <Button label="Search Filter" icon="pi pi-search" class="mt-2 mr-2" />
-                    </Fieldset>
+                    </Fieldset> -->
                     <PendingTable />
                 </div>
             </div>

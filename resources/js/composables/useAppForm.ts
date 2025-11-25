@@ -7,7 +7,7 @@ interface CompanyForm {
     date_applied: string;
     geo_code: string;
     type_of_transaction: string;
-    classification:string;
+    classification: string;
     company_name: string;
     company_address: string;
     authorized_representative: string;
@@ -39,11 +39,11 @@ interface CompanyForm {
 
 interface IndividualForm {
     application_no: string;
-    permit_no:string;
+    permit_no: string;
     application_type: string;
     date_applied: string;
     type_of_transaction: string;
-    classification:string;s
+    classification: string; s
     geo_code: string;
     last_name: string;
     first_name: string;
@@ -110,22 +110,24 @@ interface ChainsawForm {
     supplier_address: string;
     purpose: string;
     permit_validity: string;
-    others_details: string;
+    other_details: string;
     mayorDTI: File | null;
     affidavit: File | null;
     otherDocs: File | null;
     permit: File | null;
-    updated_at: number | null;
-    created_at: number;
+    errors: Record<string, string>;   // ✔ REQUIRED
+    updated_at: number | null;        // ✔ REQUIRED
+    created_at: number | null;        // ✔ REQUIRED
 }
+
 
 interface PaymentForm {
     application_id: number,
-    application_attachment_id:number,
-    official_receipt:string,
-    permit_fee:number,
-    date_of_payment:string
-    or_ccopy:File | null,
+    application_attachment_id: number,
+    official_receipt: string,
+    permit_fee: number,
+    date_of_payment: string
+    or_ccopy: File | null,
     remarks: string
 }
 
@@ -166,7 +168,6 @@ export function useAppForm() {
     const chainsaw_form = reactive<ChainsawForm>({
         application_id: 0,
         application_attachment_id: 0,
-        permit_validity: new Date().toISOString().slice(0, 10), // auto-set to today
         permit_chainsaw_no: '',
         brand: '',
         model: '',
@@ -174,17 +175,42 @@ export function useAppForm() {
         supplier_name: '',
         supplier_address: '',
         purpose: '',
-        others_details: '',
+        permit_validity: new Date().toISOString().slice(0, 10),
+        other_details: '',
         mayorDTI: null,
         affidavit: null,
         otherDocs: null,
         permit: null,
         errors: {},
+        updated_at: null,
+        created_at: Date.now(),
     });
+
+    const createChainsaw = (): ChainsawForm => ({
+        application_id: 0,
+        application_attachment_id: 0,
+        permit_chainsaw_no: '',
+        brand: '',
+        model: '',
+        quantity: '',
+        supplier_name: '',
+        supplier_address: '',
+        purpose: '',
+        permit_validity: new Date().toISOString().slice(0, 10),
+        other_details: '',
+        mayorDTI: null,
+        affidavit: null,
+        otherDocs: null,
+        permit: null,
+        errors: {},
+        updated_at: null,
+        created_at: Date.now(),
+    });
+
 
     const individual_form = reactive<IndividualForm>({
         application_no: '',
-        permit_no:'',
+        permit_no: '',
         application_type: 'Individual',
         date_applied: new Date().toISOString().slice(0, 10), // auto-set to today
         type_of_transaction: '',
@@ -246,8 +272,8 @@ export function useAppForm() {
         permit_fee: 0,
         date_of_payment: new Date().toISOString().slice(0, 10),
         or_ccopy: null,
-        remarks:''
+        remarks: ''
     });
 
-    return { company_form, chainsaw_form, individual_form, payment_form};
+    return {createChainsaw, company_form, chainsaw_form, individual_form, payment_form };
 }

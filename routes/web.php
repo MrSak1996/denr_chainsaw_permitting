@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\Application\ApplicationController;
+use App\Http\Controllers\Chainsaw\ChainsawController;
+use App\Http\Controllers\Payment\PaymentController;
 use App\Http\Controllers\Dashboard\RPSChiefDashboardController; // if you have a controller
 
 Route::get('/', function () {
@@ -51,20 +53,31 @@ Route::get('/application/index/{id}', function ($id) {
 
 Route::get('/applications/{id}/edit', [ApplicationController::class, 'edit'])
     ->name('applications.edit');
+// ====================== UPDATE CHAINSAW INFORMATION  =====================================
+Route::post('/applications/updateStatus', [ApplicationController::class, 'updateStatus'])
+    ->name('applications.updateStatus');
 
 Route::put(
     '/applications/{id}/update-applicant-data',
     [ApplicationController::class, 'updateIndividualApplicant']
 )->name('applications.update.individual.data');
 
-Route::post('/applications/updateStatus', [ApplicationController::class, 'updateStatus'])
-    ->name('applications.updateStatus');
+Route::put(
+    '/applications/{id}/update-chainsaw-info', 
+    [ChainsawController::class, 'updateChainsawInformation'])
+->name('applications.update.chainsaw.info');
 
-
-
+Route::put(
+    '/applications/{id}/update-payment-info', 
+    [PaymentController::class, 'updatePaymentInformation'])
+->name('applications.update.payment.info');
+    
+    
 Route::post('/applications/return', [ApplicationController::class, 'returnApplication'])
     ->middleware(['auth', 'verified'])
     ->name('applications.return');
+
+// ===========================================================================================
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';

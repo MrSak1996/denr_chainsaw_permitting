@@ -9,6 +9,7 @@ use App\Models\Payment\PaymentModel;
 use Illuminate\Support\Facades\Storage;
 use App\Services\GoogleDriveService;
 use App\Models\Application\ChainsawIndividualApplication;
+use Illuminate\Support\Facades\DB;
 
 
 class PaymentController extends Controller
@@ -20,10 +21,10 @@ class PaymentController extends Controller
             return response()->json(['error' => 'Application not found.'], 404);
         }
         $attachment = AttachmentsModel::where('application_id', $application->id)
-        ->orderBy('id','desc')
-        ->limit(1)                              
-        ->first();
-            if (!$application) {
+            ->orderBy('id', 'desc')
+            ->limit(1)
+            ->first();
+        if (!$application) {
             return response()->json(['error' => 'Application not found.'], 404);
         }
         $application_id = $application->id;
@@ -63,4 +64,37 @@ class PaymentController extends Controller
             'google_drive' => $result,
         ], 201);
     }
+
+    public function updatePaymentInformation(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Update the record
+            $updateResult = DB::table('tbl_application_payment')
+                ->where('application_id', 2) // use payload instead of route param
+                ->update([
+                    'official_receipt' => $request->input('official_receipt'),
+                    'permit_fee' => $request->input('permit_fee'),
+                    'date_of_payment' =>now(),
+                    'remarks' => $request->input('remarks'),
+                    'updated_at' => now(),
+                ]);
+            DB::commit();
+
+            return response()->json([
+                'status' => $updateResult ? 'success' : 'error',
+                'message' => $updateResult ? 'Payment info updated successfully' : 'No updates were made. Please check your data.',
+            ], $updateResult ? 200 : 400);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }

@@ -187,10 +187,7 @@ watch(() => formData.value.i_city_mun, (val) => {
             <div class="ribbon">
                 {{ formData.status_title || 'DRAFT'}}
             </div>
-            <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
-                <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
-                <span> Please complete all fields to proceed with your application. </span>
-            </div>
+           
 
             <!-- Application Number -->
             <div class="mb-6 grid gap-6 md:grid-cols-3">
@@ -327,9 +324,11 @@ watch(() => formData.value.i_city_mun, (val) => {
                 <label for="address" class="mb-1 block text-sm font-medium text-gray-700">
                     Complete Address
                 </label>
-                <Textarea id="address" rows="6" v-model="formData.applicant_complete_address"
+                <Textarea id="address" rows="6" v-model="formData.i_complete_address"
                     placeholder="Complete Address (Street, Purok, etc.)"
-                    class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm" />
+                    class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm" >
+                    {{ formData.i_complete_address }}
+                    </Textarea>
             </div>
         </div>
     </Fieldset>

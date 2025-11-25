@@ -549,111 +549,77 @@ class ApplicationController extends Controller
                 'permit_fee' => $applicationDetails->permit_fee,
                 'remarks' => $applicationDetails->remarks,
                 'permit_validity' => $applicationDetails->permit_validity,
-                'other_details' => $applicationDetails->other_details
+                'other_details' => $applicationDetails->other_details,
+                'permit_chainsaw_no' => $applicationDetails->permit_chainsaw_no
             ],
         ]);
     }
-public function updateIndividualApplicant(Request $request, $id)
-{
-    try {
-        // Begin transaction
-        DB::beginTransaction();
+    public function updateIndividualApplicant(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
 
-        // Update the application row
-        $updateResult = DB::table('tbl_application_checklist')
-            ->where('id', $id)
-            ->update([
-                'application_status' => 1,
-                'application_type' => $request->input('application_type', 'Individual'),
-                'applicant_lastname' => $request->input('last_name'),
-                'applicant_firstname' => $request->input('first_name'),
-                'applicant_middlename' => $request->input('middle_name'),
-                'transaction_type' => $request->input('type_of_transaction'),
-                'date_applied' => $request->input('date_applied'),
-                'gov_id_number' => $request->input('gov_id_number'),
-                'encoded_by' => $request->input('encoded_by'),
-                'updated_at' => now(),
+            $updateResult = DB::table('tbl_application_checklist')
+                ->where('id', $id)
+                ->update([
+                    'application_status' => 1,
+
+                    // Applicant basic info
+                    'application_type' => $request->input('application_type', 'Individual'),
+                    'applicant_lastname' => $request->input('last_name'),
+                    'applicant_firstname' => $request->input('first_name'),
+                    'applicant_middlename' => $request->input('middle_name'),
+
+                    // Transaction
+                    'transaction_type' => $request->input('type_of_transaction'),
+
+                    // Date Applied (formatted)
+                    'date_applied' => $request->filled('date_applied')
+                        ? date('Y-m-d', strtotime($request->input('date_applied')))
+                        : null,
+
+                    // IDs
+                    'gov_id_number' => $request->input('gov_id_number'),
+                    'government_id' => $request->input('government_id'),
+
+                    // Sex
+                    'sex' => $request->input('sex'),
+
+                    // Contact details
+                    'applicant_contact_details' => $request->input('applicant_contact_details'),
+                    'applicant_telephone_no' => $request->input('applicant_telephone_no'),
+                    'applicant_email_address' => $request->input('applicant_email_address'),
+
+                    // Address fields
+                    'applicant_province_c' => $request->input('applicant_province_c'),
+                    'applicant_city_mun_c' => $request->input('applicant_city_mun_c'),
+                    'applicant_brgy_c' => $request->input('applicant_brgy_c'),
+                    'applicant_complete_address' => $request->input('applicant_complete_address'),
+
+                    // System fields
+                    'encoded_by' => $request->input('encoded_by'),
+                    'updated_at' => now(),
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => $updateResult ? 'success' : 'error',
+                'message' => $updateResult ? 'Application updated successfully.' : 'No changes were made.',
             ]);
 
-        DB::commit();
-
-        return response()->json([
-            'status' => $updateResult ? 'success' : 'error',
-            'message' => $updateResult ? 'Application updated successfully' : 'No changes were made',
-        ]);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json([
-            'status' => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
-
-
-    // public function updateIndividualApplicant(Request $request, $id)
-    // {
-
-
-    //     try {
-    //         DB::enableQueryLog();
-
-    //         DB::table('tbl_application_checklist')
-    //             ->where('id', $id)
-    //             ->update([
-    //                 'application_status' => 1,
-    //                 'application_type' => 'Individual',
-    //                 'applicant_lastname' => $request->input('last_name'),
-    //                 'applicant_firstname' => $request->input('first_name'),
-    //                 'applicant_middlename' => $request->input('middle_name') ?? null,
-
-    //                 'transaction_type' => $request->input('type_of_transaction'),
-    //                 'date_applied' => $request->input('date_applied'),
-    //                 'gov_id_number' => $request->input('gov_id_number'),
-
-    //                 'updated_at' => now(),
-
-
-    //                 // $application->update([
-
-    //                 // Add all other required fields here...
-    //                 // 'encoded_by' => $request->input('encoded_by') ?? null,
-    //                 // 'classification' => $request->input('classification') ?? null,
-
-    //                 // 'sex' => $request->input('sex'),
-    //                 // 'government_id' => $request->input('gov_id_type') ?? null,
-    //                 // 'applicant_contact_details' => $request->input('mobile_no') ?? null,
-    //                 // 'applicant_telephone_no' => $request->input('telephone_no') ?? null,
-    //                 // 'applicant_email_address' => $request->input('email_address') ?? null,
-
-    //                 // 'applicant_province_c' => $request->input('i_province'),
-    //                 // 'applicant_city_mun_c' => $request->input('i_city_mun'),
-    //                 // 'applicant_brgy_c' => $request->input('i_barangay'),
-    //                 // 'applicant_complete_address' => $request->input('i_complete_address'),
-
-    //                 // 'operation_complete_address' => $request->input('p_place_of_operation_address') ?? null,
-    //                 // 'operation_province_c' => $request->input('p_province') ?? null,
-    //                 // 'operation_city_mun_c' => $request->input('p_city_mun') ?? null,
-    //                 // 'operation_brgy_c' => $request->input('p_barangay') ?? null,
-    //             ]);
-    //         dd(DB::getQueryLog());
-
-
-    //         return response()->json([
-    //             'message' => 'Application updated successfully',
-
-    //         ], 200);
 
 
 
-
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'message' => 'Update failed',
-    //             'error' => $e->getMessage()
-    //         ], 500);
-    //     }
-    // }
+    
 
 
 
