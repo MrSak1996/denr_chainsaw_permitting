@@ -49,8 +49,8 @@ class TSDController extends Controller
     // const STATUS_RECEIVED_CHIEF_RPS = 8;
     // const TECHNICAL_STAFF = 1;
     // const CHIEF_RPS = 8;
-    // const CHIEF_TSD = 10;
-    // const IMPLEMENTING_PENRO = 3;
+    const CHIEF_TSD = 10;
+    const IMPLEMENTING_PENRO = 3;
     public function receivedApplication(Request $request)
     {
         $user = auth()->user();
@@ -99,9 +99,11 @@ class TSDController extends Controller
 
     public function endorseApplication(Request $request)
     {
-        $user = auth()->user();
-        $id = $request->id;
-        $officeRoutingMap = [
+        $request->validate([
+            'id' => 'required|integer|exists:tbl_application_checklist,id',
+        ]);
+
+          $officeRoutingMap = [
             6 => 2,  // Sta. Cruz → PENRO Laguna
             7 => 3,  // Lipa → PENRO Batangas
             8 => 3,  // Calaca → PENRO Batangas
@@ -109,41 +111,33 @@ class TSDController extends Controller
             10 => 5, // Catanauan → PENRO Quezon
             11 => 5, // Tayabas → PENRO Quezon
             12 => 5, // Real → PENRO Quezon
+            13 => 13 // Regional Office
         ];
 
-        // 1️⃣ Update application as received by CENRO Chief
-        $app = ChainsawIndividualApplication::findOrFail($id);
-        $app->application_status = self::STATUS_ENDORSED_PENRO;
-        $app->date_received_rps_chief = now();
-        $app->date_endorsed_tsd_chief = now();
-        $app->save();
-
+        $user = auth()->user();
         DB::beginTransaction();
 
         try {
-            // Validate routing
-            if (!isset($officeRoutingMap[$user->office_id])) {
-                throw new \Exception("Routing not defined for office_id {$user->office_id}");
-            }
+            $app = ChainsawIndividualApplication::lockForUpdate()->findOrFail($request->id);
 
-            $penroOfficeId = $officeRoutingMap[$user->office_id];
+            $app->update([
+                'application_status' => self::STATUS_ENDORSED_PENRO,
+                'date_endorsed_tsd_chief' => now(),
+            ]);
 
-            // 2️⃣ Get PENRO Chief
-            $penro = DB::table('users')
-                ->where('office_id', 2)
-                ->where('role_id', self::IMPLEMENTING_PENRO) // role 3 = Chief
-                ->orderBy('id', 'asc')
+            $penroChief = DB::table('users')
+                ->where('office_id', $officeRoutingMap[$user->office_id])
+                ->where('role_id', self::IMPLEMENTING_PENRO)
                 ->first();
 
-            if (!$penro) {
-                throw new \Exception("No PENRO found in office_id 2");
+            if (!$penroChief) {
+                throw new \Exception("No PENRO found in this office.");
             }
 
-            // Insert routing: CENRO Chief → PENRO Chief
             DB::table('tbl_application_routing')->insert([
-                'application_id' => $id,
+                'application_id' => $app->id,
                 'sender_id' => $user->id,
-                'receiver_id' => $penro->id,
+                'receiver_id' => $penroChief->id,
                 'action' => 'Endorsed to PENRO Chief',
                 'remarks' => 'Waiting to be received by PENRO',
                 'is_read' => 0,
@@ -154,23 +148,22 @@ class TSDController extends Controller
 
             DB::commit();
 
-            $app = ChainsawIndividualApplication::findOrFail($id);
-            $app->application_status = $request->status;
-            $app->save();
-
-
             return response()->json([
-                'message' => 'Application endorsed to PENRO successfully.'
+                'status' => 'success',
+                'message' => 'Application endorsed successfully.',
+                'application_id' => $app->id,
+                'current_status' => $app->application_status,
             ], 200);
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $th) {
             DB::rollBack();
+
             return response()->json([
-                'message' => $e->getMessage()
+                'status' => 'error',
+                'message' => $th->getMessage(),
             ], 500);
         }
-
     }
+
 
     public function returnApplication(Request $request)
     {
@@ -227,7 +220,6 @@ class TSDController extends Controller
             return response()->json([
                 'message' => 'Application returned successfully.',
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 

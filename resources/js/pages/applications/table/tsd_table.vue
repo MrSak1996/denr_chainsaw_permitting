@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router, usePage} from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
 import { BadgeCheck, Eye, History, SaveAll, Send, SendIcon, ShieldCheck, Undo2 } from 'lucide-vue-next';
@@ -51,7 +51,7 @@ const toast = useToast();
 const dt = ref();
 const totalCount = ref(0);
 const endorsedTotalCount = ref(0);
-const endorsed_applications = ref(0);
+const endorsed_applications = ref([]);
 const confirm = useConfirm();
 const isLoading = ref(false);
 const products = ref();
@@ -95,34 +95,8 @@ const statuses = ref([
 const events = ['Return for Compliance', 'For Review / Evaluation', 'Endorsed to CENRO', 'Endorsed to PENRO', 'Endorsed to R.O', 'Approved'];
 const currentStep = ref(0); // "Endorsed to PENRO"
 const progress_tracker_data = ref([]);
-
-const timelineComputed = computed(() => {
-    return eventsToDisplay.value.map((label, index) => {
-        // find matching record by status title
-        const record = progress_tracker_data.value.find((item) => item.status_title === label);
-
-        const isCompleted = !!record;
-        const isCurrent = !record && index === progress_tracker_data.value.length;
-        const isUpcoming = !record && index > progress_tracker_data.value.length;
-
-        return {
-            index,
-            label,
-            record, // 👈 store entire record here
-            date: record ? record.created_at : null,
-            isCompleted,
-            isCurrent,
-            isUpcoming,
-            icon: isCompleted ? 'pi pi-check' : isCurrent ? 'pi pi-spinner' : 'pi pi-clock',
-            color: isCompleted ? '#4CAF50' : isCurrent ? '#2196F3' : '#BDBDBD',
-        };
-    });
-});
-
-const timelineItems = ref(events);
 const eventsToDisplay = ref([]);
 
-// Example: Current step (0-based index)
 
 const openProgressTracker = async (data) => {
     getSignatories(data.id);
@@ -162,126 +136,80 @@ const openProgressTracker = async (data) => {
     }
 };
 
-const endorseApplication = (id: number) => {
-    confirmDialogRef.value?.open({
-        header: 'Endorse this application to PENRO?',
-        message: 'Please confirm that you want to endorse this application.',
-        onConfirm: async () => {
-            try {
-                await axios.post(route('applications.tsd.endorse'), { id, status: 10 });
-                toast.add({ severity: 'success', summary: 'Endorsed', detail: 'Application endorsed' });
-            } catch {
-                toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to endorse' });
-            }
-        },
-    });
-};
+
 
 const openDialog = (type: 'endorse' | 'return' | 'receive', id: number) => {
-  const config = {
-    endorse: {
-      header: 'Endorse this application to PENRO?',
-      message: 'Please confirm that you want to endorse this application.',
-      api: 'applications.tsd.endorse',
-      payload: { id, status: 10 },
-      showTextarea: false,
-      showDropdown: false,
-      toastMessage: 'Application endorsed',
-    },
-    return: {
-      header: 'Return Application?',
-      message: 'Please indicate the reason and office to return this application.',
-      api: 'applications.tsd.return',
-      payload: { id },
-      showTextarea: true,
-      showDropdown: true,
-      toastMessage: 'Application returned',
-      offices: [
-        { label: 'Technical Staff', value: 1 },
-        { label: 'Chief, RPS', value: 8 },
-      ],
-    },
-    receive: {
-      header: 'Receive Application?',
-      message: 'Please confirm that you want to receive this application.',
-      api: 'applications.tsd.receive',
-      payload: { id },
-      showTextarea: false,
-      showDropdown: false,
-      toastMessage: 'Application received',
-    },
-  };
+    const config = {
+        endorse: {
+            header: 'Endorse this application to PENRO?',
+            message: 'Please confirm that you want to endorse this application.',
+            api: 'applications.tsd.endorse',
+            payload: { id },
+            showTextarea: false,
+            showDropdown: false,
+            toastMessage: 'Application endorsed',
+        },
+        return: {
+            header: 'Return Application?',
+            message: 'Please indicate the reason and office to return this application.',
+            api: 'applications.tsd.return',
+            payload: { id },
+            showTextarea: true,
+            showDropdown: true,
+            toastMessage: 'Application returned',
+            offices: [
+                { label: 'Technical Staff', value: 1 },
+                { label: 'Chief, RPS', value: 8 },
+            ],
+        },
+        receive: {
+            header: 'Receive Application?',
+            message: 'Please confirm that you want to receive this application.',
+            api: 'applications.tsd.receive',
+            payload: { id },
+            showTextarea: false,
+            showDropdown: false,
+            toastMessage: 'Application received',
+        },
+    };
 
-  const c = config[type];
-
-  confirmDialogRef.value?.open({
-    header: c.header,
-    message: c.message,
-    showTextarea: c.showTextarea,
-    showDropdown: c.showDropdown,
-    offices: c.offices,
-    onConfirm: async (data?: { remarks?: string; returnTo?: string | number }) => {
-      try {
-        // ✅ send remarks and returnTo along with payload
-        await axios.post(route(c.api), {
-          ...c.payload,
-          remarks: data?.remarks,
-          returnTo: data?.returnTo,
-        });
-
-        toast.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: c.toastMessage,
-          life: 3000,
-        });
-      } catch (error) {
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Something went wrong',
-          life: 3000,
-        });
-      }
-    },
-  });
-};
-
-
-
-
-const receiveApplication = (id: number) => {
-    receiveDialogRef.value?.open({
-        header: 'Receive Application?',
-        message: 'Please confirm that you want to receive this application.',
-        onConfirm: async () => {
+    const c = config[type];
+    confirmDialogRef.value?.open({
+        header: c.header,
+        message: c.message,
+        showTextarea: c.showTextarea,
+        showDropdown: c.showDropdown,
+        offices: c.offices,
+        onConfirm: async (data?: { remarks?: string; returnTo?: string | number }) => {
             try {
-                await axios.post(route('applications.tsd.receive'), { id });
-                toast.add({ severity: 'success', summary: 'Received', detail: 'Application received' });
-            } catch {
-                toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to receive' });
+                // ✅ send remarks and returnTo along with payload
+                await axios.post(route(c.api), {
+                    ...c.payload,
+                    remarks: data?.remarks,
+                    returnTo: data?.returnTo,
+                });
+
+                toast.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: c.toastMessage,
+                    life: 3000,
+                });
+            } catch (error) {
+                toast.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Something went wrong',
+                    life: 3000,
+                });
             }
         },
     });
 };
 
-// Computed properties
-// const currentStepLabel = computed(() => events[currentStep.value]);
-// const progressPercentage = computed(() => Math.round(((currentStep.value + 1) / events.length) * 100));
 
-// const badgeSeverity = computed(() => {
-//     switch (currentStepLabel.value) {
-//         case 'Approved':
-//             return 'success';
-//         case 'Return for Compliance':
-//             return 'danger';
-//         default:
-//             return 'info';
-//     }
-// });
 
 const activeTab = ref<'re' | 'ea' | 'rc' | 'cpr' | 'aa'>('re');
-
 const applicationDetails = ref(null);
 const files = ref([]);
 
@@ -295,10 +223,10 @@ const applicantsTable = async () => {
         const officeId = page.props.auth.user.office_id;
 
         const { applications: endorsedApplications, count: endorsedCount } = await ProductService.getApplicationsByStatus(STATUS_ENDORSED_TSD_CHIEF, officeId);
-        
+
         endorsed_applications.value = endorsedApplications;
         totalCount.value = endorsedCount;
-        
+
     } catch (error) {
         console.error('Error fetching applications:', error);
     }
@@ -772,9 +700,28 @@ const handleFileUpdate = async (event) => {
     }
 };
 
-const isEndorsedPENRO = (row: any) => {
-    return row.application_status === STATUS_ENDORSED_PENRO;
+const buttonState = (row: any) => {
+    const isReceived = !!row.is_tsd_chief_received;
+    console.log(row.application_status);
+
+    const isEndorsedToTSD =
+        row.application_status === STATUS_ENDORSED_TSD_CHIEF;
+
+    const isEndorsedToPENRO =
+        row.application_status === STATUS_ENDORSED_PENRO;
+    return {
+        // 🔴 disable receive after it is received
+        receiveDisabled:isEndorsedToTSD,
+
+        // 🔴 disable endorse if already endorsed to ANY next office
+        endorseDisabled: isEndorsedToTSD || isEndorsedToPENRO,
+
+        // 🔴 optional: same rule as endorse
+        returnDisabled: false
+    };
 };
+
+
 
 </script>
 
@@ -785,52 +732,35 @@ const isEndorsedPENRO = (row: any) => {
             <!-- Tabs -->
             <div class="mb-4 flex border-b border-gray-200">
                 <!-- For Review / Evaluation Tab -->
-                <button
-                    @click="activeTab = 're'"
-                    :class="[
-                        'flex items-center space-x-2 border-b-2 px-4 py-2 text-sm font-medium transition',
-                        activeTab === 're'
-                            ? 'border-green-600 text-green-700'
-                            : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600',
-                    ]"
-                >
+                <button @click="activeTab = 're'" :class="[
+                    'flex items-center space-x-2 border-b-2 px-4 py-2 text-sm font-medium transition',
+                    activeTab === 're'
+                        ? 'border-green-600 text-green-700'
+                        : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600',
+                ]">
                     <!-- Tab Title -->
                     <span>List of Permit Application</span>
 
                     <div class="relative inline-block">
-                        <OverlayBadge
-                            v-if="totalCount > 0"
-                            :value="totalCount"
-                            severity="danger"
-                            size="small"
-                            class="absolute top-0 right-0"
-                        />
+                        <OverlayBadge v-if="totalCount > 0" :value="totalCount" severity="danger" size="small"
+                            class="absolute top-0 right-0" />
                         <i class="pi pi-list" style="font-size: 25px" />
                     </div>
                 </button>
-                
+
             </div>
             <!-- Content -->
             <div class="flex-1 space-y-4 overflow-y-auto">
                 <!-- For Review / Evaluation Table -->
                 <div v-if="activeTab === 're'" class="space-y-2 text-sm text-gray-700">
                     <div class="h-auto w-full">
-                        <DataTable
-                            ref="dt"
-                            size="small"
-                            v-model:selection="selectedProducts"
-                            :value="endorsed_applications"
-                            dataKey="id"
-                            :paginator="true"
-                            :rows="20"
-                            :filters="filters"
+                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts"
+                            :value="endorsed_applications" dataKey="id" :paginator="true" :rows="20" :filters="filters"
                             filterDisplay="menu"
                             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                             :rowsPerPageOptions="[5, 10, 25]"
                             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                            responsiveLayout="scroll"
-                            class="w-full text-sm"
-                        >
+                            responsiveLayout="scroll" class="w-full text-sm">
                             <template #header>
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <IconField>
@@ -842,101 +772,93 @@ const isEndorsedPENRO = (row: any) => {
                                 </div>
                             </template>
                             <Column header="Action" :exportable="false" style="min-width: 2rem">
-                            <template #body="slotProps">
-                                <div class="mt-2 flex gap-2">
+                                <template #body="slotProps">
+                                    <div class="mt-2 flex gap-2">
 
-                                    <!-- ✅ RECEIVE (disabled if endorsed) -->
-                                    <Button :disabled="isEndorsedPENRO(slotProps.data)"
-                                        @click="receiveApplication(slotProps.data.id)" style="background-color: #0f766e"
-                                        class="p-2 text-white">
-                                        <BadgeCheck :size="15" />
-                                    </Button>
+                                        <!-- ✅ RECEIVE (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).receiveDisabled"
+                                            @click="openDialog('receive', slotProps.data.id)"
+                                            style="background-color: #0f766e" class="p-2 text-white">
+                                            <BadgeCheck :size="15" />
+                                        </Button>
 
-                                    <!-- ✅ ROUTING / HISTORY (ALWAYS ENABLED) -->
-                                    <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                        style="background-color: #0f766e; border: 1px solid #0f766e !important"
-                                        class="rounded p-2 text-white hover:bg-teal-900">
-                                        <History :size="15" />
-                                    </Button>
+                                        <!-- ✅ ROUTING / HISTORY (ALWAYS ENABLED) -->
+                                        <Button type="button" @click="openProgressTracker(slotProps.data)"
+                                            style="background-color: #0f766e; border: 1px solid #0f766e !important"
+                                            class="rounded p-2 text-white hover:bg-teal-900">
+                                            <History :size="15" />
+                                        </Button>
 
-                                    <!-- ✅ VIEW (ALWAYS ENABLED) -->
-                                    <Button type="button" style="background-color: #0f766e"
-                                        class="rounded p-2 text-white hover:bg-teal-900">
-                                        <Link :href="route('applications.edit', {
-                                            id: slotProps.data.id,
-                                            type: slotProps.data.application_type
-                                        })">
-                                            <Eye :size="15" />
-                                        </Link>
-                                    </Button>
+                                        <!-- ✅ VIEW (ALWAYS ENABLED) -->
+                                        <Button type="button" style="background-color: #0f766e"
+                                            class="rounded p-2 text-white hover:bg-teal-900">
+                                            <Link :href="route('applications.edit', {
+                                                id: slotProps.data.id,
+                                                type: slotProps.data.application_type
+                                            })">
+                                                <Eye :size="15" />
+                                            </Link>
+                                        </Button>
 
-                                    <!-- ❌ ENDORSE (disabled if endorsed) -->
-                                    <Button :disabled="isEndorsedPENRO(slotProps.data)"
-                                        @click="openDialog('endorse', slotProps.data.id)"
-                                        style="background-color: #0f766e" class="p-2 text-white">
-                                        <SendIcon :size="15" />
-                                    </Button>
+                                        <!-- ❌ ENDORSE (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).endorseDisabled"
+                                            @click="openDialog('endorse', slotProps.data.id)"
+                                            style="background-color: #0f766e" class="p-2 text-white">
+                                            <SendIcon :size="15" />
+                                        </Button>
 
-                                    <!-- ❌ RETURN (disabled if endorsed) -->
-                                    <Button :disabled="isEndorsedPENRO(slotProps.data)"
-                                        @click="openDialog('return', slotProps.data.id)"
-                                        style="background-color: #bd081c; border: 1px solid #cd201f !important"
-                                        class="p-2 text-white">
-                                        <Undo2 :size="15" />
-                                    </Button>
+                                        <!-- ❌ RETURN (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).returnDisabled"
+                                            @click="openDialog('return', slotProps.data.id)"
+                                            style="background-color: #bd081c; border: 1px solid #cd201f !important"
+                                            class="p-2 text-white">
+                                            <Undo2 :size="15" />
+                                        </Button>
 
-                                </div>
-                            </template>
-                        </Column>
+                                    </div>
+                                </template>
+                            </Column>
                             <Column field="status_title" header="Status" sortable style="min-width: 12rem">
                                 <template #body="{ data }">
                                     <div class="flex flex-col items-center">
-                                        <Tag
-                                            :value="data.status_title"
-                                            :severity="data.status_title === 'Return for Compliance' ? 'danger' : 'success'"
-                                            class="text-center"
-                                        />
+                                        <Tag :value="data.status_title" :severity="data.status_title === 'Returned to RPS Chief' ? 'danger' :
+                                            data.status_title === 'Endorsed to TSD Chief' ? 'info' :
+                                                'success'
+                                            " class="text-center" />
 
-                                        <button
-                                            v-if="data.status_title === 'Return for Compliance'"
-                                            class="rounded bg-blue-600 px-3 py-1 text-xs text-white"
-                                            @click="openCommentModal(data)"
-                                        >
+
+                                        <Button
+                                            style="display: inline; padding: .2em .6em .3em; font-size: 75%; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25em;"
+                                            severity="info" v-if="data.status_title === 'Returned to RPS Chief'"
+                                            class="rounded bg-blue-900 px-1 py-1 mt-1 text-xs text-white"
+                                            @click="openCommentModal(data)" size="small">
                                             View Comments
-                                        </button>
+                                        </Button>
                                     </div>
                                 </template>
                             </Column>
                             <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
                                 <template #body="{ data }">
-                                    <Tag :value="data.application_no" severity="success" class="text-center" /><br />
+                                    <b>{{ data.application_no }}</b>
                                 </template>
                             </Column>
                             <Column field="application_type" header="Application Type" sortable />
                             <Column header="Type of Transaction" field="transaction_type" sortable></Column>
                             <Column header="Classification" field="classification" sortable></Column>
-                            <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
+                            <Column field="date_applied" header="Date of Application" sortable
+                                style="min-width: 4rem" />
                         </DataTable>
                     </div>
                 </div>
                 <div v-if="activeTab === 'ea'" class="space-y-2 text-sm text-gray-700">
                     <div class="h-auto w-full">
-                        <DataTable
-                            ref="dt"
-                            size="small"
-                            v-model:selection="selectedProducts"
-                            :value="endorsed_penro_application"
-                            dataKey="id"
-                            :paginator="true"
-                            :rows="20"
-                            :filters="filters"
-                            filterDisplay="menu"
+                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts"
+                            :value="endorsed_penro_application" dataKey="id" :paginator="true" :rows="20"
+                            :filters="filters" filterDisplay="menu"
                             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                             :rowsPerPageOptions="[5, 10, 25]"
                             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                            responsiveLayout="scroll"
-                            class="w-full text-sm"
-                        >
+                            responsiveLayout="scroll" class="w-full text-sm">
                             <template #header>
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <IconField>
@@ -953,27 +875,18 @@ const isEndorsedPENRO = (row: any) => {
                                         <div class="mt-2 flex gap-2">
                                             <!-- History Button (only enabled if is_rps_chief_received = 1) -->
 
-                                            <Button
-                                                type="button"
-                                                @click="openProgressTracker(slotProps.data)"
+                                            <Button type="button" @click="openProgressTracker(slotProps.data)"
                                                 :disabled="slotProps.data.is_rps_chief_received != 1"
                                                 style="background-color: #0f766e; border: 1px solid #0f766e !important"
-                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
+                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50">
                                                 <History :size="15" />
                                             </Button>
 
-                                            <Button
-                                                :disabled="slotProps.data.is_rps_chief_received != 1"
-                                                type="button"
+                                            <Button :disabled="slotProps.data.is_rps_chief_received != 1" type="button"
                                                 style="background-color: #0f766e; border: 1px solid #0f766e !important"
-                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900"
-                                            >
-                                                <Link
-                                                    :href="
-                                                        route('applications.edit', { id: slotProps.data.id, type: slotProps.data.application_type })
-                                                    "
-                                                >
+                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900">
+                                                <Link :href="route('applications.edit', { id: slotProps.data.id, type: slotProps.data.application_type })
+                                                    ">
                                                     <Eye :size="15" />
                                                 </Link>
                                             </Button>
@@ -984,17 +897,13 @@ const isEndorsedPENRO = (row: any) => {
                             <Column field="status_title" header="Status" sortable style="min-width: 12rem">
                                 <template #body="{ data }">
                                     <div class="flex flex-col items-center">
-                                        <Tag
-                                            :value="data.status_title"
+                                        <Tag :value="data.status_title"
                                             :severity="data.status_title === 'Return for Compliance' ? 'danger' : 'success'"
-                                            class="text-center"
-                                        />
+                                            class="text-center" />
 
-                                        <button
-                                            v-if="data.status_title === 'Return for Compliance'"
+                                        <button v-if="data.status_title === 'Return for Compliance'"
                                             class="rounded bg-blue-600 px-3 py-1 text-xs text-white"
-                                            @click="openCommentModal(data)"
-                                        >
+                                            @click="openCommentModal(data)">
                                             View Comments
                                         </button>
                                     </div>
@@ -1010,7 +919,8 @@ const isEndorsedPENRO = (row: any) => {
                             <Column header="Type of Transaction" field="transaction_type" sortable></Column>
                             <Column header="Classification" field="classification" sortable></Column>
 
-                            <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
+                            <Column field="date_applied" header="Date of Application" sortable
+                                style="min-width: 4rem" />
                         </DataTable>
                     </div>
                 </div>
@@ -1029,15 +939,13 @@ const isEndorsedPENRO = (row: any) => {
                 <div class="flex items-center justify-between space-x-4">
                     <!-- Left Section: Buttons -->
                     <div class="flex items-center space-x-2">
-                        <Button
-                            class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
-                            @click="handleEndorseApplicationStatus"
-                            size="small"
-                        >
+                        <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
+                            @click="handleEndorseApplicationStatus" size="small">
                             <Send class="mr-1" /> Endorsed
                         </Button>
 
-                        <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700" size="small" @click="handleReturnClick">
+                        <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700" size="small"
+                            @click="handleReturnClick">
                             <Undo2 class="mr-1" /> Returned
                         </Button>
                         <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700" size="small">
@@ -1049,30 +957,26 @@ const isEndorsedPENRO = (row: any) => {
                 </div>
 
                 <!-- Applicant Details -->
-                <Fieldset v-show="showReturnFieldset" legend="Reason for Returning" :toggleable="true" :collapsed="false" class="mt-4">
-                    <textarea v-model="returnReason" class="w-full rounded border p-2" placeholder="Enter reason for returning..."></textarea>
+                <Fieldset v-show="showReturnFieldset" legend="Reason for Returning" :toggleable="true"
+                    :collapsed="false" class="mt-4">
+                    <textarea v-model="returnReason" class="w-full rounded border p-2"
+                        placeholder="Enter reason for returning..."></textarea>
                     <div class="mt-2">
-                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700" @click="handleReturnReasonClick">
+                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700"
+                            @click="handleReturnReasonClick">
                             <SaveAll class="mr-1" />
                             Submit Reason
                         </Button>
                     </div>
                 </Fieldset>
 
-                <Fieldset
-                    v-if="applicationDetails.application_status == 4"
-                    legend="Reason for Returning"
-                    :toggleable="true"
-                    :collapsed="false"
-                    class="mt-4"
-                >
-                    <textarea
-                        v-model="applicationDetails.return_reason"
-                        class="w-full rounded border p-2"
-                        placeholder="Enter reason for returning..."
-                    ></textarea>
+                <Fieldset v-if="applicationDetails.application_status == 4" legend="Reason for Returning"
+                    :toggleable="true" :collapsed="false" class="mt-4">
+                    <textarea v-model="applicationDetails.return_reason" class="w-full rounded border p-2"
+                        placeholder="Enter reason for returning..."></textarea>
                     <div class="mt-2">
-                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700" @click="handleReturnReasonClick">
+                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700"
+                            @click="handleReturnReasonClick">
                             <SaveAll class="mr-1" />
                             Submit Reason
                         </Button>
@@ -1084,17 +988,21 @@ const isEndorsedPENRO = (row: any) => {
                         <table class="min-w-full border border-gray-300 text-sm">
                             <thead class="bg-gray-100">
                                 <tr>
-                                    <th class="w-1/3 border border-gray-300 px-4 py-2 text-left font-semibold">REVIEWED BY:</th>
-                                    <th class="w-1/2 border border-gray-300 px-4 py-2 text-left font-semibold">REMARKS</th>
+                                    <th class="w-1/3 border border-gray-300 px-4 py-2 text-left font-semibold">REVIEWED
+                                        BY:</th>
+                                    <th class="w-1/2 border border-gray-300 px-4 py-2 text-left font-semibold">REMARKS
+                                    </th>
                                     <th class="w-1/6 border border-gray-300 px-4 py-2 text-left font-semibold">DATE</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
-                                        <div class="font-bold">VIRGILIO C. ANDRES, JR., <span class="italic">RPF</span></div>
+                                        <div class="font-bold">VIRGILIO C. ANDRES, JR., <span class="italic">RPF</span>
+                                        </div>
                                         <div class="text-sm text-gray-700">
-                                            Assistant Division Chief, Licenses, Patents and Deeds Division in concurrent capacity as Chief, Forest
+                                            Assistant Division Chief, Licenses, Patents and Deeds Division in concurrent
+                                            capacity as Chief, Forest
                                             Utilization Section
                                         </div>
                                     </td>
@@ -1107,16 +1015,20 @@ const isEndorsedPENRO = (row: any) => {
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
                                         <div class="font-bold">NAOMI Z. PERILLA</div>
-                                        <div class="text-sm text-gray-700">Ass’t. Div. Chief, Licenses, Patents and Deeds Division</div>
+                                        <div class="text-sm text-gray-700">Ass’t. Div. Chief, Licenses, Patents and
+                                            Deeds
+                                            Division</div>
                                     </td>
-                                    <td class="border border-gray-300 px-4 py-3 align-top">Approval of PPC to recommend</td>
+                                    <td class="border border-gray-300 px-4 py-3 align-top">Approval of PPC to recommend
+                                    </td>
                                     <td class="border border-gray-300 px-4 py-3 align-top">6/24/2024</td>
                                 </tr>
 
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
                                         <div class="font-bold">ERIBERTO B. SAÑOS, <span class="italic">CESE</span></div>
-                                        <div class="text-sm text-gray-700">OIC-Assistant Regional Director for Technical Services</div>
+                                        <div class="text-sm text-gray-700">OIC-Assistant Regional Director for Technical
+                                            Services</div>
                                     </td>
                                     <td class="border border-gray-300 px-4 py-3 align-top">Recommended for approval</td>
                                     <td class="border border-gray-300 px-4 py-3 align-top">6/25</td>
@@ -1136,11 +1048,13 @@ const isEndorsedPENRO = (row: any) => {
                         <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                             <div class="flex">
                                 <span class="w-48 font-semibold">Application No:</span>
-                                <Tag :value="applicationDetails.application_no" severity="success" class="text-center" />
+                                <Tag :value="applicationDetails.application_no" severity="success"
+                                    class="text-center" />
                             </div>
                             <div class="flex">
                                 <span class="w-48 font-semibold">Application Type:</span>
-                                <Tag :value="applicationDetails.application_type" severity="success" class="text-center" />
+                                <Tag :value="applicationDetails.application_type" severity="success"
+                                    class="text-center" />
                             </div>
                             <div class="flex">
                                 <span class="w-48 font-semibold">Date Applied:</span>
@@ -1187,7 +1101,8 @@ const isEndorsedPENRO = (row: any) => {
                     <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
                             <span class="w-48 font-semibold">Chainsaw No:</span>
-                            <Tag :value="applicationDetails.permit_chainsaw_no" severity="success" class="text-center" /><br />
+                            <Tag :value="applicationDetails.permit_chainsaw_no" severity="success"
+                                class="text-center" /><br />
                         </div>
                         <div class="flex">
                             <span class="w-48 font-semibold">Permit Validity:</span>
@@ -1238,13 +1153,8 @@ const isEndorsedPENRO = (row: any) => {
                 <Fieldset legend="Uploaded Requirements" :toggleable="true">
                     <div class="container">
                         <div class="file-list grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <FileCard
-                                v-for="(file, index) in files"
-                                :key="index"
-                                :file="file"
-                                @openPreview="openFile"
-                                @updateFile="triggerUpdateFile"
-                            />
+                            <FileCard v-for="(file, index) in files" :key="index" :file="file" @openPreview="openFile"
+                                @updateFile="triggerUpdateFile" />
                         </div>
                     </div>
                 </Fieldset>
@@ -1254,7 +1164,8 @@ const isEndorsedPENRO = (row: any) => {
 
                 <!-- File Preview Modal -->
                 <Dialog v-model:visible="showFileModal" modal header="File Preview" :style="{ width: '70vw' }">
-                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500" allow="autoplay"></iframe>
+                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
+                        allow="autoplay"></iframe>
                 </Dialog>
             </div>
         </Dialog>
@@ -1290,8 +1201,7 @@ const isEndorsedPENRO = (row: any) => {
                                 <div v-if="[2, 4, 6, 8, 10].includes(item.route_order)"></div>
 
                                 <div v-else>
-                                    <b>{{ item.sender_role }}</b
-                                    ><br />
+                                    <b>{{ item.sender_role }}</b><br />
                                     <i>{{ item.sender }}</i>
                                 </div>
                             </td>
@@ -1303,12 +1213,12 @@ const isEndorsedPENRO = (row: any) => {
 
                             <!-- Receiver -->
                             <td class="border px-4" style="width: 20rem">
-                                <b>{{ item.receiver_role }}</b
-                                ><br />
+                                <b>{{ item.receiver_role }}</b><br />
 
                                 <Tag v-if="item.action === 'Received'" severity="danger" size="small"> Received </Tag>
 
-                                <Tag v-else-if="item.action === 'Endorsed'" severity="info" size="small"> Endorsed </Tag>
+                                <Tag v-else-if="item.action === 'Endorsed'" severity="info" size="small"> Endorsed
+                                </Tag>
 
                                 <Tag v-else severity="warning" size="small">
                                     {{ item.action }}

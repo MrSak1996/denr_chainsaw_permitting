@@ -4,9 +4,10 @@ import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { Info } from 'lucide-vue-next';
 import Fieldset from 'primevue/fieldset';
-import PenroTable from './applications/table/penro_tbl.vue';
 import Penro_tbl from './applications/table/penro_tbl.vue';
+import { useOfficeTitle } from '@/composables/useOfficeTitle';
 
+const { officeTitle } = useOfficeTitle();
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'PENRO Dashboard',
@@ -17,67 +18,16 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 <template>
 
-    <Head title="RPS Chief Dashboard" />
+    <Head title="PENRO Dashboard" />
 
-    <AppLayout :breadcrumbs="breadcrumbs">
+     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <h1 class="text-xl font-semibold">PERNO Dashboard</h1>
-            <!-- Tailwind CSS Dashboard Cards -->
-            <div class="grid auto-rows-min gap-4 md:grid-cols-5">
-                <!-- Card 1 -->
-                <div
-                    class="box border-sidebar-border/70 dark:border-sidebar-border relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border p-4">
-                    <div>
-                        <h5 class="title mb-2">TOTAL NO. OF APPLICATION</h5>
-                        <div class="flex items-center gap-2 text-sm text-green-600">🟢 <span>40</span></div>
-                    </div>
-                    <button class="mt-4 text-sm font-medium text-green-700 hover:underline">View More Details →</button>
-                </div>
-
-                <!-- Card 2 -->
-                <div
-                    class="box border-sidebar-border/70 dark:border-sidebar-border relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border p-4">
-                    <div>
-                        <h5 class="title mb-2">FOR RETURN / COMPLIANCE</h5>
-                        <div class="flex items-center gap-2 text-sm text-yellow-600">🟡 <span>38</span></div>
-
-                    </div>
-                    <button class="mt-4 text-sm font-medium text-green-700 hover:underline">View More Details →</button>
-                </div>
-
-                <!-- Card 3 -->
-                <div
-                    class="box border-sidebar-border/70 dark:border-sidebar-border relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border p-4">
-                    <div>
-                        <h5 class="title mb-2">ENDORSED</h5>
-                        <div class="flex items-center gap-2 text-sm text-red-600">🔴 <span>26</span></div>
-                    </div>
-                    <button class="mt-4 text-sm font-medium text-green-700 hover:underline">View More Details →</button>
-                </div>
-
-                <!-- Card 4 -->
-                <div
-                    class="box border-sidebar-border/70 dark:border-sidebar-border relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border p-4">
-                    <div>
-                        <h5 class="title mb-2">APPROVED APPLICATION</h5>
-                        <div class="flex items-center gap-2 text-sm text-green-600">🟢 <span>100</span></div>
-                    </div>
-                    <button class="mt-4 text-sm font-medium text-green-700 hover:underline">View More Details →</button>
-                </div>
-
-                <!-- Card 5 -->
-                <div
-                    class="box border-sidebar-border/70 dark:border-sidebar-border relative flex aspect-video flex-col justify-between overflow-hidden rounded-xl border p-4">
-                    <div>
-                        <h5 class="title mb-2">REJECTED APPLICATION</h5>
-                        <div class="flex items-center gap-2 text-sm text-yellow-600">🟡 <span>For Review</span></div>
-
-                    </div>
-                    <button class="mt-4 text-sm font-medium text-green-700 hover:underline">View More Details →</button>
+            <h1 class="text-xl font-semibold"> {{ officeTitle }} Dashboard</h1>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="box">
+                    <Penro_tbl />
                 </div>
             </div>
-
-            <Penro_tbl />
         </div>
     </AppLayout>
 </template>

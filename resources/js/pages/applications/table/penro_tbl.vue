@@ -16,11 +16,40 @@ import OverlayBadge from 'primevue/overlaybadge';
 import ReusableConfirmDialog from '../modal/endorsed_modal.vue';
 
 const page = usePage();
-const officeId = page.props.auth.user.office_id;
 onMounted(() => {
-    applicantsTable(officeId);
+    applicantsTable();
 
 });
+
+const STATUS_DRAFT = 1;
+const STATUS_FOR_REVIEW_EVALUATION = 2;
+
+const STATUS_ENDORSED_CENRO_CHIEF = 3;
+const STATUS_ENDORSED_RPS_CHIEF = 4;
+const STATUS_ENDORSED_TSD_CHIEF = 5;
+const STATUS_ENDORSED_PENRO = 6;
+const STATUS_ENDORSED_LPDD_FUS = 7;
+const STATUS_ENDORSED_ARDTS = 8;
+const STATUS_APPROVED_BY_RED = 9;
+
+const STATUS_RECEIVED_CENRO_CHIEF = 10;
+const STATUS_RECEIVED_CHIEF_RPS = 11;
+const STATUS_RECEIVED_TSD_CHIEF = 12;
+const STATUS_RECEIVED_PENRO_CHIEF = 13;
+const STATUS_RECEIVED_FUS = 14;
+const STATUS_RECEIVED_ARDTS = 15;
+const STATUS_RECEIVED_RED = 16;
+
+const STATUS_RETURN_TO_CENRO_CHIEF = 17;
+const STATUS_RETURN_TO_RPS_CHIEF = 18;
+const STATUS_RETURN_TO_TSD_CHIEF = 19;
+const STATUS_RETURN_TO_PENRO = 20;
+const STATUS_RETURN_TO_LPDD_FUS = 21;
+const STATUS_RETURN_TO_ARDTS = 22;
+const STATUS_RETURN_TO_RED = 23;
+const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
+
+
 const auth = computed(() => page.props.auth);
 const roleId = auth.value.user?.role_id;
 
@@ -165,12 +194,13 @@ const formatCurrency = (value) => {
     return;
 };
 
-const applicantsTable = async (id) => {
+const applicantsTable = async () => {
     try {
-        const { applications: endorsedApplications, count: endorsedCount } =
-            await ProductService.getApplicationsByStatus(10, id);
+        const officeId = page.props.auth.user.office_id;
+        const { applications: endorsedApplications, count: endorsedCount } = await ProductService.getApplicationsByStatus(STATUS_ENDORSED_PENRO, officeId);
+        
         endorsed_application.value = endorsedApplications;
-        endorsedTotalCount.value = endorsedCount;
+        totalCount.value = endorsedCount;
 
        
     } catch (error) {
@@ -316,7 +346,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://10.201.13.3:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -338,7 +368,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://10.201.13.3:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -363,7 +393,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://10.201.13.3:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -400,7 +430,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://10.201.13.3:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -471,7 +501,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://10.201.13.3:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -522,7 +552,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id);
         formData.append('name', selectedFileToUpdate.value.name);
 
-        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
+        const response = await axios.post('http://10.201.13.3:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -546,9 +576,6 @@ const handleFileUpdate = async (event) => {
 <template>
     <div class="flex flex-col gap-4 rounded-xl p-4">
         <Toast />
-
-        <div
-            class="box border-sidebar-border/70 dark:border-sidebar-border col-span-4 flex h-[590px] flex-col overflow-hidden rounded-xl border p-4">
             <!-- Tabs -->
             <div class="mb-4 flex border-b border-gray-200">
                 <!-- For Review / Evaluation Tab -->
@@ -559,17 +586,13 @@ const handleFileUpdate = async (event) => {
                         : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600'
                 ]">
                     <!-- Tab Title -->
-                    <span>For Endorsement </span>
+                <span>List of Permit Application</span>
 
                     <!-- PrimeVue OverlayBadge with Icon -->
                     <OverlayBadge :value="endorsedTotalCount" severity="danger" size="small">
                         <i class="pi pi-list" style="font-size: 25px" />
                     </OverlayBadge>
                 </button>
-               
-
-
-
             </div>
 
             <!-- Content -->
@@ -578,136 +601,105 @@ const handleFileUpdate = async (event) => {
                 <div v-if="activeTab === 're'" class="space-y-2 text-sm text-gray-700">
                     <div class="h-auto w-full">
                         <DataTable ref="dt" size="small" v-model:selection="selectedProducts" :value="endorsed_application"
-                            dataKey="id" :paginator="true" :rows="4" :filters="filters" filterDisplay="menu"
-                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                            :rowsPerPageOptions="[5, 10, 25]"
-                            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                            responsiveLayout="scroll" class="w-full text-sm">
-                            <!-- Table Header with Search -->
-                            <template #header>
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <IconField>
-                                        <InputIcon>
-                                            <i class="pi pi-search" />
-                                        </InputIcon>
-                                        <InputText v-model="filters['global'].value" placeholder="Search..." />
-                                    </IconField>
-                                </div>
-                            </template>
+                        dataKey="id" :paginator="true" :rows="20" :filters="filters" filterDisplay="menu"
+                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                        :rowsPerPageOptions="[5, 10, 25]"
+                        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
+                        responsiveLayout="scroll" class="w-full text-sm">
+                        <template #header>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText v-model="filters['global'].value" placeholder="Search..." />
+                                </IconField>
+                            </div>
+                        </template>
+                        <Column header="Action" :exportable="false" style="min-width: 2rem">
+                            <template #body="slotProps">
+                                <div class="mt-2 flex gap-2">
 
-                            <!-- Application No Column -->
-                         <Column header="Action" :exportable="false" style="min-width: 2rem">
-                                <template #body="slotProps">
-                                    <div class="flex space-x-2">
-                                        <div class="mt-2 flex gap-2">
-                                            <!-- History Button (only enabled if is_rps_chief_received = 1) -->
-                                            <Button @click="receiveApplication(slotProps.data.id)"
-                                                style="background-color: #0f766e"
-                                                class="p-2 text-white">
-                                                <BadgeCheck :size="15" />
-                                            </Button>
+                                    <!-- ✅ RECEIVE (disabled if endorsed) -->
+                                    <Button :disabled="buttonState(slotProps.data).receiveDisable"
+                                        @click="receiveApplication(slotProps.data.id)" style="background-color: #0f766e"
+                                        class="p-2 text-white">
+                                        <BadgeCheck :size="15" />
+                                    </Button>
 
-                                            <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                                
-                                                style="background-color: #0f766e"
-                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50">
-                                                <History :size="15" />
-                                            </Button>
-
-                                            <Button  type="button"
-                                                style="background-color: #0f766e"
-                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900">
-                                                <Link :href="route('applications.edit', { id: slotProps.data.id, type: slotProps.data.application_type })
-                                                    ">
-                                                <Eye :size="15" />
-                                                </Link>
-                                            </Button>
-
-                                            <Button :disabled="slotProps.data.is_penro_chief_received != 1" @click="endorseApplication(slotProps.data.id)"
-                                                style="background-color: #0f766e"
-                                               
-                                            class="p-2 text-white">
-                                                <SendIcon :size="15" />
-                                            </Button>
-
-                                        </div>
-
-
-
-                                    </div>
-                                </template>
-                            </Column>
-                            <Column field="application_no" header="Application No" sortable
-                                style="text-align: center; width: 10rem">
-                                <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <!-- Ribbon if status is Approved -->
-                                        <!-- <div v-if="data.status_title === 'Approved'">
-                                            <Tag><i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
-                                        </div> -->
-
-                                        <!-- <div v-else>
-                                            <Tag> <i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
-                                        </div> -->
-
-                                        <span class="ml-1 font-bold text-gray-800">
-                                            {{ data.application_no }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </Column>
-                            <Column field="purpose" header="Purpose" sortable style="text-align: center">
-                                <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <span class="ml-1 text-gray-800">
-                                            {{ data.purpose }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <!-- Other Columns -->
-                            <Column field="application_type" header="Application Type" sortable
-                                style="min-width: 5rem" />
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
-
-                            <!-- <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
-
-                            <Column header="Progress Tracker" sortable style="min-width: 4rem">
-                                <template #body="slotProps">
+                                    <!-- ✅ ROUTING / HISTORY (ALWAYS ENABLED) -->
                                     <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                        style="background-color: #0f766e;"
-                                        class="mt-2 bg-teal-800 hover:bg-teal-900 text-white p-2 rounded">
+                                        style="background-color: #0f766e; border: 1px solid #0f766e !important"
+                                        class="rounded p-2 text-white hover:bg-teal-900">
                                         <History :size="15" />
                                     </Button>
-                                </template>
-                            </Column>
 
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
-                            <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 4rem" />
-                            <Column header="Comments" :exportable="false" style="min-width: 8rem">
-                                <template #body="{ data }">
+                                    <!-- ✅ VIEW (ALWAYS ENABLED) -->
+                                    <Button type="button" style="background-color: #0f766e"
+                                        class="rounded p-2 text-white hover:bg-teal-900">
+                                        <Link :href="route('applications.edit', {
+                                            id: slotProps.data.id,
+                                            type: slotProps.data.application_type
+                                        })">
+                                            <Eye :size="15" />
+                                        </Link>
+                                    </Button>
 
-                                    {{ data.return_reason }}
-                                </template>
-                            </Column>
-                            <Column header="Action" :exportable="false" style="min-width: 2rem">
-                                <template #body="slotProps">
-                                    <div class="flex space-x-2">
-                                        <Button class="bg-teal-800 hover:bg-teal-900 text-white p-2 rounded"
-                                            style="background-color: #0f766e;" @click="openFileModal(slotProps.data)">
-                                            <SquarePen :size="15" />
-                                        </Button>
-                                    </div>
-                                </template>
-                            </Column> -->
-                        </DataTable>
+                                    <!-- ❌ ENDORSE (disabled if endorsed) -->
+                                    <Button :disabled="buttonState(slotProps.data).endorsedDisabled"
+                                        @click="openDialog('endorse', slotProps.data.id)"
+                                        style="background-color: #0f766e" class="p-2 text-white">
+                                        <SendIcon :size="15" />
+                                    </Button>
+
+                                    <!-- ❌ RETURN (disabled if endorsed) -->
+                                    <Button :disabled="buttonState(slotProps.data).returnDisbaled"
+                                        @click="openDialog('return', slotProps.data.id)"
+                                        style="background-color: #bd081c; border: 1px solid #cd201f !important"
+                                        class="p-2 text-white">
+                                        <Undo2 :size="15" />
+                                    </Button>
+
+                                </div>
+                            </template>
+                        </Column>
+
+                        <Column field="status_title" header="Status" sortable style="min-width: 12rem">
+                            <template #body="{ data }">
+                                <div class="flex flex-col items-center">
+                                    <Tag :value="data.status_title" :severity="data.status_title === 'Returned to RPS Chief' ? 'danger' :
+                                            data.status_title === 'Endorsed to TSD Chief' ? 'info' :
+                                                'success'
+                                        " class="text-center" />
+
+
+                                    <Button
+                                        style="display: inline; padding: .2em .6em .3em; font-size: 75%; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25em;"
+                                        severity="info" v-if="data.status_title === 'Returned to RPS Chief'"
+                                        class="rounded bg-blue-900 px-1 py-1 mt-1 text-xs text-white"
+                                        @click="openCommentModal(data)" size="small">
+                                        View Comments
+                                    </Button>
+                                </div>
+                            </template>
+                        </Column>
+                        <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
+                            <template #body="{ data }">
+                                <b>{{ data.application_no }}</b>
+                            </template>
+                        </Column>
+                        <Column field="application_type" header="Application Type" sortable />
+                        <Column header="Type of Transaction" field="transaction_type" sortable></Column>
+                        <Column header="Classification" field="classification" sortable></Column>
+
+                        <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
+
+                    </DataTable>
                     </div>
                 </div>
              
 
             </div>
-        </div>
 
 
         <ReusableConfirmDialog ref="confirmDialogRef" />
@@ -993,6 +985,8 @@ const handleFileUpdate = async (event) => {
 
     </div>
 </template>
+
+
 <style scoped>
 @media screen and (max-width: 960px) {
     ::v-deep(.customized-timeline) {

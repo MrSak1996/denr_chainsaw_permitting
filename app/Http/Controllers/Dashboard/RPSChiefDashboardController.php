@@ -67,7 +67,7 @@ class RPSChiefDashboardController extends Controller
      */
     public function getApplicationsByStatus(Request $request)
     {
-// DB::enableQueryLog();
+        // DB::enableQueryLog();
 
         $request->validate([
             'status' => 'required|integer',
@@ -90,6 +90,14 @@ class RPSChiefDashboardController extends Controller
                     self::STATUS_ENDORSED_TSD_CHIEF,   // 5
                     self::STATUS_ENDORSED_PENRO,   // 6
                     self::STATUS_RETURN_TO_TSD_CHIEF,  // 19
+                ];
+                break;
+            case '6':
+                $statusFilter = [
+                    self::STATUS_RECEIVED_PENRO_CHIEF,   // 12
+                    self::STATUS_ENDORSED_PENRO,   // 6
+                    self::STATUS_ENDORSED_LPDD_FUS,
+                    self::STATUS_RETURN_TO_PENRO,  // 20
                 ];
                 break;
 
@@ -152,7 +160,7 @@ class RPSChiefDashboardController extends Controller
                 return $item;
             });
 
-// dd(DB::getQueryLog());
+        // dd(DB::getQueryLog());
 
         // ✅ Get counts for every status
         $statusCounts = DB::table('tbl_application_checklist')
@@ -271,7 +279,7 @@ class RPSChiefDashboardController extends Controller
             // 2️⃣ Update application status
             $app->update([
                 'application_status' => self::STATUS_ENDORSED_TSD_CHIEF,
-                'date_endorsed_tsd_chief' => now(),
+                'date_endorsed_rps_chief' => now(),
             ]);
 
             // 3️⃣ Find Chief TSD in same office

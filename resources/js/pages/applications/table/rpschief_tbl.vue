@@ -272,7 +272,6 @@ const files = ref([]);
 const applicantsTable = async () => {
     try {
         const officeId = page.props.auth.user.office_id;
-        //naka set sa controller ung status, walang bearing ung status dito for guidance lang
         const { applications: endorsedApplications, count: endorsedCount } = await ProductService.getApplicationsByStatus(STATUS_ENDORSED_RPS_CHIEF, officeId);
         
         endorsed_applications.value = endorsedApplications;
@@ -720,9 +719,14 @@ const handleFileUpdate = async (event) => {
 };
 
 
-const isEndorsedTSD = (row: any) => {
-    return row.application_status === STATUS_ENDORSED_TSD_CHIEF;
-};
+const buttonState = (row:any) => {
+    const isEndorsed = row.application_status === STATUS_ENDORSED_RPS_CHIEF  || row.application_status == STATUS_ENDORSED_TSD_CHIEF;
+    return {
+        receiveDisable: false,
+        endorsedDisabled: isEndorsed,
+        returnDisbaled:false
+    }
+}
 </script>
 
 <template>
@@ -774,7 +778,7 @@ const isEndorsedTSD = (row: any) => {
                                 <div class="mt-2 flex gap-2">
 
                                     <!-- ✅ RECEIVE (disabled if endorsed) -->
-                                    <Button :disabled="isEndorsedTSD(slotProps.data)"
+                                    <Button :disabled="buttonState(slotProps.data).receiveDisable"
                                         @click="receiveApplication(slotProps.data.id)" style="background-color: #0f766e"
                                         class="p-2 text-white">
                                         <BadgeCheck :size="15" />
@@ -799,14 +803,14 @@ const isEndorsedTSD = (row: any) => {
                                     </Button>
 
                                     <!-- ❌ ENDORSE (disabled if endorsed) -->
-                                    <Button :disabled="isEndorsedTSD(slotProps.data)"
+                                    <Button :disabled="buttonState(slotProps.data).endorsedDisabled"
                                         @click="openDialog('endorse', slotProps.data.id)"
                                         style="background-color: #0f766e" class="p-2 text-white">
                                         <SendIcon :size="15" />
                                     </Button>
 
                                     <!-- ❌ RETURN (disabled if endorsed) -->
-                                    <Button :disabled="isEndorsedTSD(slotProps.data)"
+                                    <Button :disabled="buttonState(slotProps.data).returnDisbaled"
                                         @click="openDialog('return', slotProps.data.id)"
                                         style="background-color: #bd081c; border: 1px solid #cd201f !important"
                                         class="p-2 text-white">
