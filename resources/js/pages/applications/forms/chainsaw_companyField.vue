@@ -35,7 +35,7 @@ watch(
     async (newProvince) => {
         if (newProvince) {
             try {
-                const response = await axios.get(`http://10.201.13.78:8000/api/provinces/${newProvince}/cities`);
+                const response = await axios.get(`http://192.168.2.106:8000/api/provinces/${newProvince}/cities`);
                 if (response.data && Array.isArray(response.data)) {
                     city_mun_opts.value = response.data.map((item) => ({
                         id: item.mun_code,
@@ -65,7 +65,7 @@ watch(
         const region = props.form.c_region;
         if (newCityMun) {
             try {
-                const response = await axios.get(`http://10.201.13.78:8000/api/barangays`, {
+                const response = await axios.get(`http://192.168.2.106:8000/api/barangays`, {
                     params: {
                         reg_code: region,
                         prov_code: province,

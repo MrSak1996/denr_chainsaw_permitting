@@ -130,7 +130,7 @@ const formValidationRules = {
         form: 'chainsaw_form',
         fields: [
             'permit_validity',
-            'permit_chainsaw_no',
+            // 'permit_chainsaw_no',
             'brand',
             'model',
             'quantity',
@@ -140,7 +140,7 @@ const formValidationRules = {
         ],
         labels: {
             permit_validity: 'Permit Validity',
-            permit_chainsaw_no: 'Permit Chainsaw No',
+            // permit_chainsaw_no: 'Permit Chainsaw No',
             brand: 'Brand',
             model: 'Model',
             quantity: 'Quantity',
@@ -316,7 +316,7 @@ const saveCompanyApplication = async () => {
     formData.append('soc_certificate', company_form.soc_certificate);
 
     try {
-        const response = await insertFormData('http://10.201.13.78:8000/api/chainsaw/company_apply', {
+        const response = await insertFormData('http://192.168.2.106:8000/api/chainsaw/company_apply', {
             ...company_form,
             ...formData,
             encoded_by: userId,
@@ -341,6 +341,8 @@ const saveCompanyApplication = async () => {
 
 const submitChainsawForm = async () => {
     isloadingSpinner.value = true;
+    const applicationId = getApplicationIdFromUrl();
+
     try {
         for (const chainsaw of chainsaws) {
             const formData = new FormData();
@@ -356,7 +358,9 @@ const submitChainsawForm = async () => {
                 if (chainsaw[fileKey]) formData.append(fileKey, chainsaw[fileKey]);
             });
 
-            await axios.post('http://10.201.13.78:8000/api/chainsaw/insertChainsawInfo', formData, {
+            await axios.post('http://192.168.2.106:8000/api/chainsaw/insertChainsawInfo', formData, 
+            {
+                params: { id: applicationId },
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
         }
@@ -375,13 +379,14 @@ const submitORPayment = async () => {
     const applicationId = getApplicationIdFromUrl();
     const formData = new FormData();
 
+    formData.append('id', applicationId);
     formData.append('official_receipt', payment_form.official_receipt);
     formData.append('permit_fee', payment_form.permit_fee);
     formData.append('application_no', applicationData.value.application_no);
     formData.append('or_copy', payment_form.or_copy);
 
     try {
-        await axios.post('http://10.201.13.78:8000/api/chainsaw/insert_payment', formData, {
+        await axios.post('http://192.168.2.106:8000/api/chainsaw/insert_payment', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -404,7 +409,7 @@ const getApplicationDetails = async () => {
     
 
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data || [];
         console.log(applicationData.value)
     } catch (error) {
@@ -419,7 +424,7 @@ const getApplicantFile = async () => {
     if (!applicationId) return;
 
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 name: file.file_name,

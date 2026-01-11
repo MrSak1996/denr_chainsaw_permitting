@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { router, usePage } from '@inertiajs/vue3';
+import { router, usePage, Link } from '@inertiajs/vue3';
 import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
-import { SaveAll, Send, SquarePen, Trash, Undo2, Info, History, Import } from 'lucide-vue-next';
+import { SaveAll, Send, SquarePen, Eye, Undo2, Info, History, Import } from 'lucide-vue-next';
 import Fieldset from 'primevue/fieldset';
 import Message from 'primevue/message';
 import { useToast } from 'primevue/usetoast';
@@ -13,12 +13,14 @@ import { Text } from 'vue';
 import Timeline from 'primevue/timeline';
 import { ProductService } from '../service/ProductService';
 import OverlayBadge from 'primevue/overlaybadge';
+import receivedModal from '../modal/received_application_modal.vue';
 
+const page = usePage();
+const officeId = page.props.auth.user.office_id;
 onMounted(() => {
-    applicantsTable();
+    applicantsTable(officeId);
 
 });
-const page = usePage();
 const auth = computed(() => page.props.auth);
 const roleId = auth.value.user?.role_id;
 
@@ -131,19 +133,19 @@ const formatCurrency = (value) => {
     return;
 };
 
-const applicantsTable = async () => {
+const applicantsTable = async (id) => {
     try {
         const { applications: reviewApplications, count: reviewCount } =
-            await ProductService.getApplicationsByStatus(1);
+            await ProductService.getApplicationsByStatus(1, id);
 
         const { applications: returnedApplications, count: returnedCount } =
-            await ProductService.getApplicationsByStatus(0);
+            await ProductService.getApplicationsByStatus(0, id);
 
         const { applications: endorsedApplications, count: endorsedCount } =
-            await ProductService.getApplicationsByStatus(2);
+            await ProductService.getApplicationsByStatus(2, id);
 
         const { applications: approvedApplications, count: approvedCount } =
-            await ProductService.getApplicationsByStatus(5);
+            await ProductService.getApplicationsByStatus(5, id);
 
         // Assign to reactive variables
         products.value = reviewApplications;
@@ -360,7 +362,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -382,7 +384,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -407,7 +409,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -444,7 +446,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -515,7 +517,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -566,7 +568,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id);
         formData.append('name', selectedFileToUpdate.value.name);
 
-        const response = await axios.post('http://10.201.13.78:8000/api/files/update', formData, {
+        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -654,26 +656,57 @@ const handleFileUpdate = async (event) => {
                             </template>
 
                             <!-- Application No Column -->
-                            <Column field="application_no" header="Application No" sortable style="min-width: 18rem">
+                            <Column header="Action" :exportable="false" style="min-width: 2rem">
+                                <template #body="slotProps">
+                                    <div class="flex space-x-2">
+                                        <receivedModal :applicationId="Number(slotProps.data.id)" />
+                                        <div class="mt-2 flex gap-2">
+                                            <!-- History Button (only enabled if is_rps_chief_received = 1) -->
+                                            <Button type="button" @click="openProgressTracker(slotProps.data)"
+                                                :disabled="slotProps.data.is_rps_chief_received != 1"
+                                                style="background-color: #0f766e"
+                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50">
+                                                <History :size="15" />
+                                            </Button>
+
+                                            <Button :disabled="slotProps.data.is_rps_chief_received != 1" type="button"
+                                                style="background-color: #0f766e"
+                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900">
+                                                <Link
+                                                    :href="route('applications.edit', { id: slotProps.data.id, type: slotProps.data.application_type })"
+                                                    @click.prevent="slotProps.data.is_rps_chief_received != 1">
+                                                <Eye :size="15" />
+                                                </Link>
+
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column field="application_no" header="Application No" sortable
+                                style="text-align: center; width: 10rem">
                                 <template #body="{ data }">
                                     <div class="relative flex flex-col items-center space-y-2">
                                         <!-- Ribbon if status is Approved -->
-                                        <div v-if="data.status_title === 'Approved'" class="approved_ribbon">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
-                                        </div>
+                                        <!-- <div v-if="data.status_title === 'Approved'">
+                                            <Tag><i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
+                                        </div> -->
 
+                                        <!-- <div v-else>
+                                            <Tag> <i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
+                                        </div> -->
 
-                                        <div v-else class="approved_ribbon" :style="{
-                                            backgroundColor:
-                                                data.status_title === 'Return for Compliance'
-                                                    ? '#B71C1C'
-                                                    : '#0f766e',
-                                        }">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
-                                        </div>
-
-                                        <span class="ml-1 text-gray-800 font-bold">
+                                        <span class="ml-1 font-bold text-gray-800">
                                             {{ data.application_no }}
+                                        </span>
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column field="purpose" header="Purpose" sortable style="text-align: center">
+                                <template #body="{ data }">
+                                    <div class="relative flex flex-col items-center space-y-2">
+                                        <span class="ml-1 text-gray-800">
+                                            {{ data.purpose }}
                                         </span>
                                     </div>
                                 </template>
@@ -682,9 +715,10 @@ const handleFileUpdate = async (event) => {
                             <!-- Other Columns -->
                             <Column field="application_type" header="Application Type" sortable
                                 style="min-width: 5rem" />
-                            <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
+                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
 
-                            <!-- Progress Tracker Column -->
+                            <!-- <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
+
                             <Column header="Progress Tracker" sortable style="min-width: 4rem">
                                 <template #body="slotProps">
                                     <Button type="button" @click="openProgressTracker(slotProps.data)"
@@ -703,7 +737,6 @@ const handleFileUpdate = async (event) => {
                                     {{ data.return_reason }}
                                 </template>
                             </Column>
-                            <!-- Action Buttons -->
                             <Column header="Action" :exportable="false" style="min-width: 2rem">
                                 <template #body="slotProps">
                                     <div class="flex space-x-2">
@@ -713,7 +746,7 @@ const handleFileUpdate = async (event) => {
                                         </Button>
                                     </div>
                                 </template>
-                            </Column>
+                            </Column> -->
                         </DataTable>
                     </div>
                 </div>
@@ -957,7 +990,7 @@ const handleFileUpdate = async (event) => {
                             <div class="flex items-center">
                                 <span class="w-48 font-semibold">Authorized Representative:</span>
                                 <span v-if="!editState.applicant">{{ applicationDetails.authorized_representative
-                                    }}</span>
+                                }}</span>
                                 <InputText v-else v-model="editableApplicant.authorized_representative"
                                     class="w-full" />
                             </div>

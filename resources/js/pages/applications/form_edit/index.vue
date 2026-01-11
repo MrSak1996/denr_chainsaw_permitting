@@ -12,7 +12,6 @@ const page = usePage();
 
 // Extract your application data
 const application = page.props.application
-console.log(application.application_type)
 // ---------------------
 // STATE
 // ---------------------
@@ -51,85 +50,21 @@ const showIndividualApplicant = async () => {
 // AUTO-SELECT BASED ON URL
 // ---------------------
 onMounted(() => {
-    const type = getApplicationTypeFromUrl();
-  
-    if (type === 'individual') {
-        checked.value = false;
+     const type = page.props.application.application_type;
+
+    if (type) {
         hasSelected.value = true;
-    }
-    else if (type === 'company') {
-        checked.value = true;
-        hasSelected.value = true;
+
+        if (type === 'Individual') {
+            checked.value = false;
+        } else {
+            checked.value = true;
+        }
     }
 });
 </script>
 
 
-<style scoped>
-.box {
-    background-color: #fff;
-    border-top: 4px solid #00943a;
-    margin-bottom: 20px;
-    padding: 20px;
-    -moz-box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-    -o-box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-    -webkit-box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.box .title {
-    border-bottom: 1px solid #e0e0e0;
-    color: #432c0b !important;
-    font-weight: bold;
-    margin-bottom: 20px;
-    margin-top: 0;
-    padding-bottom: 10px;
-    padding-top: 0;
-    text-transform: uppercase;
-    font-size: 10pt;
-}
-
-/* Base style for ToggleButton - Green (unchecked/default state) */
-/* Default state - Green */
-/* Base style for ToggleButton - Green (unchecked/default state) */
-.p-togglebutton {
-    font-weight: 600;
-    font-size: 1rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.5rem;
-    border: none;
-    background-color: #22c55e;
-    /* green-500 */
-    color: white;
-    transition: background-color 0.3s ease, filter 0.3s ease;
-}
-
-/* Hover effect */
-.p-togglebutton:hover {
-    filter: brightness(1.1);
-}
-
-/* Checked state - Darker green */
-.p-togglebutton.p-togglebutton-checked {
-    background-color: #15803d !important;
-    /* green-700 */
-    border-color: #166534;
-    color: rgb(0, 0, 0);
-}
-
-/* Fix inner white background */
-.p-togglebutton.p-togglebutton-checked .p-togglebutton-content {
-    background-color: #15803d !important;
-    box-shadow: none;
-    color: white !important;
-}
-
-/* Ensure label and icon are white in all states */
-.p-togglebutton .p-togglebutton-icon,
-.p-togglebutton .p-togglebutton-label {
-    color: white !important;
-}
-</style>
 
 
 <template>
@@ -197,3 +132,69 @@ onMounted(() => {
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.box {
+    background-color: #fff;
+    border-top: 4px solid #00943a;
+    margin-bottom: 20px;
+    padding: 20px;
+    -moz-box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    -o-box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    -webkit-box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.box .title {
+    border-bottom: 1px solid #e0e0e0;
+    color: #432c0b !important;
+    font-weight: bold;
+    margin-bottom: 20px;
+    margin-top: 0;
+    padding-bottom: 10px;
+    padding-top: 0;
+    text-transform: uppercase;
+    font-size: 10pt;
+}
+
+/* Base style for ToggleButton - Green (unchecked/default state) */
+/* Default state - Green */
+/* Base style for ToggleButton - Green (unchecked/default state) */
+.p-togglebutton {
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: #22c55e;
+    /* green-500 */
+    color: white;
+    transition: background-color 0.3s ease, filter 0.3s ease;
+}
+
+/* Hover effect */
+.p-togglebutton:hover {
+    filter: brightness(1.1);
+}
+
+/* Checked state - Darker green */
+.p-togglebutton.p-togglebutton-checked {
+    background-color: #15803d !important;
+    /* green-700 */
+    border-color: #166534;
+    color: rgb(0, 0, 0);
+}
+
+/* Fix inner white background */
+.p-togglebutton.p-togglebutton-checked .p-togglebutton-content {
+    background-color: #15803d !important;
+    box-shadow: none;
+    color: white !important;
+}
+
+/* Ensure label and icon are white in all states */
+.p-togglebutton .p-togglebutton-icon,
+.p-togglebutton .p-togglebutton-label {
+    color: white !important;
+}
+</style>

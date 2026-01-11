@@ -20,6 +20,33 @@ use Carbon\Carbon;
 
 class ApplicationController extends Controller
 {
+    // Define status constants
+    const STATUS_RETURN_FOR_COMPLIANCE = 0;
+    const STATUS_FOR_REVIEW_EVALUATION = 1;
+    const STATUS_ENDORSED_CENRO = 2;
+    const STATUS_ENDORSED_PENRO = 3;
+    const STATUS_ENDORSED_RO = 4;
+    const STATUS_APPROVED = 5;
+
+    // IMPLEMENTING PENRO
+    const TECHNICAL_STAFF = 1;
+    const CHIEF_RPS = 8;
+    const CHIEF_TSD = 10;
+    const IMPLEMENTING_PENRO = 3;
+    /**
+     * Mapping of statuses to their labels
+     */
+    protected $statusMap = [
+        self::STATUS_RETURN_FOR_COMPLIANCE => 'Return for Compliance',
+        self::STATUS_FOR_REVIEW_EVALUATION => 'For Review / Evaluation',
+        self::STATUS_ENDORSED_CENRO => 'Endorsed to CENRO',
+        self::STATUS_ENDORSED_PENRO => 'Endorsed to PENRO',
+        self::STATUS_ENDORSED_RO => 'Endorsed to R.O',
+        self::STATUS_APPROVED => 'Approved',
+
+        self::TECHNICAL_STAFF => ''
+    ];
+
 
 
     public function apply(Request $request)
@@ -44,6 +71,9 @@ class ApplicationController extends Controller
             'i_city_mun' => 'required|string',
             'i_barangay' => 'required|string',
             'i_complete_address' => 'required|string',
+            'mobile_no' => 'nullable|string',          // ✅ ADD
+            'telephone_no' => 'nullable|string',       // ✅ ADD
+            'email_address' => 'nullable|email',
 
             'p_place_of_operation_address' => 'nullable|string',
             'p_region' => 'nullable|string',
@@ -265,19 +295,28 @@ class ApplicationController extends Controller
         return response()->json(['application_no' => $applicationNo]);
     }
 
-    public function showApplicationDetails()
+    public function showApplicationDetails(Request $request)
     {
+        $userId = $request->query('id'); // ?id=1
+
         $applicationDetails = DB::table('tbl_application_checklist as ac')
             ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
             ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
             ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
+            ->leftJoin('users as u', 'u.id', '=', 'ac.encoded_by') // ← You missed this join!
 
             ->select(
                 'ac.id',
+                'u.id as user_id',
+                'u.office_id',
                 's.status_title',
                 'ac.application_status',
                 'ac.application_type',
                 'ac.application_no',
+                'ac.transaction_type',
+                'ac.classification',
+                'ac.authorized_representative',
+                DB::raw("CONCAT(ac.applicant_lastname, ', ', ac.applicant_firstname, ' ', ac.applicant_middlename) AS applicant_name"),
                 'ci.permit_chainsaw_no',
                 'ci.brand',
                 'ci.model',
@@ -288,10 +327,18 @@ class ApplicationController extends Controller
                 'ap.date_of_payment',
                 'ci.permit_validity',
                 'ac.created_at',
+                'ac.date_received_rps_chief',
+                'ac.date_received_tsd_chief',
+                'ac.date_received_penro_chief',
+                'ac.date_received_fus',
+                'ac.date_received_ardts',
+                'ac.date_received_red',
                 'ac.date_applied',
+                'ac.rps_chief_comments'
             )
-            ->orderBy('id', 'desc')
 
+            ->where('u.id', $userId)
+            ->orderBy('ac.id', 'desc')
             ->get()
             ->map(function ($item) {
                 $item->created_at = $item->created_at
@@ -317,6 +364,7 @@ class ApplicationController extends Controller
             'data' => $applicationDetails
         ]);
     }
+
 
     public function getApplicationDetails($application_id)
     {
@@ -355,10 +403,16 @@ class ApplicationController extends Controller
                 'ac.company_c_province as prov_code',
                 'ac.company_c_city_mun',
                 'ac.company_c_barangay',
+                'ac.company_mobile_no',
                 'ac.operation_complete_address',
                 'ac.transaction_type as type_of_transaction',
+                'ac.rps_chief_comments',
+                'ac.cenro_comments',
+                'ac.tsd_chief_comments',
+                'ac.penro_comments',
+                'ac.ro_comments',
+                'ac.ardts_comments',
                 'g.prov_name',
-
                 'ci.supplier_name',
                 'ci.permit_chainsaw_no',
                 'ci.brand',
@@ -448,8 +502,13 @@ class ApplicationController extends Controller
             ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
             ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
             ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
+            ->leftJoin('users as u', 'u.id', '=', 'ac.encoded_by') // ← You missed this join!
+            ->leftJoin('tbl_office as o', 'o.id', '=', 'u.office_id') // ← You missed this join!
+
             ->select(
                 'ac.id',
+                'u.office_id',
+                'o.office_title',
                 'ac.applicant_lastname as last_name',
                 'ac.applicant_firstname as first_name',
                 'ac.applicant_middlename as middle_name',
@@ -474,6 +533,7 @@ class ApplicationController extends Controller
                 'ac.date_applied',
                 'ac.company_name',
                 'ac.company_address',
+                'ac.company_mobile_no',
                 'ac.company_c_province',
                 'ac.company_c_province as prov_code',
                 'ac.company_c_city_mun',
@@ -512,6 +572,8 @@ class ApplicationController extends Controller
         return Inertia::render('applications/form_edit/index', [
             'application' => [
                 'id' => $applicationDetails->id,
+                'office_id' => $applicationDetails->office_id,
+                'office_title' => $applicationDetails->office_title,
                 'permit_no' => $applicationDetails->permit_no,
                 'last_name' => $applicationDetails->last_name,
                 'first_name' => $applicationDetails->first_name,
@@ -536,6 +598,7 @@ class ApplicationController extends Controller
                 'classification' => $applicationDetails->classification,
                 'company_name' => $applicationDetails->company_name,
                 'company_address' => $applicationDetails->company_address,
+                'company_mobile_no' => $applicationDetails->company_mobile_no,
                 'authorized_representative' => $applicationDetails->authorized_representative,
                 'created_at' => $applicationDetails->created_at,
                 'brand' => $applicationDetails->brand,
@@ -617,9 +680,101 @@ class ApplicationController extends Controller
         }
     }
 
+    public function updateCompanyApplicant(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $updateResult = DB::table('tbl_application_checklist')
+                ->where('id', $id)
+                ->update([
+                    'application_status' => 1,
+                    'application_type' => $request->input('application_type', 'Company'),
+                    'transaction_type' => $request->input('type_of_transaction'),
+                    'date_applied' => $request->filled('date_applied')
+                        ? date('Y-m-d', strtotime($request->input('date_applied')))
+                        : null,
+                    'company_name' => $request->input('company_name'),
+                    'classification' => $request->input('classification'),
+                    'company_address' => $request->input('company_address'),
+                    'company_mobile_no' => $request->input('company_mobile_no'),
+                    'authorized_representative' => $request->input('authorized_representative'),
+                    'company_c_province' => $request->input('c_province'),
+                    'company_c_city_mun' => $request->input('c_city_mun'),
+                    'company_c_barangay' => $request->input('c_barangay'),
+                    'applicant_contact_details' => $request->input('applicant_contact_details'),
+                    'applicant_telephone_no' => $request->input('applicant_telephone_no'),
+                    'applicant_email_address' => $request->input('applicant_email_address'),
+                    'applicant_province_c' => $request->input('applicant_province_c'),
+                    'applicant_city_mun_c' => $request->input('applicant_city_mun_c'),
+                    'applicant_brgy_c' => $request->input('applicant_brgy_c'),
+                    'applicant_complete_address' => $request->input('applicant_complete_address'),
+                    'encoded_by' => $request->input('encoded_by'),
+                    'updated_at' => now(),
+                ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => $updateResult ? 'success' : 'error',
+                'message' => $updateResult ? 'Application updated successfully.' : 'No changes were made.',
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // public function updateChainsawInformation(Request $request, $id)
+    // {
+    //     try {
+    //         DB::beginTransaction();
+
+    //         // Prepare the data you want to update
+    //         $updateData = [
+    //             'brand' => $request->input('brand'),
+    //             'model' => $request->input('model'),
+    //             'quantity' => $request->input('quantity'),
+    //             'supplier_name' => $request->input('supplier_name'),
+    //             'supplier_address' => $request->input('supplier_address'),
+    //             'purpose' => $request->input('purpose'),
+    //             'permit_validity' => $request->input('permit_validity'),
+    //             'other_details' => $request->input('other_details'),
+    //             'updated_at' => now(),
+    //             'created_at' => now(),
+    //             'permit_no' => $request->input('permit_no'),
+
+    //         ];
+
+    //         // Update the record
+    //         $updateResult = DB::table('tbl_chainsaw_information')
+    //             ->where('id', $id)
+    //             ->update($updateData);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => $updateResult ? 'success' : 'error',
+    //             'message' => $updateResult ? 'Application information updated successfully.' : 'No changes were made.',
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
 
-    
+
+
+
 
 
 
@@ -665,23 +820,28 @@ class ApplicationController extends Controller
                 'mayors' => ['folder' => 'Mayors Permit', 'prefix' => 'mayors_permit'],
                 'notarized' => ['folder' => 'Notarized Affidavit', 'prefix' => 'notarized_documents'],
                 'official' => ['folder' => 'Official Receipts', 'prefix' => 'official_receipts'],
-                'request' => ['folder' => 'Request_Letter', 'prefix' => 'request_letter'],
+                'request' => ['folder' => 'Request Letter', 'prefix' => 'request_letter'],
                 'secretary_certificate' => ['folder' => 'Secretary Certificate', 'prefix' => 'secretary_certificate'],
                 'othersDocs' => ['folder' => 'Other supporting documents', 'prefix' => 'others'],
             ];
 
-            // Always treat the provided "name" as a full filename
             $rawName = strtolower(trim($request->name));
+            $fileType = null;
 
-            // Extract only the first segment before the first underscore
-            $fileType = explode('_', $rawName)[0];
+            foreach ($folderMap as $key => $map) {
+                if (str_starts_with($rawName, $key)) {
+                    $fileType = $key;
+                    break;
+                }
+            }
 
-            if (!isset($folderMap[$fileType])) {
+            if (!$fileType) {
                 return response()->json([
                     'status' => false,
-                    'message' => "Invalid file type provided: {$fileType}",
+                    'message' => "Invalid file type provided: {$rawName}",
                 ], 400);
             }
+
 
             $subFolder = $folderMap[$fileType]['folder'];
             $filePrefix = $folderMap[$fileType]['prefix'];
@@ -745,26 +905,45 @@ class ApplicationController extends Controller
         ]);
 
         try {
-            // Update the application status to 'returned'
+            DB::beginTransaction();
+
+            // 1️⃣ Update the application status in tbl_application_checklist
             DB::table('tbl_application_checklist')
                 ->where('id', $request->application_id)
                 ->update([
                     'application_status' => 0,
-                    'return_reason' => $request->reason,
+                    'tsd_chief_comments' => $request->reason,
                     'updated_at' => now(),
                 ]);
 
+            // 2️⃣ Insert log entry to tbl_application_comments
+            DB::table('tbl_application_comments')->insert([
+                'application_id' => $request->application_id,
+                'signatory_id' => auth()->id(),
+                'comments' => $request->reason,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+
             return response()->json([
+                'id' => auth()->id(),
                 'status' => 'success',
                 'message' => 'Application marked as returned successfully.',
             ]);
+
         } catch (\Exception $e) {
+
+            DB::rollBack();
+
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage(),
             ], 500);
         }
     }
+
 
     public function view($id)
     {
@@ -784,6 +963,245 @@ class ApplicationController extends Controller
 
         return response()->json(['message' => 'Status updated successfully.']);
     }
+
+
+
+    public function updateCompanyPayemnt(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Update the record
+            $updateResult = DB::table('tbl_application_payment')
+                ->where('application_id', $id) // use payload instead of route param
+                ->update([
+                    'official_receipt' => $request->input('official_receipt'),
+                    'permit_fee' => $request->input('permit_fee'),
+                    'date_of_payment' => now(),
+                    'remarks' => $request->input('remarks'),
+                    'updated_at' => now(),
+                ]);
+            DB::commit();
+
+            return response()->json([
+                'status' => $updateResult ? 'success' : 'error',
+                'message' => $updateResult ? 'Payment info updated successfully' : 'No updates were made. Please check your data.',
+            ], $updateResult ? 200 : 400);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // public function submitApplication(Request $request, $id)
+    // {
+    //     try {
+    //         DB::beginTransaction();
+
+    //         // Update the record
+    //         $updateResult = DB::table('tbl_application_checklist')
+    //             ->where('id', $id) // use payload instead of route param
+    //             ->update([
+    //                 'application_status' => self::STATUS_FOR_REVIEW_EVALUATION,
+    //                 'updated_at' => now(),
+    //             ]);
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => $updateResult ? 'success' : 'error',
+    //             'message' => $updateResult ? 'Application updated successfully' : 'No updates were made. Please check your data.',
+    //         ], $updateResult ? 200 : 400);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // // }
+    // public function submitApplication(Request $request, $id)
+    // {
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $user = auth()->user(); // logged-in user
+
+
+    //         // Update application status
+    //         $updateResult = DB::table('tbl_application_checklist')
+    //             ->where('id', $id)
+    //             ->update([
+    //                 'application_status' => self::STATUS_FOR_REVIEW_EVALUATION,
+    //                 'updated_at' => now(),
+    //             ]);
+
+    //         /**
+    //          * CENRO → PENRO OFFICE MAPPING
+    //          */
+    //         $officeRoutingMap = [
+    //             6 => 2,  // Sta. Cruz → PENRO Laguna
+    //             7 => 3,  // Lipa → PENRO Batangas
+    //             8 => 3,  // Calaca → PENRO Batangas
+    //             9 => 5,  // Calauag → PENRO Quezon
+    //             10 => 5, // Catanauan → PENRO Quezon
+    //             11 => 5, // Tayabas → PENRO Quezon
+    //             12 => 5, // Real → PENRO Quezon
+    //         ];
+
+    //         if (!isset($officeRoutingMap[$user->office_id])) {
+    //             throw new \Exception("Routing not defined for office_id {$user->office_id}");
+    //         }
+
+    //         // Determine receiver office
+    //         $receiverOfficeId = $officeRoutingMap[$user->office_id];
+
+    //         // Get receiver user (any user from that PENRO office)
+    //         $receiverUser = DB::table('users')
+    //             ->where('office_id', $receiverOfficeId)
+    //             ->orderBy('id', 'asc')
+    //             ->first();
+
+    //         if (!$receiverUser) {
+    //             throw new \Exception("No receiver user found in office_id {$receiverOfficeId}");
+    //         }
+
+    //         // Insert routing record
+    //         DB::table('tbl_application_routing')->insert([
+    //             'application_id' => $id,
+    //             'sender_id' => $user->id,
+    //             'receiver_id' => $receiverUser->id,
+    //             'action' => 'Submitted for Review',
+    //             'remarks' => 'Application submitted by CENRO Staff',
+    //             'is_read' => 0,
+    //             'route_order' => 1,
+    //             'created_at' => now(),
+    //             'updated_at' => now(),
+    //         ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'Application submitted and routed successfully.',
+    //         ], 200);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
+    public function submitApplication(Request $request, $id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $user = auth()->user(); // logged-in user
+
+            // Update status
+            DB::table('tbl_application_checklist')
+                ->where('id', $id)
+                ->update([
+                    'application_status' => self::STATUS_FOR_REVIEW_EVALUATION,
+                    'updated_at' => now(),
+                ]);
+
+            /**
+             * CENRO → PENRO OFFICE MAPPING
+             */
+            $officeRoutingMap = [
+                6 => 2,  // Sta. Cruz → PENRO Laguna
+                7 => 3,  // Lipa → PENRO Batangas
+                8 => 3,  // Calaca → PENRO Batangas
+                9 => 5,  // Calauag → PENRO Quezon
+                10 => 5, // Catanauan → PENRO Quezon
+                11 => 5, // Tayabas → PENRO Quezon
+                12 => 5, // Real → PENRO Quezon
+            ];
+
+            // Validate routing
+            if (!isset($officeRoutingMap[$user->office_id])) {
+                throw new \Exception("Routing not defined for office_id {$user->office_id}");
+            }
+
+            // 1️⃣ FIRST ROUTE → CHIEF RPS
+            $rps_chief = DB::table('users')
+                ->where('office_id', $user->office_id)
+                ->where('role_id', self::CHIEF_RPS) // chiefs only CENRO STA CRUZ
+                ->orderBy('id', 'asc')
+                ->first();
+
+            if (!$rps_chief) {
+                throw new \Exception("No CENRO Chief found in office_id {$user->office_id}");
+            }
+
+            // Insert routing for CENRO CHIEF
+            DB::table('tbl_application_routing')->insert([
+                'application_id' => $id,
+                'sender_id' => $user->id,
+                'receiver_id' => $rps_chief->id,
+                'action' => 'Submitted to CHIEF RPS',
+                'remarks' => 'Waiting to received by CHIEF RPS',
+                // 'remarks' => 'Waiting for endorsement to PENRO',
+                'is_read' => 0,
+                'route_order' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // 2️⃣ SECOND ROUTE → PENRO OFFICE
+            // $penroOfficeId = $officeRoutingMap[$user->office_id];
+
+            // $penroReceiver = DB::table('users')
+            //     ->where('office_id', $penroOfficeId)
+            //     ->orderBy('id', 'asc')
+            //     ->first();
+
+            // if (!$penroReceiver) {
+            //     throw new \Exception("No PENRO user found in office_id {$penroOfficeId}");
+            // }
+
+            // Insert routing for PENRO
+            // DB::table('tbl_application_routing')->insert([
+            //     'application_id' => $id,
+            //     'sender_id' => $cenroChief->id,
+            //     'receiver_id' => $penroReceiver->id,
+            //     'action' => 'Endorsed to PENRO',
+            //     'remarks' => 'Endorsed by CENRO Chief',
+            //     'is_read' => 0,
+            //     'route_order' => 2,
+            //     'created_at' => now(),
+            //     'updated_at' => now(),
+            // ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Application submitted and routed successfully.',
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
 

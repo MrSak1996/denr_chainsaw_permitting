@@ -86,7 +86,7 @@ const fetchCities = async (provinceCode: number | string, targetField: string) =
     }
 
     try {
-        const { data } = await axios.get(`http://10.201.13.78:8000/api/provinces/${provinceCode}/cities`);
+        const { data } = await axios.get(`http://192.168.2.106:8000/api/provinces/${provinceCode}/cities`);
 
         if (Array.isArray(data)) {
             cityMunOpts.value = data.map((item: any) => ({
@@ -119,7 +119,7 @@ const fetchBarangays = async () => {
     }
 
     try {
-        const { data } = await axios.get('http://10.201.13.78:8000/api/barangays', {
+        const { data } = await axios.get('http://192.168.2.106:8000/api/barangays', {
             params: { reg_code: region, prov_code: province, mun_code: cityMun },
         });
 
@@ -194,7 +194,7 @@ const saveCompanyApplication = async () => {
     formData.append('soc_certificate', company_form.soc_certificate);
 
     try {
-        const response = await insertFormData('http://10.201.13.78:8000/api/chainsaw/company_apply', {
+        const response = await insertFormData('http://192.168.2.106:8000/api/chainsaw/company_apply', {
             ...company_form,
             ...formData,
             encoded_by: userId,
@@ -262,7 +262,7 @@ const getApplicationDetails = async () => {
     }
 
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data || [];
     } catch (error) {
         errorMessage.value = error.message || 'Error fetching application data.';
@@ -277,7 +277,7 @@ const getApplicantFile = async () => {
     if (!applicationId) return;
 
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 name: file.file_name,

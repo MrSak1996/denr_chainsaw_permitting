@@ -18,22 +18,7 @@ class ChainsawController extends Controller
     public function insertChainsawInfo(Request $request, GoogleDriveService $driveService)
     {
         try {
-            $validated = $request->validate([
-                'application_id' => 'required|string',
-                'applicant_type' => 'required|string',
-                'file_id' => 'nullable|integer',
-                'brand' => 'required|string|max:100',
-                'model' => 'required|string|max:100',
-                'quantity' => 'required|integer|min:1',
-                'supplier_name' => 'required|string|max:255',
-                'purpose' => 'required|string|max:255',
-                'permit_validity' => 'required|string',
-                'others_details' => 'nullable|string|max:1000',
-            ]);
-
-
-            // 🟡 Fetch the application by application_no
-            $application = ChainsawIndividualApplication::where('id', $request->input('application_id'))->first();
+            $application = ChainsawIndividualApplication::where('id', $request->input('id'))->first();
             if (!$application) {
                 return response()->json(['error' => $request->input('application_no')], 404);
             }
@@ -46,6 +31,7 @@ class ChainsawController extends Controller
                 'application_id' => $application_id,
                 'brand' => $request->input('brand'),
                 'model' => $request->input('model'),
+                'engine_serial_no' => $request->input('engine_serial_no'),
                 'quantity' => $request->input('quantity'),
                 'supplier_name' => $request->input('supplier_name'),
                 'supplier_address' => $request->input('supplier_address'),
@@ -83,7 +69,7 @@ class ChainsawController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'An error occurred while processing your request.',
-                'errorwdqewr' => $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -122,10 +108,7 @@ class ChainsawController extends Controller
         try {
             DB::beginTransaction();
 
-            $applicationId = $id; // use the URL param
-            // Or use $request->input('application_id') if you prefer the payload
 
-            // Format permit_validity if provided
             $permitValidity = $request->input('permit_validity');
             if (!empty($permitValidity)) {
                 $permitValidity = Carbon::parse($permitValidity)
@@ -135,7 +118,7 @@ class ChainsawController extends Controller
 
             // Update the record
             $updateResult = DB::table('tbl_chainsaw_information')
-                ->where('application_id', 2) // use payload instead of route param
+                ->where('application_id',$id) // use payload instead of route param
                 ->update([
                     'permit_chainsaw_no' => $request->input('permit_chainsaw_no'),
                     'brand' => $request->input('brand'),

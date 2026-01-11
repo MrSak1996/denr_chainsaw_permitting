@@ -10,6 +10,7 @@ interface CompanyForm {
     classification: string;
     company_name: string;
     company_address: string;
+    company_mobile_no: string;
     authorized_representative: string;
     request_letter: File | null;
     soc_certificate: File | null;
@@ -43,7 +44,7 @@ interface IndividualForm {
     application_type: string;
     date_applied: string;
     type_of_transaction: string;
-    classification: string; s
+    classification: string;
     geo_code: string;
     last_name: string;
     first_name: string;
@@ -102,9 +103,10 @@ interface IndividualForm {
 interface ChainsawForm {
     application_id: number;
     application_attachment_id: number;
-    permit_chainsaw_no: string;
+    permit_chainsaw_no: string | null;
     brand: string;
     model: string;
+    engine_serial_no: string;
     quantity: string;
     supplier_name: string;
     supplier_address: string;
@@ -142,6 +144,7 @@ export function useAppForm() {
         classification: '',
         company_name: '',
         company_address: '',
+        company_mobile_no:'',
         authorized_representative: '',
         request_letter: null,
         soc_certificate: null,
@@ -171,6 +174,7 @@ export function useAppForm() {
         permit_chainsaw_no: '',
         brand: '',
         model: '',
+        engine_serial_no: '',   
         quantity: '',
         supplier_name: '',
         supplier_address: '',

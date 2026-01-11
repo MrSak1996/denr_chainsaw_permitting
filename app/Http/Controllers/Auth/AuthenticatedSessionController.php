@@ -45,17 +45,37 @@ class AuthenticatedSessionController extends Controller
         $user = auth()->user();
 
         switch ($user->role_id) {
-            case 1: // Admin
+            case 1:
                 return redirect('/dashboard');
-
-            case 2: // RPS Staff / Receiving Officer
-                return redirect('/rps-staff-dashboard');
-
-            case 4: // RPS Chief / Section Head
+            case 6:
+                return redirect('/ardts-dashboard');
+            case 8:
                 return redirect('/rps-chief-dashboard');
+                
+            case 10:
+                return redirect('/tsd-chief-dashboard');
 
-            case 3: // Default User
-                return redirect('/default-dashboard');
+            case 4:
+                return redirect('/fus-dashboard');
+
+            case 3:
+                return redirect('/penro-dashboard');
+
+            //    case 2: 
+                // return redirect('/cenro-chief-dashboard');
+            // case 3: 
+            //     return redirect('/penro-dashboard');
+
+            // case 5: 
+            //     return redirect('/rps-chief-dashboard');
+
+            // case 3: 
+            //     return redirect('/regional-executive-dashboard');
+            
+            case 7:
+                return redirect('/regional-executive-dashboard');
+
+       
 
             default:
                 return redirect('/dashboard');

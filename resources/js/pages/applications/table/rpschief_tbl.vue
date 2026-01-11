@@ -1,30 +1,62 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
+
 import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
-import { SaveAll, Send, SquarePen, Trash, Undo2, Info, History, ShieldCheck } from 'lucide-vue-next';
+import { BadgeCheck, Eye, History, SaveAll, Send, SendIcon, ShieldCheck, Undo2 } from 'lucide-vue-next';
 import Fieldset from 'primevue/fieldset';
-import Message from 'primevue/message';
-import { useToast } from 'primevue/usetoast';
-import { onMounted, reactive, ref, computed } from 'vue';
-import FileCard from '../forms/file_card.vue';
-import Badge from 'primevue/badge';
-import { Text } from 'vue';
-import Timeline from 'primevue/timeline';
-import { ProductService } from '../service/ProductService';
 import OverlayBadge from 'primevue/overlaybadge';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { route } from 'ziggy-js';
+import FileCard from '../forms/file_card.vue';
+import ReusableConfirmDialog from '../modal/endorsed_modal.vue';
+import { ProductService } from '../service/ProductService';
 onMounted(() => {
     applicantsTable();
 });
 
+const STATUS_DRAFT = 1;
+const STATUS_FOR_REVIEW_EVALUATION = 2;
+
+const STATUS_ENDORSED_CENRO_CHIEF = 3;
+const STATUS_ENDORSED_RPS_CHIEF = 4;
+const STATUS_ENDORSED_TSD_CHIEF = 5;
+const STATUS_ENDORSED_PENRO = 6;
+const STATUS_ENDORSED_LPDD_FUS = 7;
+const STATUS_ENDORSED_ARDTS = 8;
+const STATUS_APPROVED_BY_RED = 9;
+
+const STATUS_RECEIVED_CENRO_CHIEF = 10;
+const STATUS_RECEIVED_CHIEF_RPS = 11;
+const STATUS_RECEIVED_TSD_CHIEF = 12;
+const STATUS_RECEIVED_PENRO_CHIEF = 13;
+const STATUS_RECEIVED_FUS = 14;
+const STATUS_RECEIVED_ARDTS = 15;
+const STATUS_RECEIVED_RED = 16;
+
+const STATUS_RETURN_TO_CENRO_CHIEF = 17;
+const STATUS_RETURN_TO_RPS_CHIEF = 18;
+const STATUS_RETURN_TO_TSD_CHIEF = 19;
+const STATUS_RETURN_TO_PENRO = 20;
+const STATUS_RETURN_TO_LPDD_FUS = 21;
+const STATUS_RETURN_TO_ARDTS = 22;
+const STATUS_RETURN_TO_RED = 23;
+const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
+
+const page = usePage();
 const toast = useToast();
 const dt = ref();
 const totalCount = ref(0);
 const returnedTotalCount = ref(0);
 const endorsedTotalCount = ref(0);
 const approvedTotalCount = ref(0);
-
+const confirm = useConfirm();
+const isLoading = ref(false);
 const products = ref();
+const endorsed_applications = ref();
+const signatories_data = ref();
 const returned_application = ref();
 const approved_application = ref();
 const endorsed_application = ref();
@@ -33,11 +65,20 @@ const deleteProductDialog = ref(false);
 const deleteProductsDialog = ref(false);
 const isloadingSpinner = ref(false);
 const showModal = ref(false);
-const showProgressModal = ref(false)
+const confirmDialogRef = ref<any>(null);
+
+const showProgressModal = ref(false);
+const showCommentsModal = ref(false);
+const commentsHistory = ref(false);
+const routingHistory = ref([]);
+const loadingRouting = ref(false);
+const loadingComment = ref(false);
+
 const showFileModal = ref(false);
 const selectedFile = ref(null);
 const selectedFileToUpdate = ref(null);
 const updateFileInput = ref(null);
+const selectedApplicationId = ref(null);
 const showReturnFieldset = ref(false);
 const returnReason = ref(''); // Stores the user's input for the return reason
 const isSubmitting = ref(false);
@@ -54,116 +95,216 @@ const statuses = ref([
 ]);
 
 // Define steps
-const events = [
-    'Return for Compliance',
-    'For Review / Evaluation',
-    'Endorsed to CENRO',
-    'Endorsed to PENRO',
-    'Endorsed to R.O',
-    'Approved'
+const events = ['Return for Compliance', 'For Review / Evaluation', 'Endorsed to CENRO', 'Endorsed to Chief TSD', 'Endorsed to R.O', 'Approved'];
+const currentStep = ref(0); // "Endorsed to PENRO"
+const progress_tracker_data = ref([]);
 
-];
+const timelineComputed = computed(() => {
+    return eventsToDisplay.value.map((label, index) => {
+        // find matching record by status title
+        const record = progress_tracker_data.value.find((item) => item.status_title === label);
+
+        const isCompleted = !!record;
+        const isCurrent = !record && index === progress_tracker_data.value.length;
+        const isUpcoming = !record && index > progress_tracker_data.value.length;
+
+        return {
+            index,
+            label,
+            record, // 👈 store entire record here
+            date: record ? record.created_at : null,
+            isCompleted,
+            isCurrent,
+            isUpcoming,
+            icon: isCompleted ? 'pi pi-check' : isCurrent ? 'pi pi-spinner' : 'pi pi-clock',
+            color: isCompleted ? '#4CAF50' : isCurrent ? '#2196F3' : '#BDBDBD',
+        };
+    });
+});
 
 const timelineItems = ref(events);
 const eventsToDisplay = ref([]);
 
-// Example: Current step (0-based index)
-const currentStep = ref(0); // "Endorsed to PENRO"
-const openProgressTracker = async (data) => {
-    showProgressModal.value = true;
 
-    // If status = 0 → include "Return for Compliance"
+const openProgressTracker = async (data) => {
+    getSignatories(data.id);
+    showProgressModal.value = true;
+    loadingRouting.value = true;
+    routingHistory.value = [];
+
+    try {
+        const res = await axios.get(`/api/application-routing/${data.id}`);
+        routingHistory.value = res.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loadingRouting.value = false;
+    }
+    // // Always assign these once only
+
     if (data.application_status === 0) {
+        // FULL TIMELINE (6 steps)
         eventsToDisplay.value = [
             'Return for Compliance',
             'For Review / Evaluation',
             'Endorsed to CENRO',
             'Endorsed to PENRO',
             'Endorsed to R.O',
-            'Approved'
+            'Approved',
         ];
 
-        // Status 0 matches perfectly, no offset needed
-        currentStep.value = data.application_status;
+        // currentStep matches 1:1
+        currentStep.value = 0;
     } else {
-        // Status > 0 → exclude "Return for Compliance"
-        eventsToDisplay.value = [
-            'For Review / Evaluation',
-            'Endorsed to CENRO',
-            'Endorsed to PENRO',
-            'Endorsed to R.O',
-            'Approved'
-        ];
+        // SHORT TIMELINE (removed Return for Compliance)
+        eventsToDisplay.value = ['For Review / Evaluation', 'Endorsed to CENRO', 'Endorsed to PENRO', 'Endorsed to R.O', 'Approved'];
 
-        // Adjust the index by subtracting 1 because we removed "Return for Compliance"
-        currentStep.value = data.application_status - 1;
+        // Adjust index because we removed index 0
+        currentStep.value = data.application_status;
     }
 };
 
-// Computed properties
-const currentStepLabel = computed(() => events[currentStep.value]);
-const progressPercentage = computed(() => Math.round(((currentStep.value + 1) / events.length) * 100));
+// const endorseApplication = (id: number) => {
+//     confirmDialogRef.value?.open({
+//         header: 'Endorse Application?',
+//         message: 'Please confirm that you want to endorse this application.',
+//         onConfirm: async () => {
+//             try {
+//                 await axios.post(route('applications.endorseApplication'), { id, status: 9 }); //endorsed to TSD chief
+//                 toast.add({ severity: 'success', summary: 'Endorsed', detail: 'Application endorsed' });
+//             } catch {
+//                 toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to endorse' });
+//             }
+//         },
+//     });
+// };
 
-const badgeSeverity = computed(() => {
-    switch (currentStepLabel.value) {
-        case 'Approved':
-            return 'success';
-        case 'Return for Compliance':
-            return 'danger';
-        default:
-            return 'info';
-    }
-});
+const receiveApplication = (id: number) => {
+    confirmDialogRef.value?.open({
+        header: 'Receive Application?',
+        message: 'Please confirm that you want to receive this application.',
+        onConfirm: async () => {
+            try {
+                await axios.post(route('applications.receivedApplication'), { id });
+                toast.add({ severity: 'success', summary: 'Received', detail: 'Application received' });
+            } catch {
+                toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to receive' });
+            }
+        },
+    });
+};
+
+const openDialog = (type: 'endorse' | 'return' | 'receive', id: number) => {
+    const config = {
+        endorse: {
+            header: 'Endorse this application to Chief TSD?',
+            message: 'Please confirm that you want to endorse this application.',
+            api: 'applications.rpschief.endorse',
+            payload: { id },
+            showTextarea: false,
+            showDropdown: false,
+            toastMessage: 'Application endorsed',
+        },
+        return: {
+            header: 'Return Application?',
+            message: 'Please indicate the reason and office to return this application.',
+            api: 'applications.tsd.return',
+            payload: { id },
+            showTextarea: true,
+            showDropdown: true,
+            toastMessage: 'Application returned',
+            offices: [
+                { label: 'Technical Staff', value: 1 },
+            ],
+        },
+        receive: {
+            header: 'Receive Application?',
+            message: 'Please confirm that you want to receive this application.',
+            api: 'applications.tsd.receive',
+            payload: { id },
+            showTextarea: false,
+            showDropdown: false,
+            toastMessage: 'Application received',
+        },
+    };
+
+    const c = config[type];
+
+    confirmDialogRef.value?.open({
+        header: c.header,
+        message: c.message,
+        showTextarea: c.showTextarea,
+        showDropdown: c.showDropdown,
+        offices: c.offices,
+        onConfirm: async (data?: { remarks?: string; returnTo?: string | number }) => {
+            try {
+                // ✅ send remarks and returnTo along with payload
+                await axios.post(route(c.api), {
+                    ...c.payload,
+                    remarks: data?.remarks,
+                    returnTo: data?.returnTo,
+                });
+
+                toast.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: c.toastMessage,
+                    life: 3000,
+                });
+            } catch (error) {
+                toast.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Something went wrong',
+                    life: 3000,
+                });
+            }
+        },
+    });
+};
+
 
 const activeTab = ref<'re' | 'ea' | 'rc' | 'cpr' | 'aa'>('re');
 
 const applicationDetails = ref(null);
 const files = ref([]);
 
-const formatCurrency = (value) => {
-    if (value) return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-    return;
-};
-
 const applicantsTable = async () => {
     try {
-        const { applications: reviewApplications, count: reviewCount } =
-            await ProductService.getApplicationsByStatus(1);
+        const officeId = page.props.auth.user.office_id;
+        //naka set sa controller ung status, walang bearing ung status dito for guidance lang
+        const { applications: endorsedApplications, count: endorsedCount } = await ProductService.getApplicationsByStatus(STATUS_ENDORSED_RPS_CHIEF, officeId);
+        
+        endorsed_applications.value = endorsedApplications;
+        totalCount.value = endorsedCount;
 
-        const { applications: returnedApplications, count: returnedCount } =
-            await ProductService.getApplicationsByStatus(0);
-
-        const { applications: endorsedApplications, count: endorsedCount } =
-            await ProductService.getApplicationsByStatus(2);
-
-        const { applications: approvedApplications, count: approvedCount } =
-            await ProductService.getApplicationsByStatus(5);
-
-        // Assign to reactive variables
-        products.value = reviewApplications;
-        totalCount.value = reviewCount;
-
-        returned_application.value = returnedApplications;
-        returnedTotalCount.value = returnedCount;
-
-        endorsed_application.value = endorsedApplications;
-        endorsedTotalCount.value = endorsedCount;
-
-        approved_application.value = approvedApplications;
-        approvedTotalCount.value = approvedCount;
-
-
-
-
-
-        // Optional: If you need more later
-        // const { applications: approvedApplications, count: approvedCount } =
-        //   await ProductService.getApplicationsByStatus(5);
-
-        // const { applications: endorsedApplications, count: endorsedCount } =
-        //   await ProductService.getApplicationsByStatus(2);
     } catch (error) {
         console.error('Error fetching applications:', error);
+    }
+};
+
+const openCommentModal = async (data) => {
+    showCommentsModal.value = true;
+    loadingComment.value = true;
+    try {
+        const res = await axios.get(`/api/getCommentsByID/${data.id}`);
+        commentsHistory.value = res.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loadingComment.value = false;
+    }
+};
+
+const getSignatories = async (id) => {
+    isloadingSpinner.value = true;
+    try {
+        const response = await axios.get(`http://10.201.12.28:8000/api/getSignatories/${id}`);
+        progress_tracker_data.value = response.data; // 👈 store data directly
+    } catch (error) {
+        console.error(error);
+    } finally {
+        isloadingSpinner.value = false;
     }
 };
 
@@ -252,10 +393,7 @@ const saveProduct = () => {
         product.value = {};
     }
 };
-// const editProduct = (prod) => {
-//     product.value = { ...prod };
-//     productDialog.value = true;
-// };
+
 const confirmDeleteProduct = (prod) => {
     product.value = prod;
     deleteProductDialog.value = true;
@@ -354,7 +492,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://10.201.12.28:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -376,7 +514,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://10.201.12.28:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -401,7 +539,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://10.201.12.28:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -438,7 +576,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://10.201.12.28:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -469,6 +607,7 @@ const saveChainsawDetails = async () => {
         isloadingSpinner.value = false;
     }
 };
+
 
 // =============================
 // Toggle Edit States
@@ -509,7 +648,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://10.201.12.28:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -560,7 +699,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id);
         formData.append('name', selectedFileToUpdate.value.name);
 
-        const response = await axios.post('http://10.201.13.78:8000/api/files/update', formData, {
+        const response = await axios.post('http://10.201.12.28:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -579,444 +718,146 @@ const handleFileUpdate = async (event) => {
         selectedFileToUpdate.value = null;
     }
 };
+
+
+const isEndorsedTSD = (row: any) => {
+    return row.application_status === STATUS_ENDORSED_TSD_CHIEF;
+};
 </script>
 
 <template>
-    <div class="flex flex-col gap-4 rounded-xl p-4">
+    <div class="flex flex-col gap-4 rounded-xl">
         <Toast />
-        <div
-            class="">
-            <!-- Tabs -->
-            <div class="mb-4 flex border-b border-gray-200">
-                <!-- For Review / Evaluation Tab -->
-                <button @click="activeTab = 're'" :class="[
-                    'border-b-2 px-4 py-2 text-sm font-medium transition flex items-center space-x-2',
-                    activeTab === 're'
-                        ? 'border-green-600 text-green-700'
-                        : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600'
-                ]">
-                    <!-- Tab Title -->
-                    <span>For Review / Evaluation</span>
+        <!-- Tabs -->
+        <div class="mb-4 flex border-b border-gray-200">
+            <!-- For Review / Evaluation Tab -->
+            <button @click="activeTab = 're'" :class="[
+                'flex items-center space-x-2 border-b-2 px-4 py-2 text-sm font-medium transition',
+                activeTab === 're'
+                    ? 'border-green-600 text-green-700'
+                    : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600',
+            ]">
+                <!-- Tab Title -->
+                <span>List of Permit Application</span>
 
-                    <!-- PrimeVue OverlayBadge with Icon -->
-                    <OverlayBadge :value="totalCount" severity="danger" size="small">
-                        <i class="pi pi-list" style="font-size: 25px" />
-                    </OverlayBadge>
-                </button>
-
-
-
-
-                <!-- Endorsed Application Tab -->
-                <button @click="activeTab = 'cpr'" :class="[
-                    'border-b-2 px-4 py-2 text-sm font-medium transition flex items-center space-x-2',
-                    activeTab === 'cpr'
-                        ? 'border-green-600 text-green-700'
-                        : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600'
-                ]">
-                    <!-- Tab Title -->
-                    <span>Endorsed Application to CENRO/PENRO/RO</span>
-
-                    <!-- PrimeVue OverlayBadge with Icon -->
-                    <OverlayBadge :value="endorsedTotalCount" severity="danger" size="small">
-                        <i class="pi pi-file-export" style="font-size: 25px" />
-                    </OverlayBadge>
-                </button>
-
-                <button @click="activeTab = 'aa'" :class="[
-                    'border-b-2 px-4 py-2 text-sm font-medium transition flex items-center space-x-2',
-                    activeTab === 'aa'
-                        ? 'border-green-600 text-green-700'
-                        : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600'
-                ]">
-                    <!-- Tab Title -->
-                    <span>Approved Application</span>
-
-                    <!-- PrimeVue OverlayBadge with Icon -->
-                    <OverlayBadge :value="approvedTotalCount" severity="danger" size="small">
-                        <i class="pi pi-check-circle" style="font-size: 25px" />
-                    </OverlayBadge>
-                </button>
-                <!-- Returned for Compliance Tab -->
-                <button @click="activeTab = 'rc'" :class="[
-                    'border-b-2 px-4 py-2 text-sm font-medium transition flex items-center space-x-2',
-                    activeTab === 'rc'
-                        ? 'border-green-600 text-green-700'
-                        : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600'
-                ]">
-                    <!-- Tab Title -->
-                    <span>Returned for Compliance</span>
-
-                    <!-- PrimeVue OverlayBadge with Icon -->
-                    <OverlayBadge :value="returnedTotalCount" severity="danger" size="small">
-                        <i class="pi pi-times-circle" style="font-size: 25px" />
-                    </OverlayBadge>
-                </button>
-            </div>
-
-            <!-- Content -->
-            <div class="flex-1 space-y-4 overflow-y-auto">
-                <!-- For Review / Evaluation Table -->
-                <div v-if="activeTab === 're'" class="space-y-2 text-sm text-gray-700">
-                    <div class="h-auto w-full">
-                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts" :value="products"
-                            dataKey="id" :paginator="true" :rows="4" :filters="filters" filterDisplay="menu"
-                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                            :rowsPerPageOptions="[5, 10, 25]"
-                            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                            responsiveLayout="scroll" class="w-full text-sm">
-                            <!-- Table Header with Search -->
-                            <template #header>
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <IconField>
-                                        <InputIcon>
-                                            <i class="pi pi-search" />
-                                        </InputIcon>
-                                        <InputText v-model="filters['global'].value" placeholder="Search..." />
-                                    </IconField>
-                                </div>
-                            </template>
-
-                            <!-- Application No Column -->
-                            <Column field="application_no" header="Application No" sortable style="min-width: 18rem">
-                                <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <!-- Ribbon if status is Approved -->
-                                        <div v-if="data.status_title === 'Approved'">
-                                             <Tag><i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
-                                        </div>
-
-
-                                        <div v-else >
-                                           <Tag> <i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
-                                        </div>
-
-                                        <span class="ml-1 text-gray-800 font-bold">
-                                            {{ data.application_no }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <!-- Other Columns -->
-                            <Column field="application_type" header="Application Type" sortable
-                                style="min-width: 5rem" />
-                            <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
-
-                            <!-- Progress Tracker Column -->
-                            <Column header="Progress Tracker" sortable style="min-width: 4rem">
-                                <template #body="slotProps">
-                                    <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                        style="background-color: #0f766e;"
-                                        class="mt-2 bg-teal-800 hover:bg-teal-900 text-white p-2 rounded">
-                                        <History :size="15" />
-                                    </Button>
-                                </template>
-                            </Column>
-
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
-                            <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 4rem" />
-                            <Column header="Comments" :exportable="false" style="min-width: 8rem">
-                                <template #body="{ data }">
-
-                                    {{ data.return_reason }}
-                                </template>
-                            </Column>
-                            <!-- Action Buttons -->
-                            <Column header="Action" :exportable="false" style="min-width: 2rem">
-                                <template #body="slotProps">
-                                    <div class="flex space-x-2">
-                                        <Button class="bg-teal-800 hover:bg-teal-900 text-white p-2 rounded"
-                                            style="background-color: #0f766e;" @click="openFileModal(slotProps.data)">
-                                            <SquarePen :size="15" />
-                                        </Button>
-                                    </div>
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </div>
+                <div class="relative inline-block">
+                    <OverlayBadge v-if="totalCount > 0" :value="totalCount" severity="danger" size="small"
+                        class="absolute top-0 right-0" />
+                    <i class="pi pi-list" style="font-size: 25px" />
                 </div>
-                <div v-else-if="activeTab == 'rc'" class="space-y-2 text-sm text-gray-700">
-                    <div class="h-auto w-full">
-                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts"
-                            :value="returned_application" dataKey="id" :paginator="true" :rows="4" :filters="filters"
-                            filterDisplay="menu"
-                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                            :rowsPerPageOptions="[5, 10, 25]"
-                            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                            responsiveLayout="scroll" class="w-full text-sm">
-                            <!-- Table Header with Search -->
-                            <template #header>
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <IconField>
-                                        <InputIcon>
-                                            <i class="pi pi-search" />
-                                        </InputIcon>
-                                        <InputText v-model="filters['global'].value" placeholder="Search..." />
-                                    </IconField>
-                                </div>
-                            </template>
+            </button>
 
-                            <!-- Application No Column -->
-                            <Column field="application_no" header="Application No" sortable style="min-width: 18rem">
-                                <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <!-- Ribbon if status is Approved -->
-                                        <div v-if="data.status_title === 'Approved'" class="approved_ribbon">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
-                                        </div>
+        </div>
+        <!-- Content -->
+        <div class="flex-1 space-y-4 overflow-y-auto">
+            <!-- For Review / Evaluation Table -->
+            <div v-if="activeTab === 're'" class="space-y-2 text-sm text-gray-700">
+                <div class="h-auto w-full">
+                    <DataTable ref="dt" size="small" v-model:selection="selectedProducts" :value="endorsed_applications"
+                        dataKey="id" :paginator="true" :rows="20" :filters="filters" filterDisplay="menu"
+                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                        :rowsPerPageOptions="[5, 10, 25]"
+                        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
+                        responsiveLayout="scroll" class="w-full text-sm">
+                        <template #header>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <IconField>
+                                    <InputIcon>
+                                        <i class="pi pi-search" />
+                                    </InputIcon>
+                                    <InputText v-model="filters['global'].value" placeholder="Search..." />
+                                </IconField>
+                            </div>
+                        </template>
+                        <Column header="Action" :exportable="false" style="min-width: 2rem">
+                            <template #body="slotProps">
+                                <div class="mt-2 flex gap-2">
 
+                                    <!-- ✅ RECEIVE (disabled if endorsed) -->
+                                    <Button :disabled="isEndorsedTSD(slotProps.data)"
+                                        @click="receiveApplication(slotProps.data.id)" style="background-color: #0f766e"
+                                        class="p-2 text-white">
+                                        <BadgeCheck :size="15" />
+                                    </Button>
 
-                                        <div v-else class="approved_ribbon" :style="{
-                                            backgroundColor:
-                                                data.status_title === 'Return for Compliance'
-                                                    ? '#B71C1C'
-                                                    : '#0f766e',
-                                        }">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
-                                        </div>
-
-                                        <span class="ml-1 text-gray-800 font-bold">
-                                            {{ data.application_no }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <!-- Other Columns -->
-                            <Column field="application_type" header="Application Type" sortable
-                                style="min-width: 5rem" />
-                            <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
-
-                            <!-- Progress Tracker Column -->
-                            <Column header="Progress Tracker" sortable style="min-width: 4rem">
-                                <template #body="slotProps">
+                                    <!-- ✅ ROUTING / HISTORY (ALWAYS ENABLED) -->
                                     <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                        style="background-color: #0f766e;"
-                                        class="mt-2 bg-teal-800 hover:bg-teal-900 text-white p-2 rounded">
+                                        style="background-color: #0f766e; border: 1px solid #0f766e !important"
+                                        class="rounded p-2 text-white hover:bg-teal-900">
                                         <History :size="15" />
                                     </Button>
-                                </template>
-                            </Column>
 
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
-                            <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 4rem" />
-                            <Column header="Comments" :exportable="false" style="min-width: 8rem">
-                                <template #body="{ data }">
+                                    <!-- ✅ VIEW (ALWAYS ENABLED) -->
+                                    <Button type="button" style="background-color: #0f766e"
+                                        class="rounded p-2 text-white hover:bg-teal-900">
+                                        <Link :href="route('applications.edit', {
+                                            id: slotProps.data.id,
+                                            type: slotProps.data.application_type
+                                        })">
+                                            <Eye :size="15" />
+                                        </Link>
+                                    </Button>
 
-                                    {{ data.return_reason }}
-                                </template>
-                            </Column>
-                            <!-- Action Buttons -->
-                            <Column header="Action" :exportable="false" style="min-width: 8rem">
-                                <template #body="slotProps">
-                                    <div class="flex space-x-2">
-                                        ~
-                                        <!-- <Button class="bg-teal-800 hover:bg-teal-900 text-white p-2 rounded"
-                                            style="background-color: #0f766e;" @click="openFileModal(slotProps.data)">
-                                              
-                                        </Button> -->
+                                    <!-- ❌ ENDORSE (disabled if endorsed) -->
+                                    <Button :disabled="isEndorsedTSD(slotProps.data)"
+                                        @click="openDialog('endorse', slotProps.data.id)"
+                                        style="background-color: #0f766e" class="p-2 text-white">
+                                        <SendIcon :size="15" />
+                                    </Button>
 
-                                    </div>
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </div>
-                </div>
-                <div v-else-if="activeTab == 'cpr'" class="space-y-2 text-sm text-gray-700">
-                    <div class="h-auto w-full">
-                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts"
-                            :value="endorsed_application" dataKey="id" :paginator="true" :rows="4" :filters="filters"
-                            filterDisplay="menu"
-                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                            :rowsPerPageOptions="[5, 10, 25]"
-                            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                            responsiveLayout="scroll" class="w-full text-sm">
-                            <!-- Table Header with Search -->
-                            <template #header>
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <IconField>
-                                        <InputIcon>
-                                            <i class="pi pi-search" />
-                                        </InputIcon>
-                                        <InputText v-model="filters['global'].value" placeholder="Search..." />
-                                    </IconField>
+                                    <!-- ❌ RETURN (disabled if endorsed) -->
+                                    <Button :disabled="isEndorsedTSD(slotProps.data)"
+                                        @click="openDialog('return', slotProps.data.id)"
+                                        style="background-color: #bd081c; border: 1px solid #cd201f !important"
+                                        class="p-2 text-white">
+                                        <Undo2 :size="15" />
+                                    </Button>
+
                                 </div>
                             </template>
+                        </Column>
 
-                            <!-- Application No Column -->
-                            <Column field="application_no" header="Application No" sortable style="min-width: 18rem">
-                                <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <!-- Ribbon if status is Approved -->
-                                        <div v-if="data.status_title === 'Approved'" class="approved_ribbon">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
-                                        </div>
-
-
-                                        <div v-else class="approved_ribbon" :style="{
-                                            backgroundColor:
-                                                data.status_title === 'Endorsed to CENRO'
-                                                    ? '#4E342E'        // ✅ Light green for CENRO
-                                                    : data.status_title === 'Endorsed to PENRO'
-                                                        ? '#4E342E'    // ✅ Gold for PENRO
-                                                        : data.status_title === 'Endorsed to RO'
-                                                            ? '#4E342E' // ✅ Blue for R.O
-                                                            : '#0f766e' // ✅ Default color
-                                        }">
-                                            {{ data.status_title }}
-                                        </div>
+                        <Column field="status_title" header="Status" sortable style="min-width: 12rem">
+                            <template #body="{ data }">
+                                <div class="flex flex-col items-center">
+                                    <Tag :value="data.status_title" :severity="data.status_title === 'Returned to RPS Chief' ? 'danger' :
+                                            data.status_title === 'Endorsed to TSD Chief' ? 'info' :
+                                                'success'
+                                        " class="text-center" />
 
 
-                                        <span class="ml-1 text-gray-800 font-bold">
-                                            {{ data.application_no }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <!-- Other Columns -->
-                            <Column field="application_type" header="Application Type" sortable
-                                style="min-width: 5rem" />
-                            <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
-
-                            <!-- Progress Tracker Column -->
-                            <Column header="Progress Tracker" sortable style="min-width: 4rem">
-                                <template #body="slotProps">
-                                    <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                        style="background-color: #0f766e;"
-                                        class="mt-2 bg-teal-800 hover:bg-teal-900 text-white p-2 rounded">
-                                        <History :size="15" />
+                                    <Button
+                                        style="display: inline; padding: .2em .6em .3em; font-size: 75%; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25em;"
+                                        severity="info" v-if="data.status_title === 'Returned to RPS Chief'"
+                                        class="rounded bg-blue-900 px-1 py-1 mt-1 text-xs text-white"
+                                        @click="openCommentModal(data)" size="small">
+                                        View Comments
                                     </Button>
-                                </template>
-                            </Column>
-
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
-                            <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 4rem" />
-                            <Column header="Comments" :exportable="false" style="min-width: 8rem">
-                                <template #body="{ data }">
-
-                                    {{ data.return_reason }}
-                                </template>
-                            </Column>
-                            <!-- Action Buttons -->
-                            <Column header="Action" :exportable="false" style="min-width: 8rem">
-                                <template #body="slotProps">
-                                    <div class="flex space-x-2">
-                                        <Button class="bg-teal-800 hover:bg-teal-900 text-white p-2 rounded"
-                                            style="background-color: #0f766e;" @click="openFileModal(slotProps.data)">
-                                            <ShieldCheck :size="15" />
-                                        </Button>
-
-                                    </div>
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </div>
-                </div>
-                <div v-else-if="activeTab == 'aa'" class="space-y-2 text-sm text-gray-700">
-                    <div class="h-auto w-full">
-                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts"
-                            :value="approved_application" dataKey="id" :paginator="true" :rows="4" :filters="filters"
-                            filterDisplay="menu"
-                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                            :rowsPerPageOptions="[5, 10, 25]"
-                            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                            responsiveLayout="scroll" class="w-full text-sm">
-                            <!-- Table Header with Search -->
-                            <template #header>
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <IconField>
-                                        <InputIcon>
-                                            <i class="pi pi-search" />
-                                        </InputIcon>
-                                        <InputText v-model="filters['global'].value" placeholder="Search..." />
-                                    </IconField>
                                 </div>
                             </template>
+                        </Column>
+                        <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
+                            <template #body="{ data }">
+                                <b>{{ data.application_no }}</b>
+                            </template>
+                        </Column>
+                        <Column field="application_type" header="Application Type" sortable />
+                        <Column header="Type of Transaction" field="transaction_type" sortable></Column>
+                        <Column header="Classification" field="classification" sortable></Column>
 
-                            <!-- Application No Column -->
-                            <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
-                                <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <!-- Ribbon if status is Approved -->
-                                        <div v-if="data.status_title === 'Approved'" class="approved_ribbon">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
-                                        </div>
+                        <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
 
-
-                                        <div v-else class="approved_ribbon" :style="{
-                                            backgroundColor:
-                                                data.status_title === 'Return for Compliance'
-                                                    ? '#B71C1C'
-                                                    : '#0f766e',
-                                        }">
-                                            <i class="pi pi-check-circle"></i> {{ data.status_title }}
-                                        </div>
-
-                                        <span class="ml-1 text-gray-800 font-bold">
-                                            {{ data.application_no }}
-                                        </span>
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <!-- Other Columns -->
-                            <Column field="application_type" header="Application Type" sortable
-                                style="min-width: 5rem" />
-                            <Column field="permit_chainsaw_no" header="Chainsaw No" sortable style="min-width: 4rem" />
-
-                            <!-- Progress Tracker Column -->
-                            <Column header="Progress Tracker" sortable style="min-width: 4rem">
-                                <template #body="slotProps">
-                                    <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                        style="background-color: #0f766e;"
-                                        class="mt-2 bg-teal-800 hover:bg-teal-900 text-white p-2 rounded">
-                                        <History :size="15" />
-                                    </Button>
-                                </template>
-                            </Column>
-
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
-                            <Column field="permit_validity" header="Permit Validity" sortable style="min-width: 4rem" />
-                            <Column header="Comments" :exportable="false" style="min-width: 8rem">
-                                <template #body="{ data }">
-                                    <div class="comment-wrap">
-                                        {{ data.return_reason }}
-                                    </div>
-                                </template>
-                            </Column>
-                            <!-- Action Buttons -->
-                            <Column header="Action" :exportable="false" style="min-width: 8rem">
-                                <template #body="slotProps">
-                                    <div class="flex space-x-2">
-                                        <Button class="bg-teal-800 hover:bg-teal-900 text-white p-2 rounded"
-                                            style="background-color: #0f766e;" @click="openFileModal(slotProps.data)">
-                                            <SquarePen :size="15" />
-                                        </Button>
-                                        <Button class="bg-teal-800 hover:bg-teal-900 text-white p-2 rounded"
-                                            style="background-color: #0f766e;"
-                                            @click="confirmDeleteProduct(slotProps.data)">
-                                            <Trash :size="15" />
-                                        </Button>
-                                        <Button class="bg-teal-800 hover:bg-teal-900 text-white p-2 rounded"
-                                            style="background-color: #0f766e;" @click="showInfo(slotProps.data)">
-                                            <Info :size="15" />
-                                        </Button>
-                                    </div>
-                                </template>
-                            </Column>
-
-                        </DataTable>
-                    </div>
+                    </DataTable>
                 </div>
             </div>
+
+            <!-- Endorsed to Chief TSD Table -->
+
         </div>
 
-
+        <ReusableConfirmDialog ref="confirmDialogRef" />
 
         <Dialog v-model:visible="showModal" modal header="Application Preview" :style="{ width: '55vw' }">
-
             <div v-if="isloadingSpinner" class="flex h-40 items-center justify-center">
                 <span>Loading...</span>
             </div>
@@ -1041,7 +882,6 @@ const handleFileUpdate = async (event) => {
                     </div>
 
                     <!-- Right Section: Status Message -->
-
                 </div>
 
                 <!-- Applicant Details -->
@@ -1071,18 +911,16 @@ const handleFileUpdate = async (event) => {
                     </div>
                 </Fieldset>
 
-                <Fieldset legend="Review Details" :toggleable="true" v-if="(applicationDetails.return_reason)">
+                <Fieldset legend="Review Details" :toggleable="true" v-if="applicationDetails.return_reason">
                     <div class="overflow-x-auto">
                         <table class="min-w-full border border-gray-300 text-sm">
                             <thead class="bg-gray-100">
                                 <tr>
-                                    <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/3">
-                                        REVIEWED BY:
+                                    <th class="w-1/3 border border-gray-300 px-4 py-2 text-left font-semibold">REVIEWED
+                                        BY:</th>
+                                    <th class="w-1/2 border border-gray-300 px-4 py-2 text-left font-semibold">REMARKS
                                     </th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/2">
-                                        REMARKS</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/6">DATE
-                                    </th>
+                                    <th class="w-1/6 border border-gray-300 px-4 py-2 text-left font-semibold">DATE</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1090,48 +928,38 @@ const handleFileUpdate = async (event) => {
                                     <td class="border border-gray-300 px-4 py-3 align-top">
                                         <div class="font-bold">VIRGILIO C. ANDRES, JR., <span class="italic">RPF</span>
                                         </div>
-                                        <div class="text-gray-700 text-sm">Assistant Division Chief, Licenses,
-                                            Patents and
-                                            Deeds Division in concurrent capacity as Chief, Forest Utilization
-                                            Section</div>
+                                        <div class="text-sm text-gray-700">
+                                            Assistant Division Chief, Licenses, Patents and Deeds Division in concurrent
+                                            capacity as Chief, Forest
+                                            Utilization Section
+                                        </div>
                                     </td>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
                                         {{ applicationDetails.return_reason }}
                                     </td>
-                                    <td class="border border-gray-300 px-4 py-3 align-top">
-                                        6/24
-                                    </td>
+                                    <td class="border border-gray-300 px-4 py-3 align-top">6/24</td>
                                 </tr>
 
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
                                         <div class="font-bold">NAOMI Z. PERILLA</div>
-                                        <div class="text-gray-700 text-sm">Ass’t. Div. Chief, Licenses, Patents and
+                                        <div class="text-sm text-gray-700">Ass’t. Div. Chief, Licenses, Patents and
                                             Deeds
                                             Division</div>
                                     </td>
-                                    <td class="border border-gray-300 px-4 py-3 align-top">
-                                        Approval of PPC to recommend
+                                    <td class="border border-gray-300 px-4 py-3 align-top">Approval of PPC to recommend
                                     </td>
-                                    <td class="border border-gray-300 px-4 py-3 align-top">
-                                        6/24/2024
-                                    </td>
+                                    <td class="border border-gray-300 px-4 py-3 align-top">6/24/2024</td>
                                 </tr>
 
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
-                                        <div class="font-bold">ERIBERTO B. SAÑOS, <span class="italic">CESE</span>
-                                        </div>
-                                        <div class="text-gray-700 text-sm">OIC-Assistant Regional Director for
-                                            Technical
+                                        <div class="font-bold">ERIBERTO B. SAÑOS, <span class="italic">CESE</span></div>
+                                        <div class="text-sm text-gray-700">OIC-Assistant Regional Director for Technical
                                             Services</div>
                                     </td>
-                                    <td class="border border-gray-300 px-4 py-3 align-top">
-                                        Recommended for approval
-                                    </td>
-                                    <td class="border border-gray-300 px-4 py-3 align-top">
-                                        6/25
-                                    </td>
+                                    <td class="border border-gray-300 px-4 py-3 align-top">Recommended for approval</td>
+                                    <td class="border border-gray-300 px-4 py-3 align-top">6/25</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -1141,39 +969,36 @@ const handleFileUpdate = async (event) => {
                 <Fieldset legend="Applicant Details" :toggleable="true">
                     <!-- Applicant Info (non-file fields) -->
                     <!-- <h1 class="font-xl">Below is the checklist of requirements currently pending approval.</h1> -->
-                    <div class="relative overflow-visible">
-                        <div class="ribbon">{{ applicationDetails.status_title }}</div>
-                        <div class="grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+                    <div class="relative">
+                        <div class="ribbon">
+                            {{ applicationDetails.status_title || 'DRAFT' }}
+                        </div>
+                        <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                             <div class="flex">
                                 <span class="w-48 font-semibold">Application No:</span>
                                 <Tag :value="applicationDetails.application_no" severity="success"
                                     class="text-center" />
                             </div>
-
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Application Type:</span>
+                                <Tag :value="applicationDetails.application_type" severity="success"
+                                    class="text-center" />
+                            </div>
                             <div class="flex">
                                 <span class="w-48 font-semibold">Date Applied:</span>
                                 <span>{{ applicationDetails.date_applied }}</span>
                             </div>
-
                             <div class="flex">
                                 <span class="w-48 font-semibold">Type of Transaction:</span>
                                 <span>{{ applicationDetails.type_of_transaction }}</span>
                             </div>
-
                             <div class="flex">
-                                <span class="w-48 font-semibold">Contact Details:</span>
-                                <span>{{ applicationDetails.mobile_no }}</span>
+                                <span class="w-48 font-semibold">Company Name:</span>
+                                <span>{{ applicationDetails.company_name }}</span>
                             </div>
-
                             <div class="flex">
-                                <span class="w-48 font-semibold">Applicant Name:</span>
-                                <span>{{ applicationDetails.first_name }} {{ applicationDetails.middle_name }} {{
-                                    applicationDetails.last_name }}</span>
-                            </div>
-
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Email Address:</span>
-                                <span>{{ applicationDetails.email_address }}</span>
+                                <span class="w-48 font-semibold">Authorized Representative:</span>
+                                <span>{{ applicationDetails.authorized_representative }}</span>
                             </div>
                             <div class="flex">
                                 <span class="w-48 font-semibold">Region:</span>
@@ -1193,47 +1018,61 @@ const handleFileUpdate = async (event) => {
                     </div> -->
                             <div class="flex">
                                 <span class="w-48 font-semibold">Complete Address:</span>
-                                <span>{{ applicationDetails.applicant_complete_address }}</span>
+                                <span>{{ applicationDetails.company_address }}</span>
                             </div>
-
-
                         </div>
                     </div>
                 </Fieldset>
 
-
                 <!-- Chainsaw Information -->
                 <Fieldset legend="Chainsaw Information" :toggleable="true">
-
-
-                    <div class="grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+                    <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
                             <span class="w-48 font-semibold">Chainsaw No:</span>
-                            <span class="w-48"> {{ applicationDetails.permit_chainsaw_no }}</span>
+                            <Tag :value="applicationDetails.permit_chainsaw_no" severity="success"
+                                class="text-center" /><br />
                         </div>
-
                         <div class="flex">
-                            <span class="w-32 font-semibold">Permit Validity:</span>
-
-                            <span class="w-64">{{ applicationDetails.permit_validity }}</span>
+                            <span class="w-48 font-semibold">Permit Validity:</span>
+                            <Tag :value="applicationDetails.permit_validity" severity="danger" class="text-center" />
+                            <br />
                         </div>
-
                         <div class="flex">
                             <span class="w-48 font-semibold">Brand:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.brand }}</span>
-                            <InputText v-else v-model="editableChainsaw.brand" class="w-full" />
+                            <span>{{ applicationDetails.brand }}</span>
                         </div>
-
                         <div class="flex">
                             <span class="w-48 font-semibold">Model:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.model }}</span>
-                            <InputText v-else v-model="editableChainsaw.model" class="w-full" />
+                            <span>{{ applicationDetails.model }}</span>
                         </div>
-
                         <div class="flex">
                             <span class="w-48 font-semibold">Quantity:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.quantity }}</span>
-                            <InputText v-else v-model="editableChainsaw.quantity" class="w-full" />
+                            <span>{{ applicationDetails.quantity }}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Supplier Name:</span>
+                            <span>{{ applicationDetails.supplier_name }}</span>
+                        </div>
+                        <!-- <div class="flex">
+                        <span class="w-48 font-semibold">Supplier Address:</span>
+                        <span>123 Supplier St., Calabarzon</span>
+                    </div> -->
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Purpose of Purchase:</span>
+                            <span>{{ applicationDetails.purpose }}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Other Details:</span>
+                            <span>{{ applicationDetails.other_details }}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Official Receipt:</span>
+                            <Tag :value="applicationDetails.official_receipt" severity="success" class="text-center" />
+                            <br />
+                        </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Permit Fee:</span>
+                            <span>₱ {{ applicationDetails.permit_fee }}</span>
                         </div>
                     </div>
                 </Fieldset>
@@ -1259,141 +1098,248 @@ const handleFileUpdate = async (event) => {
             </div>
         </Dialog>
 
-        <Dialog v-model:visible="showProgressModal" modal header="Progress Tracker" :style="{ width: '50vw' }">
-            <div class="p-6">
-                <!-- Title Section -->
+        <Dialog v-model:visible="showProgressModal" modal header="Routing History" :style="{ width: '70vw' }">
+            <div class="overflow-x-auto">
+                <!-- Loading state -->
+                <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading routing history...</div>
 
+                <!-- Table -->
+                <table v-else class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border px-4 py-2 text-left">#</th>
+                            <th class="border px-4 py-2 text-left">Sender</th>
+                            <th class="border px-4 py-2 text-left">Route Details</th>
+                            <th class="border px-4 py-2 text-left">Receiver</th>
+                            <th class="border px-4 py-2 text-left">Date Received</th>
+                            <th class="border px-4 py-2 text-left">Date Endorsed</th>
+                            <th class="border px-4 py-2 text-left">Remarks</th>
+                        </tr>
+                    </thead>
 
-                <!-- Clean Progress Bar -->
-                <!-- <ProgressBar :value="progressPercentage" class="h-2 mb-8 rounded-full" /> -->
-
-                <!-- Stepper Timeline -->
-                <div class="flex justify-between items-center relative">
-                    <div v-for="(step, index) in eventsToDisplay" :key="index"
-                        class="flex flex-col items-center text-center w-1/5">
-
-                        <!-- Step Circle with Icons -->
-                        <div class="flex items-center justify-center w-12 h-12 rounded-full text-white text-lg font-semibold transition-all duration-300"
-                            :class="{
-                                'bg-red-500': index === 0 && step === 'Return for Compliance', // Special red step
-                                'bg-green-500': index < currentStep,    // Completed
-                                'bg-blue-500': index === currentStep,   // Current step
-                                'bg-gray-300': index > currentStep      // Upcoming
-                            }">
-                            <template v-if="index < currentStep">
-                                <i class="pi pi-check text-white"></i>
-                            </template>
-                            <template v-else>
+                    <tbody>
+                        <tr v-for="(item, index) in routingHistory" :key="index" class="hover:bg-gray-50">
+                            <!-- # -->
+                            <td class="border px-4">
                                 {{ index + 1 }}
-                            </template>
-                        </div>
+                            </td>
 
-                        <!-- Step Label -->
-                        <span class="mt-2 text-sm font-medium" :class="{
-                            'text-gray-800': index <= currentStep,
-                            'text-gray-400': index > currentStep
-                        }">
-                            {{ step }}
-                        </span>
-                    </div>
+                            <!-- Sender -->
+                            <td class="border px-4" style="width: 10rem">
+                                <div v-if="[2, 4, 6, 8, 10].includes(item.route_order)"></div>
 
+                                <div v-else>
+                                    <b>{{ item.sender_role }}</b><br />
+                                    <i>{{ item.sender }}</i>
+                                </div>
+                            </td>
 
+                            <!-- Route details -->
+                            <td class="border px-4" style="width: 7rem">
+                                <b>Route No. {{ item.route_order }}</b>
+                            </td>
 
-                </div>
+                            <!-- Receiver -->
+                            <td class="border px-4" style="width: 20rem">
+                                <b>{{ item.receiver_role }}</b><br />
 
-                <!-- Footer -->
-                <div class="mt-8 flex justify-end">
-                    <Button label="Close" icon="pi pi-times" class="p-button-success px-5"
-                        @click="showProgressModal = false" />
-                </div>
+                                <Tag v-if="item.action === 'Received'" severity="danger" size="small"> Received </Tag>
+
+                                <Tag v-else-if="item.action === 'Endorsed'" severity="info" size="small"> Endorsed
+                                </Tag>
+
+                                <Tag v-else severity="warning" size="small">
+                                    {{ item.action }}
+                                </Tag>
+
+                                <br />
+                            </td>
+
+                            <td class="border px-4">
+                                <span v-if="item.route_order == 2">
+                                    {{
+                                        new Date(item.date_received_rps_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+
+                                <span v-else-if="item.route_order == 4">
+                                    {{
+                                        new Date(item.date_received_tsd_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 6">
+                                    {{
+                                        new Date(item.date_received_penro_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 8">
+                                    {{
+                                        new Date(item.date_received_fus).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+
+                                <span v-else-if="item.route_order == 10">
+                                    {{
+                                        new Date(item.date_received_ardts).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                            </td>
+
+                            <td class="border px-4">
+                                <span v-if="item.route_order == 3">
+                                    {{
+                                        new Date(item.date_endorsed_tsd_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-if="item.route_order == 5">
+                                    {{
+                                        new Date(item.date_endorsed_penro).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 7">
+                                    {{
+                                        new Date(item.date_endorsed_fus).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 9">
+                                    {{
+                                        new Date(item.date_endorsed_ardts).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                            </td>
+
+                            <!-- Remarks -->
+                            <td class="border px-4">
+                                {{ item.remarks ?? '-' }}
+                            </td>
+                        </tr>
+
+                        <!-- Empty state -->
+                        <tr v-if="routingHistory.length === 0">
+                            <td colspan="5" class="p-4 text-center text-gray-500">No routing history found</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </Dialog>
 
-        <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="Product Details" :modal="true">
-            <div class="flex flex-col gap-6">
-                <img v-if="product.image" :src="`https://primefaces.org/cdn/primevue/images/product/${product.image}`"
-                    :alt="product.image" class="m-auto block pb-4" />
-                <div>
-                    <label for="name" class="mb-3 block font-bold">Name</label>
-                    <InputText id="name" v-model.trim="product.name" required="true" autofocus
-                        :invalid="submitted && !product.name" fluid />
-                    <small v-if="submitted && !product.name" class="text-red-500">Name is required.</small>
-                </div>
-                <div>
-                    <label for="description" class="mb-3 block font-bold">Description</label>
-                    <Textarea id="description" v-model="product.description" required="true" rows="3" cols="20" fluid />
-                </div>
-                <div>
-                    <label for="inventoryStatus" class="mb-3 block font-bold">Inventory Status</label>
-                    <Select id="inventoryStatus" v-model="product.inventoryStatus" :options="statuses"
-                        optionLabel="label" placeholder="Select a Status" fluid></Select>
-                </div>
+        <Dialog v-model:visible="showCommentsModal" modal header="Comments" :style="{ width: '50vw' }">
+            <div class="overflow-x-auto">
+                <!-- Loading state -->
+                <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading comments...</div>
+                <table v-else class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border px-4 py-2 text-left">Action Officer</th>
+                            <th class="border px-4 py-2 text-left">Comments</th>
+                            <th class="border px-4 py-2 text-left">Date Return</th>
+                        </tr>
+                    </thead>
 
-                <div>
-                    <span class="mb-4 block font-bold">Category</span>
-                    <div class="grid grid-cols-12 gap-4">
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category1" v-model="product.category" name="category"
-                                value="Accessories" />
-                            <label for="category1">Accessories</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category2" v-model="product.category" name="category" value="Clothing" />
-                            <label for="category2">Clothing</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category3" v-model="product.category" name="category"
-                                value="Electronics" />
-                            <label for="category3">Electronics</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category4" v-model="product.category" name="category" value="Fitness" />
-                            <label for="category4">Fitness</label>
-                        </div>
-                    </div>
-                </div>
+                    <tbody>
+                        <tr v-for="(item, index) in commentsHistory" :key="index" class="hover:bg-gray-50">
+                            <td class="border px-4" style="width: 10rem">
+                                <b>{{ item.action_officer }}</b><br />
+                                <i>{{ item.sender_role }}</i><br />
+                            </td>
+                            <td class="border px-4">{{ item.comments }}</td>
+                            <td class="border px-4">
+                                {{
+                                    new Date(item.date_returned).toLocaleString('en-PH', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        hour12: true,
+                                    })
+                                }}
+                            </td>
 
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-6">
-                        <label for="price" class="mb-3 block font-bold">Price</label>
-                        <InputNumber id="price" v-model="product.price" mode="currency" currency="USD" locale="en-US"
-                            fluid />
-                    </div>
-                    <div class="col-span-6">
-                        <label for="quantity" class="mb-3 block font-bold">Quantity</label>
-                        <InputNumber id="quantity" v-model="product.quantity" integeronly fluid />
-                    </div>
-                </div>
+                        </tr>
+
+                    </tbody>
+                </table>
+                <!-- Table -->
+
             </div>
-
-            <template #footer>
-                <Button label="Cancel" icon="pi pi-times" text @click="hideDialog" />
-                <Button label="Save" icon="pi pi-check" @click="saveProduct" />
-            </template>
-        </Dialog>
-
-        <Dialog v-model:visible="deleteProductDialog" :style="{ width: '450px' }" header="Remarks" :modal="true">
-            <div class="flex items-center gap-4">
-                <Textarea rows="10" cols="50"></Textarea>
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" text @click="deleteProductDialog = false" />
-                <Button label="Yes" icon="pi pi-check" @click="deleteProduct" />
-            </template>
-        </Dialog>
-
-        <Dialog v-model:visible="deleteProductsDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
-            <div class="flex items-center gap-4">
-                <i class="pi pi-exclamation-triangle !text-3xl" />
-                <span v-if="product">Are you sure you want to delete the selected products?</span>
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" text @click="deleteProductsDialog = false" />
-                <Button label="Yes" icon="pi pi-check" text @click="deleteSelectedProducts" />
-            </template>
         </Dialog>
     </div>
 </template>
+
 <style scoped>
 @media screen and (max-width: 960px) {
     ::v-deep(.customized-timeline) {
@@ -1420,23 +1366,22 @@ const handleFileUpdate = async (event) => {
 }
 
 .ribbon {
-    --r: .4em;
+    --r: 0.4em;
     /* control the ribbon shape (the radius) */
     --c: #7e0606;
 
     position: absolute;
     top: -60px;
-    right: calc(-3.4*var(--r));
+    right: calc(-3.4 * var(--r));
     line-height: 1.8;
-    padding: 0 .5em calc(2*var(--r));
+    padding: 0 0.5em calc(2 * var(--r));
     border-radius: 0 var(--r) var(--r) 0;
     background:
-        radial-gradient(100% 50% at right, var(--c) 98%, #0000 101%) 0 0/.5lh calc(100% - 2*var(--r)),
-        radial-gradient(100% 50% at left, #0005 98%, #0000 101%) 100% 100%/var(--r) calc(2*var(--r)),
-        conic-gradient(from 180deg at calc(100% - var(--r)) calc(100% - 2*var(--r)), #0000 25%, var(--c) 0) 100% 0/calc(101% - .5lh) 100%;
+        radial-gradient(100% 50% at right, var(--c) 98%, #0000 101%) 0 0/0.5lh calc(100% - 2 * var(--r)),
+        radial-gradient(100% 50% at left, #0005 98%, #0000 101%) 100% 100% / var(--r) calc(2 * var(--r)),
+        conic-gradient(from 180deg at calc(100% - var(--r)) calc(100% - 2 * var(--r)), #0000 25%, var(--c) 0) 100% 0 / calc(101% - 0.5lh) 100%;
     background-repeat: no-repeat;
 }
-
 
 /* HTML: <div class="ribbon">Your text content</div> */
 /* HTML: <div class="ribbon">Your text content</div> */
@@ -1444,17 +1389,16 @@ const handleFileUpdate = async (event) => {
     font-size: 18px;
     font-weight: bold;
     color: #fff;
-
 }
 
 .approved_ribbon {
-    --r: .8em;
+    --r: 0.8em;
     /* control the ribbon shape */
 
-    padding-inline: calc(var(--r) + .3em);
+    padding-inline: calc(var(--r) + 0.3em);
     line-height: 1.8;
     clip-path: polygon(0 0, 100% 0, calc(100% - var(--r)) 50%, 100% 100%, 0 100%, var(--r) 50%);
-    background: #E65100;
+    background: #e65100;
     /* the main color */
     width: fit-content;
 }

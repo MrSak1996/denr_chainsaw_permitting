@@ -15,15 +15,28 @@
 
     <!-- File Details -->
     <div class="file-info">
-      <p class="file-name">File Name: {{ file.name }}</p>
+      <p class="file-name">{{ file.name }}</p>
       <p class="file-meta">Size: {{ file.size || '—' }}</p>
       <p class="file-meta">Uploaded: {{ file.dateUploaded || '—' }}</p>
       <p class="file-meta">You opened: {{ file.dateOpened || '—' }}</p>
 
-      <div class="flex gap-2 mt-2">
-        <Button size="sm" @click="$emit('openPreview', file)">Preview</Button>
-        <Button size="sm" variant="secondary" @click="$emit('updateFile', file)">Update</Button>
-      </div>
+      <div class="flex gap-2">
+      <!-- Preview Button -->
+      <button
+        class="px-3 py-1 rounded bg-blue-600 text-white text-xs"
+        @click="openFile"
+      >
+        Preview
+      </button>
+
+      <!-- Update Button -->
+      <button
+        class="px-3 py-1 rounded bg-green-600 text-white text-xs"
+        @click="updateFile"
+      >
+        Update
+      </button>
+    </div>
     </div>
   </div>
 </template>
@@ -40,6 +53,13 @@ const props = defineProps({
 
 const emit = defineEmits(['openPreview', 'updateFile'])
 
+const openFile = () => {
+  emit('openPreview', props.file)
+}
+
+const updateFile = () => {
+  emit('updateFile', props.file)
+}
 // Extract extension from filename
 const getFileExtension = (filename) => {
   if (!filename) return ''
@@ -61,6 +81,7 @@ const getIcon = (ext) => {
     case 'png':
     case 'jpg':
     case 'jpeg':
+    case 'jfif':
     case 'gif':
       return '🖼️'
     case 'zip':

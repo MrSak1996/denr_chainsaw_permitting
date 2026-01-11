@@ -37,6 +37,9 @@ const mainNavItems = computed<NavItem[]>(() => {
     const roleId = auth.value.user?.role_id;
 
     switch (roleId) {
+        case 8: 
+            dashboardHref = '/rps-chief-dashboard'; // RPS Staff
+
         case 2:
             dashboardHref = '/rps-staff-dashboard'; // RPS Staff
             break;
@@ -45,6 +48,10 @@ const mainNavItems = computed<NavItem[]>(() => {
             break;
         case 3:
             dashboardHref = '/default-dashboard'; // Another role
+            break;
+        case 7:
+            dashboardHref = '/regional-executive-dashboard'; // Regional Executive Dashboard
+
             break;
         default:
             dashboardHref = '/dashboard'; // Fallback
@@ -67,23 +74,17 @@ const mainNavItems = computed<NavItem[]>(() => {
             href: '/applications/pending_application',
             icon: ListCheck,
         },
-        // {
-        //     title: 'Payments',
-        //     href: '#',
-        //     icon: ListCheck,
-        // },
+ 
     ];
 
     if (roleId === 2) {
         items = items.filter(item => item.title !== 'Monitoring' && item.title !== 'Payments');
     }
-
-
-
     // Hide Chainsaw Applications for RPS Chief (role 4)
-    if (roleId === 4) {
-        items = items.filter(item => item.title !== 'Chainsaw Applications');
+    if (roleId === 4 || roleId === 7) {
+        items = items.filter(item => item.title !== 'Chainsaw Applications' && item.title !== 'Monitoring');
     }
+
 
     return items;
 });

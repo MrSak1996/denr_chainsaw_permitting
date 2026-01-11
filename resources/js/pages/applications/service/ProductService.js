@@ -1,16 +1,18 @@
 import axios from 'axios';
 
 export const ProductService = {
-  // Fetch all application details
-  
-  async getProducts() {
-    const response = await axios.get('http://10.201.13.78:8000/api/application-details');
-    return response.data.data; // data array from Laravel
+  async getProducts(userId) {
+    const response = await axios.get('http://192.168.2.106:8000/api/application-details', {
+      params: { id: userId }
+    });
+    return response.data.data;
   },
 
- async getApplicationsByStatus(status) {
-    const response = await axios.get('http://10.201.13.78:8000/api/applicationStatus', {
-      params: { status }
+
+
+ async getApplicationsByStatus(status,id) {
+    const response = await axios.get('http://192.168.2.106:8000/api/applicationStatus', {
+      params: { status:status,office_id:id }
     });
       return {
     applications: response.data.data,
@@ -23,7 +25,7 @@ export const ProductService = {
   async updateStatus(applicationId, status) {
     try {
       const response = await axios.put(
-        `http://10.201.13.78:8000/api/applications/${applicationId}/status`,
+        `http://192.168.2.106:8000/api/applications/${applicationId}/status`,
         {
           status: status,
         }

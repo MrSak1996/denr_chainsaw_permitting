@@ -77,7 +77,7 @@ onMounted(async () => {
         formData.value.i_province = Number(formData.value.i_province)
 
         const { data: cities } = await axios.get(
-            `http://10.201.13.78:8000/api/provinces/${formData.value.i_province}/cities`
+            `http://192.168.2.106:8000/api/provinces/${formData.value.i_province}/cities`
         )
 
         city_mun_opts.value = cities.map(c => ({
@@ -92,7 +92,7 @@ onMounted(async () => {
         formData.value.i_city_mun = Number(formData.value.i_city_mun)
 
         const { data: barangays } = await axios.get(
-            `http://10.201.13.78:8000/api/barangays`,
+            `http://192.168.2.106:8000/api/barangays`,
             {
                 params: {
                     reg_code: formData.value.i_region,
@@ -127,7 +127,7 @@ watch(() => formData.value.i_province, async (newProvince) => {
     }
 
     const { data } = await axios.get(
-        `http://10.201.13.78:8000/api/provinces/${newProvince}/cities`
+        `http://192.168.2.106:8000/api/provinces/${newProvince}/cities`
     )
 
     city_mun_opts.value = data.map(c => ({
@@ -152,7 +152,7 @@ watch(() => formData.value.i_city_mun, async (newCity) => {
     }
 
     const { data } = await axios.get(
-        `http://10.201.13.78:8000/api/barangays`,
+        `http://192.168.2.106:8000/api/barangays`,
         {
             params: {
                 reg_code: formData.value.i_region,
@@ -197,7 +197,7 @@ watch(() => formData.value.i_city_mun, (val) => {
                     <label for="application_no">Application No.</label>
                 </FloatLabel>
                 <FloatLabel>
-                    <InputText id="permit_no" v-model="formData.permit_no" class="w-full font-bold" />
+                    <InputText :disabled="true" id="permit_no" v-model="formData.permit_no" class="w-full font-bold" />
                     <label for="permit_no">Permit No.</label>
                 </FloatLabel>
 

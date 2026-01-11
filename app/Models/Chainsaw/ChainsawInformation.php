@@ -21,6 +21,7 @@ class ChainsawInformation extends Model
         'permit_chainsaw_no',
         'brand',
         'model',
+        'engine_serial_no',
         'quantity',
         'supplier_name',
         'supplier_address',

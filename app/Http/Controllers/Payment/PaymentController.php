@@ -16,7 +16,9 @@ class PaymentController extends Controller
 {
     public function insert_payment(Request $request, GoogleDriveService $driveService)
     {
-        $application = ChainsawIndividualApplication::where('id', $request->input('application_id'))->first();
+        $id = $request->input('application_id', $request->input('id'));
+
+        $application = ChainsawIndividualApplication::where('id', $id)->first();
         if (!$application) {
             return response()->json(['error' => 'Application not found.'], 404);
         }

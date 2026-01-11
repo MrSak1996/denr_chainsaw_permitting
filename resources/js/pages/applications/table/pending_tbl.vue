@@ -2,7 +2,7 @@
 import { router } from '@inertiajs/vue3';
 import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
-import { Send, SquarePen, EyeIcon, Trash, Undo2, Edit2, Info } from 'lucide-vue-next';
+import { Send, SquarePen, EyeIcon, Trash, Undo2, Edit2, Info,PrinterCheck } from 'lucide-vue-next';
 import Fieldset from 'primevue/fieldset';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, reactive, ref } from 'vue';
@@ -10,11 +10,15 @@ import FileCard from '../forms/file_card.vue';
 import { ProductService } from '../service/ProductService';
 import { Link, usePage } from '@inertiajs/vue3';
 
+const page = usePage();
+const userId = page.props.auth.user.id;
+const officeId = page.props.auth.user.office_id;
 
 onMounted(() => {
-    ProductService.getProducts().then((data) => (products.value = data));
+
+    ProductService.getProducts(userId).then((data) => (products.value = data));
+    // getSignatories();
 });
-const page = usePage();
 const toast = useToast();
 const dt = ref();
 const products = ref();
@@ -23,6 +27,7 @@ const deleteProductDialog = ref(false);
 const deleteProductsDialog = ref(false);
 const isloadingSpinner = ref(false);
 const showModal = ref(false);
+const showCommentModal = ref(false);
 const showFileModal = ref(false);
 const selectedFile = ref(null);
 const selectedFileToUpdate = ref(null)
@@ -30,6 +35,7 @@ const updateFileInput = ref(null)
 const expandedRows = ref<Record<number, boolean>>({}) // fix null assignment error
 
 const product = ref({});
+const signatories_data = ref({});
 const selectedProducts = ref();
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -51,6 +57,12 @@ const openNew = () => {
     submitted.value = false;
     productDialog.value = true;
 };
+const openCommentModal = async (data) => {
+    showCommentModal.value = true;
+    await getApplicationDetails(data.id);
+
+}
+
 const hideDialog = () => {
     productDialog.value = false;
     submitted.value = false;
@@ -169,7 +181,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -191,9 +203,22 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
+        return response.data.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        isloadingSpinner.value = false;
+    }
+};
+
+const getSignatories = async () => {
+    isloadingSpinner.value = true;
+    try {
+        const response = await axios.get(`http://192.168.2.106:8000/api/getSignatories`);
+        signatories_data.value = response.data;
         return response.data.data;
     } catch (error) {
         console.error(error);
@@ -223,7 +248,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -260,7 +285,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -291,6 +316,7 @@ const saveChainsawDetails = async () => {
         isloadingSpinner.value = false;
     }
 };
+
 
 // =============================
 // Toggle Edit States
@@ -332,7 +358,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://10.201.13.78:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -383,7 +409,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
         formData.append('name', selectedFileToUpdate.value.name)
 
-        const response = await axios.post('http://10.201.13.78:8000/api/files/update', formData, {
+        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -393,10 +419,12 @@ const handleFileUpdate = async (event) => {
             files.value[updatedIndex] = response.data.updatedFile
         }
 
-        alert('File updated successfully!')
+        toast.add({ severity: 'success', summary: 'Successful', detail: 'File updated successfully', life: 3000 });
+
     } catch (error) {
         console.error(error)
-        alert('Failed to update the file.')
+        toast.add({ severity: 'error', summary: 'Successful', detail: 'Failed to update the file.', life: 3000 });
+
     } finally {
         updateFileInput.value.value = '' // reset file input
         selectedFileToUpdate.value = null
@@ -426,19 +454,21 @@ const onRowCollapse = (event?: { originalEvent: Event; data: Customer }) => {
     }
 }
 
-const expandAll = () => {
-    expandedRows.value = products.value.reduce<Record<number, boolean>>(
-        (acc, p) => {
-            acc[p.id] = true
-            return acc
-        },
-        {}
-    )
-}
+// const generatePdf = async (data) => {
+   
 
-const collapseAll = () => {
-    expandedRows.value = {}
-}
+//     const response = await axios.post(`/api/${data.id}/generate-table-pdf`, {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//     });
+
+//     const json = await response.json(); // <-- use .json() for debugging
+//     console.log(json); // check your Laravel response
+// };
+const generatePdf = (data) => {
+    window.open(`/permit/${data.id}/preview`, '_blank');
+};
+
 
 
 
@@ -447,7 +477,6 @@ const collapseAll = () => {
 <template>
     <div class="flex flex-col gap-4 rounded-xl p-4">
         <Toast />
-        <!-- 🛠️ Wrapped DataTable in a div with shadow and padding -->
         <div class="rounded-lg bg-white p-4 shadow">
 
             <DataTable ref="dt" size="small" v-model:expandedRows="expandedRows" :value="products" dataKey="id"
@@ -480,28 +509,42 @@ const collapseAll = () => {
 
                         <Link
                             class="mr-2 inline-flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-white rounded-md px-3 py-2"
-                            :href="route('applications.edit', { id: slotProps.data.id, type: 'individual' })">
+                            :href="route('applications.edit', { id: slotProps.data.id, type: slotProps.data.application_type })">
                         <SquarePen :size="16" />
                         </Link>
 
 
-                        <Button severity="danger" @click="confirmDeleteProduct(slotProps.data)"
-                            style="background-color: #D50000;">
-                            <Trash :size="15" />
+                        <Button @click="generatePdf(slotProps.data)"
+                            style="background-color: #0D47A1;">
+                            <PrinterCheck :size="15" />
                         </Button>
+                        
                     </template>
                 </Column>
+                <Column field="status_title" header="Status" sortable style="min-width: 12rem">
+                    <template #body="{ data }">
+                        <div class="flex flex-col items-center">
+                            <Tag :value="data.status_title"
+                                :severity="data.application_status >= 17 ? 'danger' : 'success'"
+                                class="text-center mb-2" />
+
+                            <button v-if="data.status_title === 'Return for Compliance'"
+                                class="px-3 py-1 rounded bg-blue-600 text-white text-xs"
+                                @click="openCommentModal(data)">
+                                View Comments
+                            </button>
+                        </div>
+                    </template>
+                </Column>
+
                 <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
                     <template #body="{ data }">
                         <Tag :value="data.application_no" severity="success" class="text-center" /><br />
                     </template>
                 </Column>
-                <Column field="permit_no" header="Permit No" sortable style="min-width: 4rem" />
-
-                <Column header="PENRO" sortable></Column>
-                <Column header="CENRO" sortable></Column>
-                <Column header="Type of Transaction" sortable></Column>
-                <Column header="Classification" sortable></Column>
+                <Column field="application_type" header="Application Type" sortable />
+                <Column header="Type of Transaction" field="transaction_type" sortable></Column>
+                <Column header="Classification" field="classification" sortable></Column>
                 <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
 
 
@@ -530,9 +573,15 @@ const collapseAll = () => {
                             </Column>
                             <Column field="application_type" header="Application Type" sortable style="min-width: 5rem"
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }" />
-                            <Column header="Applicant Name" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
+                            <Column header="Applicant Name"
+                                :headerStyle="{ backgroundColor: '', color: '#000', fontWeight: 'bold' }">
+
+                                <template #body="slotProps">
+                                    {{ slotProps.data.authorized_representative || slotProps.data.applicant_name }}
+                                </template>
+
                             </Column>
+
                             <Column header="Sex" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
@@ -723,89 +772,48 @@ const collapseAll = () => {
             </div>
         </Dialog>
 
-        <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="Product Details" :modal="true">
-            <div class="flex flex-col gap-6">
-                <img v-if="product.image" :src="`https://primefaces.org/cdn/primevue/images/product/${product.image}`"
-                    :alt="product.image" class="m-auto block pb-4" />
-                <div>
-                    <label for="name" class="mb-3 block font-bold">Name</label>
-                    <InputText id="name" v-model.trim="product.name" required="true" autofocus
-                        :invalid="submitted && !product.name" fluid />
-                    <small v-if="submitted && !product.name" class="text-red-500">Name is required.</small>
-                </div>
-                <div>
-                    <label for="description" class="mb-3 block font-bold">Description</label>
-                    <Textarea id="description" v-model="product.description" required="true" rows="3" cols="20" fluid />
-                </div>
-                <div>
-                    <label for="inventoryStatus" class="mb-3 block font-bold">Inventory Status</label>
-                    <Select id="inventoryStatus" v-model="product.inventoryStatus" :options="statuses"
-                        optionLabel="label" placeholder="Select a Status" fluid></Select>
-                </div>
+        <Dialog v-model:visible="showCommentModal" modal header="Application Preview" :style="{ width: '40vw' }">
 
-                <div>
-                    <span class="mb-4 block font-bold">Category</span>
-                    <div class="grid grid-cols-12 gap-4">
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category1" v-model="product.category" name="category"
-                                value="Accessories" />
-                            <label for="category1">Accessories</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category2" v-model="product.category" name="category" value="Clothing" />
-                            <label for="category2">Clothing</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category3" v-model="product.category" name="category"
-                                value="Electronics" />
-                            <label for="category3">Electronics</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category4" v-model="product.category" name="category" value="Fitness" />
-                            <label for="category4">Fitness</label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-6">
-                        <label for="price" class="mb-3 block font-bold">Price</label>
-                        <InputNumber id="price" v-model="product.price" mode="currency" currency="USD" locale="en-US"
-                            fluid />
-                    </div>
-                    <div class="col-span-6">
-                        <label for="quantity" class="mb-3 block font-bold">Quantity</label>
-                        <InputNumber id="quantity" v-model="product.quantity" integeronly fluid />
-                    </div>
-                </div>
+            <div v-if="isloadingSpinner" class="flex h-40 items-center justify-center">
+                <span>Loading...</span>
             </div>
+            <div v-else-if="applicationDetails" class="overflow-x-auto mt-2">
+                <table class="min-w-full border border-gray-300 text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/3">
+                                REVIEWED BY:
+                            </th>
+                            <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/2">
+                                REMARKS</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/6">DATE
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in signatories_data" :key="index">
+                            <td class="border border-gray-300 px-4 py-3 align-top">
+                                <div class="font-bold">{{ item.complete_name }}</div>
+                                <div class="text-gray-700 text-sm">{{ item.position }}</div>
+                            </td>
 
-            <template #footer>
-                <Button label="Cancel" icon="pi pi-times" text @click="hideDialog" />
-                <Button label="Save" icon="pi pi-check" @click="saveProduct" />
-            </template>
+                            <td class="border border-gray-300 px-4 py-3 align-top">
+                                        {{ applicationDetails.tsd_chief_comments }}
+
+                            </td>
+
+                            <td class="border border-gray-300 px-4 py-3 align-top">
+                                {{ item.created_at }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+
+            </div>
         </Dialog>
 
-        <Dialog v-model:visible="deleteProductDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
-            <div class="flex items-center gap-4">
-                <i class="pi pi-exclamation-triangle !text-3xl" />
-                <span v-if="product">Are you sure you want to delete <b>{{ product.name }}</b>?</span>
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" text @click="deleteProductDialog = false" />
-                <Button label="Yes" icon="pi pi-check" @click="deleteProduct" />
-            </template>
-        </Dialog>
 
-        <Dialog v-model:visible="deleteProductsDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
-            <div class="flex items-center gap-4">
-                <i class="pi pi-exclamation-triangle !text-3xl" />
-                <span v-if="product">Are you sure you want to delete the selected products?</span>
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" text @click="deleteProductsDialog = false" />
-                <Button label="Yes" icon="pi pi-check" text @click="deleteSelectedProducts" />
-            </template>
-        </Dialog>
+
     </div>
 </template>

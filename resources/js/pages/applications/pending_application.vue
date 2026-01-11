@@ -23,19 +23,15 @@ const breadcrumbs: BreadcrumbItem[] = [
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex flex-col gap-6 rounded-xl p-4">
             <!-- Header Section -->
-            <div class="flex items-center gap-2 text-sm">
-                <List class="h-5 w-5" />
-                <h1 class="text-xl font-semibold">Permit Application</h1>
-            </div>
+            
 
             <!-- Table Box Section -->
             <div class="box">
-                <h2 class="title flex items-center gap-2">
-                    <Info />
-                    Kindly fill out the following details below to filter and retrieve specific permit application
-                    records efficiently.
-                </h2>
-                <Fieldset legend="Filter Application" :toggleable="true">
+                <div class="flex items-center gap-2 text-sm">
+                <List class="h-5 w-5" />
+                <h1 class="text-xl font-semibold">Permit Application</h1>
+            </div>
+                <!-- <Fieldset legend="Filter Application" :toggleable="true">
 
                     <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-4">
                         <div class="mt-4">
@@ -104,7 +100,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 
                             <Button label="Search Filter" icon="pi pi-search" class="mr-2 mt-2" />
 
-                </Fieldset>
+                </Fieldset> -->
                 <PendingTable />
             </div>
         </div>

@@ -255,7 +255,6 @@ const saveIndividualApplication = async () => {
         }
     } catch (error: any) {
         toast.add({ severity: 'error', summary: 'Failed', detail: error.message || 'Error saving the application.', life: 3000 });
-        console.error(error);
         return false;
     } finally {
         isLoading.value = false;
@@ -349,7 +348,7 @@ const getApplicationDetails = async () => {
     }
 
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://10.201.13.3:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data ?? {};
         i_city_mun.value = response.data.data?.i_city_mun ?? i_city_mun.value;
     } catch (error: any) {
@@ -364,7 +363,7 @@ const getApplicantFile = async () => {
     if (!applicationId) return;
 
     try {
-        const response = await axios.get(`http://10.201.13.78:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(`http://10.201.13.3:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file: any) => ({
                 name: file.file_name,
@@ -539,7 +538,8 @@ onMounted(() => {
                             </FloatLabel>
                             <div>
                                 <FloatLabel>
-                                    <InputText v-model="chainsaw_form.permit_no" class="w-full font-bold" />
+                                    <InputText :disabled="true" v-model="chainsaw_form.permit_no"
+                                        class="w-full font-bold" />
                                     <label>Permit No.</label>
                                 </FloatLabel>
                             </div>
@@ -567,13 +567,20 @@ onMounted(() => {
                                 </FloatLabel>
                             </div>
 
-                            <div class="md:col-span-3">
+
+                            <div class="grid grid-cols-1 gap-4 md:col-span-3 md:grid-cols-2">
+                                <!-- Supplier Name -->
                                 <FloatLabel>
                                     <InputText v-model="chainsaw_form.supplier_name" class="w-full" />
                                     <label>Supplier Name</label>
                                 </FloatLabel>
-                            </div>
 
+                                <!-- Engine Serial No -->
+                                <FloatLabel>
+                                    <InputText v-model="chainsaw_form.engine_serial_no" class="w-full" />
+                                    <label>Engine Serial No</label>
+                                </FloatLabel>
+                            </div>
                             <div class="md:col-span-3">
                                 <Textarea v-model="chainsaw_form.supplier_address" rows="6"
                                     placeholder="Complete Address"
@@ -672,46 +679,54 @@ onMounted(() => {
                     <div class="ribbon">
                         {{ page.props.application.status_title || 'DRAFT' }}
                     </div>
-                    
 
-                    <div class="mt-2 grid grid-cols-1 gap-6 md:grid-cols-2">
+
+                    <!-- FORM CONTENT -->
+                    <div class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+
+                        <!-- Application No -->
                         <div>
                             <FloatLabel>
-                                <InputText v-model="payment_form.application_no" class="w-full font-bold" />
+                                <InputText v-model="payment_form.application_no" class="w-full font-bold" readonly />
                                 <label>Application No.</label>
                             </FloatLabel>
                         </div>
+
+                        <!-- Permit No (only when available) -->
                         <div v-if="payment_form.permit_no">
                             <FloatLabel>
-                                <InputText v-model="payment_form.permit_no" class="w-full font-bold" />
+                                <InputText v-model="payment_form.permit_no" class="w-full font-bold" readonly />
                                 <label>Permit No.</label>
                             </FloatLabel>
                         </div>
+
+                        <!-- Official Receipt -->
                         <div>
                             <FloatLabel>
-                                <InputText class="w-full" v-model="payment_form.official_receipt" />
+                                <InputText v-model="payment_form.official_receipt" class="w-full" />
                                 <label>O.R No.</label>
                             </FloatLabel>
                         </div>
+
+                        <!-- Permit Fee -->
                         <div>
                             <FloatLabel>
-                                <InputNumber class="w-full" v-model="payment_form.permit_fee" />
+                                <InputNumber v-model="payment_form.permit_fee" class="w-full" mode="currency"
+                                    currency="PHP" />
                                 <label>Permit Fee</label>
                             </FloatLabel>
                         </div>
-                        <!-- <div class="md:col-span-3">
-                            <label class="text-sm font-medium text-gray-700">Upload Scanned copy of Official
-                                Receipt</label>
-                            <input type="file" accept=".jpg,.jpeg,.pdf"
-                                @change="(e) => handleORFileUpload(e, 'or_copy')"
-                                class="w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />
-                        </div> -->
-                        <div>
+
+                        <!-- Remarks (FULL WIDTH) -->
+                        <div class="md:col-span-2">
                             <FloatLabel>
-                                <Textarea rows="6" class="w-[73rem]" v-model="payment_form.remarks" />
-                                <label>Remarks (Memorandum/Electronic Message and Date of Compliance)</label>
+                                <Textarea v-model="payment_form.remarks" rows="4" class="w-full" />
+                                <label>
+                                    Remarks (Memorandum / Electronic Message and Date of Compliance)
+                                </label>
                             </FloatLabel>
                         </div>
+
                     </div>
                 </div>
             </Fieldset>
