@@ -11,17 +11,33 @@ use App\Models\Application\ChainsawIndividualApplication;
 
 class PENROController extends Controller
 {
-    // Define status constants
-     const STATUS_DRAFT = 0;
-    const STATUS_RETURN_FOR_COMPLIANCE = 0;
-    const STATUS_FOR_REVIEW_EVALUATION = 1;
-    const STATUS_ENDORSED_CENRO = 2;
-    const STATUS_ENDORSED_PENRO = 3;
-    const STATUS_ENDORSED_RO = 4;
-    const STATUS_APPROVED = 5;
+     const STATUS_DRAFT = 1;
+    const STATUS_FOR_REVIEW_EVALUATION = 2;
 
-    const STATUS_RECEIVED_CHIEF_RPS = 8;
-    const STATUS_FOR_RECEIVED_FUS = 11;
+    const STATUS_ENDORSED_CENRO_CHIEF = 3;
+    const STATUS_ENDORSED_RPS_CHIEF = 4;
+    const STATUS_ENDORSED_TSD_CHIEF = 5;
+    const STATUS_ENDORSED_PENRO = 6;
+    const STATUS_ENDORSED_LPDD_FUS = 7;
+    const STATUS_ENDORSED_ARDTS = 8;
+    const STATUS_APPROVED_BY_RED = 9;
+
+    const STATUS_RECEIVED_CENRO_CHIEF = 10;
+    const STATUS_RECEIVED_CHIEF_RPS = 11;
+    const STATUS_RECEIVED_TSD_CHIEF = 12;
+    const STATUS_RECEIVED_PENRO_CHIEF = 13;
+    const STATUS_RECEIVED_FUS = 14;
+    const STATUS_RECEIVED_ARDTS = 15;
+    const STATUS_RECEIVED_RED = 16;
+
+    const STATUS_RETURN_TO_CENRO_CHIEF = 17;
+    const STATUS_RETURN_TO_RPS_CHIEF = 18;
+    const STATUS_RETURN_TO_TSD_CHIEF = 19;
+    const STATUS_RETURN_TO_PENRO = 20;
+    const STATUS_RETURN_TO_LPDD_FUS = 21;
+    const STATUS_RETURN_TO_ARDTS = 22;
+    const STATUS_RETURN_TO_RED = 23;
+    const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
 
     //implementing penro
     const TECHNICAL_STAFF = 1;
@@ -33,15 +49,7 @@ class PENROController extends Controller
     /**
      * Mapping of statuses to their labels
      */
-    protected $statusMap = [
-        self::STATUS_DRAFT => 'Draft Application',
-        self::STATUS_RETURN_FOR_COMPLIANCE => 'Return for Compliance',
-        self::STATUS_FOR_REVIEW_EVALUATION => 'For Review / Evaluation',
-        self::STATUS_ENDORSED_CENRO => 'Endorsed to CENRO',
-        self::STATUS_ENDORSED_PENRO => 'Endorsed to PENRO',
-        self::STATUS_ENDORSED_RO => 'Endorsed to R.O',
-        self::STATUS_APPROVED => 'Approved',
-    ];
+   
 
     /**
      * Fetch applications dynamically by status
@@ -52,8 +60,8 @@ class PENROController extends Controller
         $id = $request->id;
 
         $app = ChainsawIndividualApplication::findOrFail($request->id);
+        $app->application_status = self::STATUS_RECEIVED_PENRO_CHIEF;
         $app->is_penro_chief_received = 1;
-        // $app->application_status = 1;
         $app->date_received_penro_chief = now();
         $app->save();
      

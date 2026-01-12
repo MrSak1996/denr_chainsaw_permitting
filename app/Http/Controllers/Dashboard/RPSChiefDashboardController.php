@@ -76,6 +76,14 @@ class RPSChiefDashboardController extends Controller
         $office_id = $request->query('office_id');
         $status = (int) $request->input('status');
         $statusFilter = [$status];
+        switch ($office_id) {
+            case '2':
+                 $officeFilter = [6];
+                break;            
+            default:
+                $officeFilter = [$office_id];
+                break;
+        }
         switch ($status) {
             case '4':
                 $statusFilter = [
@@ -94,9 +102,9 @@ class RPSChiefDashboardController extends Controller
                 break;
             case '6':
                 $statusFilter = [
-                    self::STATUS_RECEIVED_PENRO_CHIEF,   // 12
+                    self::STATUS_RECEIVED_PENRO_CHIEF,   // 13
                     self::STATUS_ENDORSED_PENRO,   // 6
-                    self::STATUS_ENDORSED_LPDD_FUS,
+                    self::STATUS_ENDORSED_LPDD_FUS, //7
                     self::STATUS_RETURN_TO_PENRO,  // 20
                 ];
                 break;
@@ -146,7 +154,7 @@ class RPSChiefDashboardController extends Controller
                 'ac.date_applied'
             )
             ->whereIn('ac.application_status', $statusFilter)
-            ->where('u.office_id', $office_id)
+            ->whereIn('u.office_id', $officeFilter)
             ->orderBy('ac.id', 'desc')
             ->get()
 

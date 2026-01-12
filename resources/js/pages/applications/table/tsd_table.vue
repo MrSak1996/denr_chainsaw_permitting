@@ -702,21 +702,21 @@ const handleFileUpdate = async (event) => {
 
 const buttonState = (row: any) => {
     const isReceived = !!row.is_tsd_chief_received;
-    console.log(row.application_status);
 
     const isEndorsedToTSD =
         row.application_status === STATUS_ENDORSED_TSD_CHIEF;
 
     const isEndorsedToPENRO =
         row.application_status === STATUS_ENDORSED_PENRO;
+
     return {
-        // 🔴 disable receive after it is received
-        receiveDisabled:isEndorsedToTSD,
+        // 🔵 Receive is ENABLED when endorsed to TSD and not yet received
+        receiveDisabled: !isEndorsedToTSD,
 
-        // 🔴 disable endorse if already endorsed to ANY next office
-        endorseDisabled: isEndorsedToTSD || isEndorsedToPENRO,
+        // 🔵 Endorse is ENABLED only while still at TSD level
+        endorseDisabled: isEndorsedToPENRO,
 
-        // 🔴 optional: same rule as endorse
+        // 🔵 adjust if you later add rules
         returnDisabled: false
     };
 };
