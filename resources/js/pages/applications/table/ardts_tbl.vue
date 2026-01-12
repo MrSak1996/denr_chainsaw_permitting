@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
 import { Eye, History, SaveAll, Send, ShieldCheck, Undo2, SendIcon, LoaderCircle, BadgeCheck } from 'lucide-vue-next';
@@ -16,7 +16,35 @@ import { route } from 'ziggy-js';
 onMounted(() => {
     applicantsTable();
 });
+const STATUS_DRAFT = 1;
+const STATUS_FOR_REVIEW_EVALUATION = 2;
 
+const STATUS_ENDORSED_CENRO_CHIEF = 3;
+const STATUS_ENDORSED_RPS_CHIEF = 4;
+const STATUS_ENDORSED_TSD_CHIEF = 5;
+const STATUS_ENDORSED_PENRO = 6;
+const STATUS_ENDORSED_LPDD_FUS = 7;
+const STATUS_ENDORSED_ARDTS = 8;
+const STATUS_APPROVED_BY_RED = 9;
+
+const STATUS_RECEIVED_CENRO_CHIEF = 10;
+const STATUS_RECEIVED_CHIEF_RPS = 11;
+const STATUS_RECEIVED_TSD_CHIEF = 12;
+const STATUS_RECEIVED_PENRO_CHIEF = 13;
+const STATUS_RECEIVED_FUS = 14;
+const STATUS_RECEIVED_ARDTS = 15;
+const STATUS_RECEIVED_RED = 16;
+
+const STATUS_RETURN_TO_CENRO_CHIEF = 17;
+const STATUS_RETURN_TO_RPS_CHIEF = 18;
+const STATUS_RETURN_TO_TSD_CHIEF = 19;
+const STATUS_RETURN_TO_PENRO = 20;
+const STATUS_RETURN_TO_LPDD_FUS = 21;
+const STATUS_RETURN_TO_ARDTS = 22;
+const STATUS_RETURN_TO_RED = 23;
+const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
+
+const page = usePage();
 const toast = useToast();
 const dt = ref();
 const totalCount = ref(0);
@@ -29,7 +57,7 @@ const products = ref();
 const signatories_data = ref();
 const returned_application = ref();
 const approved_application = ref();
-const endorsed_application = ref();
+const endorsed_applications = ref();
 const productDialog = ref(false);
 const deleteProductDialog = ref(false);
 const deleteProductsDialog = ref(false);
@@ -38,7 +66,11 @@ const showModal = ref(false);
 const confirmDialogRef = ref<any>(null);
 
 const showProgressModal = ref(false);
-const showFileModal = ref(false);
+const showCommentsModal = ref(false);
+const routingHistory = ref([]);
+const commentsHistory = ref([]);
+const loadingRouting = ref(false);
+const loadingComment = ref(false); const showFileModal = ref(false);
 const selectedFile = ref(null);
 const selectedFileToUpdate = ref(null);
 const updateFileInput = ref(null);
@@ -94,8 +126,17 @@ const eventsToDisplay = ref([]);
 const openProgressTracker = async (data) => {
     getSignatories(data.id);
     showProgressModal.value = true;
-
-    // // Always assign these once only
+    loadingRouting.value = true;
+    routingHistory.value = [];
+    
+    try {
+        const res = await axios.get(`/api/application-routing/${data.id}`);
+        routingHistory.value = res.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loadingRouting.value = false;
+    }
 
     if (data.application_status === 0) {
         // FULL TIMELINE (6 steps)
@@ -176,25 +217,25 @@ const formatCurrency = (value) => {
 
 const applicantsTable = async () => {
     try {
+        const officeId = page.props.auth.user.office_id;
 
-        const { applications: endorsedApplications, count: endorsedCount } = await ProductService.getApplicationsByStatus(12);
-        endorsed_application.value = endorsedApplications;
-        endorsedTotalCount.value = endorsedCount;
+        const { applications: endorsedApplications, count: endorsedCount } = await ProductService.getApplicationsByStatus(STATUS_ENDORSED_ARDTS, officeId);
+
+        endorsed_applications.value = endorsedApplications;
+        totalCount.value = endorsedCount;
 
     } catch (error) {
         console.error('Error fetching applications:', error);
     }
 };
 
-const openCommentModal = async (data) => {
-    showCommentModal.value = true;
-    await getApplicationDetails(data.id);
-};
+
+
 
 const getSignatories = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getSignatories/${id}`);
+        const response = await axios.get(`http://192.168.0.117:8000/api/getSignatories/${id}`);
         progress_tracker_data.value = response.data; // 👈 store data directly
     } catch (error) {
         console.error(error);
@@ -387,7 +428,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://192.168.0.117:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -409,7 +450,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://192.168.0.117:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -434,7 +475,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://192.168.0.117:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -471,7 +512,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://192.168.0.117:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -583,7 +624,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://192.168.0.117:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -634,7 +675,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id);
         formData.append('name', selectedFileToUpdate.value.name);
 
-        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
+        const response = await axios.post('http://192.168.0.117:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -653,6 +694,110 @@ const handleFileUpdate = async (event) => {
         selectedFileToUpdate.value = null;
     }
 };
+
+const openDialog = (type: 'endorse' | 'return' | 'receive', id: number) => {
+    const config = {
+        endorse: {
+            header: 'Endorse this application to ARDTS?',
+            message: 'Please confirm that you want to endorse this application.',
+            api: 'applications.ardts.endorse',
+            payload: { id },
+            showTextarea: false,
+            showDropdown: false,
+            toastMessage: 'Application endorsed',
+        },
+        return: {
+            header: 'Return Application?',
+            message: 'Please indicate the reason and office to return this application.',
+            api: 'applications.ardts.return',
+            payload: { id },
+            showTextarea: true,
+            showDropdown: true,
+            toastMessage: 'Application returned',
+            offices: [
+                { label: 'Technical Staff', value: 1 },
+                { label: 'Chief, RPS', value: 8 },
+                { label: 'Chief, TSD', value: 10 },
+                { label: 'Chief, PENRO', value: 3 },
+                { label: 'LPDD/FUS', value: 5},
+            ],
+        },
+        receive: {
+            header: 'Receive Application?',
+            message: 'Please confirm that you want to receive this application.',
+            api: 'applications.ardts.receive',
+            payload: { id },
+            showTextarea: false,
+            showDropdown: false,
+            toastMessage: 'Application received',
+        },
+    };
+
+    const c = config[type];
+    confirmDialogRef.value?.open({
+        header: c.header,
+        message: c.message,
+        showTextarea: c.showTextarea,
+        showDropdown: c.showDropdown,
+        offices: c.offices,
+        onConfirm: async (data?: { remarks?: string; returnTo?: string | number }) => {
+            try {
+                // ✅ send remarks and returnTo along with payload
+                await axios.post(route(c.api), {
+                    ...c.payload,
+                    remarks: data?.remarks,
+                    returnTo: data?.returnTo,
+                });
+
+                toast.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: c.toastMessage,
+                    life: 3000,
+                });
+            } catch (error) {
+                toast.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Something went wrong',
+                    life: 3000,
+                });
+            }
+        },
+    });
+};
+
+const openCommentModal = async (data) => {
+    showCommentsModal.value = true;
+    loadingComment.value = true;
+    try {
+        const res = await axios.get(`/api/getCommentsByID/${data.id}`);
+        commentsHistory.value = res.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loadingComment.value = false;
+    }
+};
+const buttonState = (row: any) => {
+    const isReceived = !!row.is_ardts_received;
+    const isEndorsedToARDTS =
+        row.application_status === STATUS_ENDORSED_ARDTS;
+
+    const isEndorsedToRED =
+        row.application_status === STATUS_APPROVED_BY_RED || !STATUS_ENDORSED_ARDTS;
+
+    return {
+        // 🔵 Receive is ENABLED when endorsed to TSD and not yet received
+        receiveDisabled: !isEndorsedToARDTS,
+
+        // 🔵 Endorse is ENABLED only while still at TSD level
+        endorseDisabled: isEndorsedToRED || isReceived,
+
+        // 🔵 adjust if you later add rules
+        returnDisabled: false
+    };
+};
 </script>
 
 <template>
@@ -660,7 +805,7 @@ const handleFileUpdate = async (event) => {
         <Toast />
         <div class="">
             <!-- Tabs -->
-            <div class="mb-4 flex border-b border-gray-200">
+            <div class="flex border-b border-gray-200">
                 <!-- For Review / Evaluation Tab -->
                 <button @click="activeTab = 're'" :class="[
                     'flex items-center space-x-2 border-b-2 px-4 py-2 text-sm font-medium transition',
@@ -669,7 +814,7 @@ const handleFileUpdate = async (event) => {
                         : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600',
                 ]">
                     <!-- Tab Title -->
-                    <span>For Review / Evaluation</span>
+                    <span>List of Permit Application</span>
 
                     <div class="relative inline-block">
                         <OverlayBadge v-if="totalCount > 0" :value="totalCount" severity="danger" size="small"
@@ -683,8 +828,9 @@ const handleFileUpdate = async (event) => {
                 <!-- For Review / Evaluation Table -->
                 <div v-if="activeTab === 're'" class="space-y-2 text-sm text-gray-700">
                     <div class="h-auto w-full">
-                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts" :value="endorsed_application"
-                            dataKey="id" :paginator="true" :rows="4" :filters="filters" filterDisplay="menu"
+                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts"
+                            :value="endorsed_applications" dataKey="id" :paginator="true" :rows="20" :filters="filters"
+                            filterDisplay="menu"
                             paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                             :rowsPerPageOptions="[5, 10, 25]"
                             currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
@@ -701,75 +847,80 @@ const handleFileUpdate = async (event) => {
                             </template>
                             <Column header="Action" :exportable="false" style="min-width: 2rem">
                                 <template #body="slotProps">
-                                    <div class="flex space-x-2">
-                                        <div class="mt-2 flex gap-2">
-                                            <!-- History Button (only enabled if is_rps_chief_received = 1) -->
-                                            <Button 
-                                                @click="receiveApplication(slotProps.data.id)"
-                                                style="background-color: #0f766e" class=" p-2 text-white">
-                                                <BadgeCheck :size="15" />
-                                            </Button>
+                                    <div class="mt-2 flex gap-2">
 
-                                            <Button  type="button" @click="openProgressTracker(slotProps.data)"
-                                                :disabled="slotProps.data.is_tsd_chief_received != 1"
-                                                style="background-color: #0f766e"
-                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-50">
-                                                <History :size="15" /> 
-                                            </Button>
+                                        <!-- ✅ RECEIVE (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).receiveDisabled"
+                                            @click="openDialog('receive', slotProps.data.id)"
+                                            style="background-color: #0f766e" class="p-2 text-white">
+                                            <BadgeCheck :size="15" />
+                                        </Button>
 
-                                            <Button type="button"
-                                                style="background-color: #0f766e"
-                                                class="rounded bg-teal-800 p-2 text-white hover:bg-teal-900">
-                                                <Link :href="route('applications.edit', { id: slotProps.data.id, type: slotProps.data.application_type })
-                                                    ">
+                                        <!-- ✅ ROUTING / HISTORY (ALWAYS ENABLED) -->
+                                        <Button type="button" @click="openProgressTracker(slotProps.data)"
+                                            style="background-color: #0f766e; border: 1px solid #0f766e !important"
+                                            class="rounded p-2 text-white hover:bg-teal-900">
+                                            <History :size="15" />
+                                        </Button>
+
+                                        <!-- ✅ VIEW (ALWAYS ENABLED) -->
+                                        <Button type="button" style="background-color: #0f766e"
+                                            class="rounded p-2 text-white hover:bg-teal-900">
+                                            <Link :href="route('applications.edit', {
+                                                id: slotProps.data.id,
+                                                type: slotProps.data.application_type
+                                            })">
                                                 <Eye :size="15" />
-                                                </Link>
-                                            </Button>
+                                            </Link>
+                                        </Button>
 
-                                            <Button :disabled="slotProps.data.is_fus_received != 1" @click="endorseApplication(slotProps.data.id)"
-                                                style="background-color: #0f766e" class="p-2 text-white">
-                                                <SendIcon :size="15" />
-                                            </Button>
+                                        <!-- ❌ ENDORSE (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).endorseDisabled"
+                                            @click="openDialog('endorse', slotProps.data.id)"
+                                            style="background-color: #0f766e" class="p-2 text-white">
+                                            <SendIcon :size="15" />
+                                        </Button>
 
-                                        </div>
-
-
+                                        <!-- ❌ RETURN (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).returnDisabled"
+                                            @click="openDialog('return', slotProps.data.id)"
+                                            style="background-color: #bd081c; border: 1px solid #cd201f !important"
+                                            class="p-2 text-white">
+                                            <Undo2 :size="15" />
+                                        </Button>
 
                                     </div>
                                 </template>
                             </Column>
-
-                            <!-- Application No Column -->
-                            <Column field="application_no" header="Application No" sortable
-                                style="text-align: center; width: 10rem">
+                            <Column field="status_title" header="Status" sortable style="min-width: 12rem">
                                 <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <!-- Ribbon if status is Approved -->
-                                        <!-- <div v-if="data.status_title === 'Approved'">
-                                            <Tag><i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
-                                        </div> -->
+                                    <div class="flex flex-col items-center">
+                                        <Tag :value="data.status_title" :severity="data.status_title === 'Returned to RPS Chief' ? 'danger' :
+                                            data.status_title === 'Endorsed to TSD Chief' ? 'info' :
+                                                'success'
+                                            " class="text-center" />
 
-                                        <!-- <div v-else>
-                                            <Tag> <i class="pi pi-check-circle"></i> {{ data.status_title }}</Tag>
-                                        </div> -->
 
-                                        <span class="ml-1 font-bold text-gray-800">
-                                            {{ data.application_no }}
-                                        </span>
+                                        <Button
+                                            style="display: inline; padding: .2em .6em .3em; font-size: 75%; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25em;"
+                                            severity="info" v-if="data.status_title === 'Returned to RPS Chief'"
+                                            class="rounded bg-blue-900 px-1 py-1 mt-1 text-xs text-white"
+                                            @click="openCommentModal(data)" size="small">
+                                            View Comments
+                                        </Button>
                                     </div>
                                 </template>
                             </Column>
-                            <Column field="purpose" header="Purpose" sortable style="text-align: center">
+                            <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
                                 <template #body="{ data }">
-                                    <div class="relative flex flex-col items-center space-y-2">
-                                        <span class="ml-1 text-gray-800">
-                                            {{ data.purpose }}
-                                        </span>
-                                    </div>
+                                    <b>{{ data.application_no }}</b>
                                 </template>
                             </Column>
                             <Column field="application_type" header="Application Type" sortable />
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem" />
+                            <Column header="Type of Transaction" field="transaction_type" sortable></Column>
+                            <Column header="Classification" field="classification" sortable></Column>
+                            <Column field="date_applied" header="Date of Application" sortable
+                                style="min-width: 4rem" />
                         </DataTable>
                     </div>
                 </div>
@@ -1020,10 +1171,13 @@ const handleFileUpdate = async (event) => {
                 </Dialog>
             </div>
         </Dialog>
-
         <Dialog v-model:visible="showProgressModal" modal header="Routing History" :style="{ width: '50vw' }">
             <div class="overflow-x-auto">
-                <table class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
+                <!-- Loading state -->
+                <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading routing history...</div>
+
+                <!-- Table -->
+                <table v-else class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
                     <thead class="bg-gray-100">
                         <tr>
                             <th class="border px-4 py-2 text-left">#</th>
@@ -1035,115 +1189,72 @@ const handleFileUpdate = async (event) => {
                     </thead>
 
                     <tbody>
-                        <tr class="hover:bg-gray-50">
-                            <td class="border px-4">1</td>
-                            <td class="border px-4"><b>CENRO FOCAL PERSON</b><br><i>CENRO Sta. Cruz - Office
-                                    Name</i><br>December 01, 2025</td>
-                            <td class="border px-4"><b>Route No. 202501120001</b><br>Reviewed</td>
-                            <td class="border px-4" style="width:20rem;"><b>RPS Staff</b>
-                                <Tag severity="success" size="small">Received</Tag><br>December 01, 2025
+                        <tr v-for="(item, index) in routingHistory" :key="index" class="hover:bg-gray-50">
+                            <!-- # -->
+                            <td class="border px-4">
+                                {{ index + 1 }}
                             </td>
-                        </tr>
-                        <tr class="hover:bg-gray-50">
-                            <td class="border px-4">2</td>
-                            <td class="border px-4" style="width:20rem;"><b>CHIEF RPS</b>
-                                <Tag severity="success" size="small">Reviewed</Tag><br>December 01, 2025
+
+                            <!-- Sender -->
+                            <td class="border px-4" style="width: 10rem">
+                                <b>{{ item.sender_role }}</b><br />
+                                <i>{{ item.sender }}</i><br />
+                                {{ new Date(item.created_at).toLocaleDateString() }}
                             </td>
-                            <td class="border px-4"><b>Route No. 202501120001</b><br>Endorsed</td>
-                            <td class="border px-4" style="width:20rem;"><b>PENRO</b>
-                                <Tag severity="info" size="small">Received</Tag><br>December 01, 2025
+
+                            <!-- Route details -->
+                            <td class="border px-4">
+                                <b>Route No. {{ item.route_order }}</b><br />
+                                {{ item.action }}
+                            </td>
+
+                            <!-- Receiver -->
+                            <td class="border px-4" style="width: 20rem">
+                                <b>{{ item.receiver_role }}</b><br />
+
+                                <Tag v-if="item.action === 'Received'" severity="success" size="small"> Received </Tag>
+
+                                <Tag v-else-if="item.action === 'Endorsed'" severity="info" size="small"> Endorsed
+                                </Tag>
+
+                                <Tag v-else severity="warning" size="small">
+                                    {{ item.action }}
+                                </Tag>
+
+                                <br />
+                                <span v-if="item.route_order == 2">
+                                    {{ new Date(item.date_received_rps_chief).toLocaleDateString() }}
+                                </span>
+                                <span v-else-if="item.route_order == 4">
+                                    {{ new Date(item.date_received_tsd_chief).toLocaleDateString() }}
+                                </span>
+                                <span v-else-if="item.route_order == 6">
+                                    {{ new Date(item.date_received_penro_chief).toLocaleDateString() }}
+                                </span>
+                                <span v-else-if="item.route_order == 8">
+                                    {{ new Date(item.date_received_fus).toLocaleDateString() }}
+                                </span>
+                                <span v-else-if="item.route_order == 10">
+                                    {{ new Date(item.date_received_ardts).toLocaleDateString() }}
+                                </span>
+                            </td>
+
+                            <!-- Remarks -->
+                            <td class="border px-4">
+                                {{ item.remarks ?? '-' }}
                             </td>
                         </tr>
 
-
+                        <!-- Empty state -->
+                        <tr v-if="routingHistory.length === 0">
+                            <td colspan="5" class="p-4 text-center text-gray-500">No routing history found</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </Dialog>
 
-        <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="Product Details" :modal="true">
-            <div class="flex flex-col gap-6">
-                <img v-if="product.image" :src="`https://primefaces.org/cdn/primevue/images/product/${product.image}`"
-                    :alt="product.image" class="m-auto block pb-4" />
-                <div>
-                    <label for="name" class="mb-3 block font-bold">Name</label>
-                    <InputText id="name" v-model.trim="product.name" required="true" autofocus
-                        :invalid="submitted && !product.name" fluid />
-                    <small v-if="submitted && !product.name" class="text-red-500">Name is required.</small>
-                </div>
-                <div>
-                    <label for="description" class="mb-3 block font-bold">Description</label>
-                    <Textarea id="description" v-model="product.description" required="true" rows="3" cols="20" fluid />
-                </div>
-                <div>
-                    <label for="inventoryStatus" class="mb-3 block font-bold">Inventory Status</label>
-                    <Select id="inventoryStatus" v-model="product.inventoryStatus" :options="statuses"
-                        optionLabel="label" placeholder="Select a Status" fluid></Select>
-                </div>
 
-                <div>
-                    <span class="mb-4 block font-bold">Category</span>
-                    <div class="grid grid-cols-12 gap-4">
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category1" v-model="product.category" name="category"
-                                value="Accessories" />
-                            <label for="category1">Accessories</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category2" v-model="product.category" name="category" value="Clothing" />
-                            <label for="category2">Clothing</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category3" v-model="product.category" name="category"
-                                value="Electronics" />
-                            <label for="category3">Electronics</label>
-                        </div>
-                        <div class="col-span-6 flex items-center gap-2">
-                            <RadioButton id="category4" v-model="product.category" name="category" value="Fitness" />
-                            <label for="category4">Fitness</label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-6">
-                        <label for="price" class="mb-3 block font-bold">Price</label>
-                        <InputNumber id="price" v-model="product.price" mode="currency" currency="USD" locale="en-US"
-                            fluid />
-                    </div>
-                    <div class="col-span-6">
-                        <label for="quantity" class="mb-3 block font-bold">Quantity</label>
-                        <InputNumber id="quantity" v-model="product.quantity" integeronly fluid />
-                    </div>
-                </div>
-            </div>
-
-            <template #footer>
-                <Button label="Cancel" icon="pi pi-times" text @click="hideDialog" />
-                <Button label="Save" icon="pi pi-check" @click="saveProduct" />
-            </template>
-        </Dialog>
-
-        <Dialog v-model:visible="deleteProductDialog" :style="{ width: '450px' }" header="Remarks" :modal="true">
-            <div class="flex items-center gap-4">
-                <Textarea rows="10" cols="50"></Textarea>
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" text @click="deleteProductDialog = false" />
-                <Button label="Yes" icon="pi pi-check" @click="deleteProduct" />
-            </template>
-        </Dialog>
-
-        <Dialog v-model:visible="deleteProductsDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
-            <div class="flex items-center gap-4">
-                <i class="pi pi-exclamation-triangle !text-3xl" />
-                <span v-if="product">Are you sure you want to delete the selected products?</span>
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" text @click="deleteProductsDialog = false" />
-                <Button label="Yes" icon="pi pi-check" text @click="deleteSelectedProducts" />
-            </template>
-        </Dialog>
     </div>
 </template>
 

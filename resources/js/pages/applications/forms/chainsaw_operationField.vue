@@ -40,7 +40,7 @@ watch(() => props.form.p_province, async (province) => {
     if (!province) return city_mun_opts.value = [];
 
     try {
-        const { data } = await axios.get(`http://192.168.2.106:8000/api/provinces/${province}/cities`);
+        const { data } = await axios.get(`http://192.168.0.117:8000/api/provinces/${province}/cities`);
         if (Array.isArray(data)) {
             city_mun_opts.value = data.map(({ mun_code, mun_name, geo_code }) => ({
                 id: mun_code,
@@ -63,7 +63,7 @@ watch(() => props.form.p_city_mun, async (cityMun) => {
     if (!cityMun) return barangay_opts.value = [];
 
     try {
-        const { data } = await axios.get(`http://192.168.2.106:8000/api/barangays`, {
+        const { data } = await axios.get(`http://192.168.0.117:8000/api/barangays`, {
             params: {
                 reg_code: props.form.p_region,
                 prov_code: props.form.p_province,

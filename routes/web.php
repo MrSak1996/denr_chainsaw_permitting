@@ -95,21 +95,24 @@ Route::post('/applications/tsd/endorse', [TSDController::class, 'endorseApplicat
     ->name('applications.tsd.endorse');
 
 Route::post('/applications/tsd/return', [TSDController::class, 'returnApplication'])
-->name('applications.tsd.return');
+    ->name('applications.tsd.return');
 
-    Route::post('/applications/fus/receive', [FUSController::class, 'receivedApplication'])
+Route::post('/applications/fus/receive', [FUSController::class, 'receivedApplication'])
     ->name('applications.fus.receive');
+
+Route::post('/applications/fus/return', [FUSController::class, 'returnApplication'])
+    ->name('applications.fus.return');
 
 Route::post('/applications/fus/endorse', [FUSController::class, 'endorseApplication'])
     ->name('applications.fus.endorse');
 
-    Route::post('/applications/ardts/endorse', [ARDTSController::class, 'endorseApplication'])
+Route::post('/applications/ardts/endorse', [ARDTSController::class, 'endorseApplication'])
     ->name('applications.ardts.endorse');
 
-    Route::post('/applications/ardts/receive', [ARDTSController::class, 'receivedApplication'])
+Route::post('/applications/ardts/receive', [ARDTSController::class, 'receivedApplication'])
     ->name('applications.ardts.receive');
 
-    Route::post('/applications/red/receive', [RegionalExecutiveController::class, 'receivedApplication'])
+Route::post('/applications/red/receive', [RegionalExecutiveController::class, 'receivedApplication'])
     ->name('applications.red.receive');
 
 
@@ -118,13 +121,17 @@ Route::post('/applications/endorseApplication', [RPSChiefDashboardController::cl
     ->name('applications.rpschief.endorse');
 
 
-    // ====================== RECEIVED BY PENRO =================================================
+// ====================== RECEIVED BY PENRO =================================================
 Route::post('/applications/penro/receive', [PENROController::class, 'receivedEndorsedApplication'])
     ->name('applications.penro.receive');
 
-    // ====================== ENDORSED TO LPDD_FUS ===================================================
+Route::post('/applications/penro/return', [PENROController::class, 'returnApplication'])
+    ->name('applications.penro.return');
+
+
+// ====================== ENDORSED TO LPDD_FUS ===================================================
 Route::post('/applications/endorseToFUS', [PENROController::class, 'endorseToFUS'])
-    ->name('applications.endorseToFUS');
+    ->name('applications.penro.endorse');
 // ====================== ====================================================================
 Route::put(
     '/applications/{id}/update-applicant-data',

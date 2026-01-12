@@ -2,10 +2,10 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { Info } from 'lucide-vue-next';
-import Fieldset from 'primevue/fieldset';
 import fus_table from './applications/table/fus_tbl.vue';
+import { useOfficeTitle } from '@/composables/useOfficeTitle';
 
+const { officeTitle } = useOfficeTitle();
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'FUS Dashboard',
@@ -15,86 +15,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 </script>
 
 <template>
-    <Head title="RPS Chief Dashboard" />
 
+    <Head title="Regional Office Dashboard" />
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <h1 class="text-xl font-semibold">FUS Dashboard</h1>
-      
-
+            <h1 class="text-xl font-semibold"> {{ officeTitle }} Dashboard</h1>
             <div class="grid grid-cols-1 gap-4">
-                <!-- Middle box (takes 3 columns - wider) -->
-                <div class="box col-span-4 flex flex-col overflow-hidden rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
-                                <h4 class="title flex mb-4 gap-2"> <Info/> List of Applicants Submitted</h4>
-
-                    <!-- <Fieldset legend="Filter Application" :toggleable="true">
-                        <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-4">
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <InputText class="w-full" />
-                                    <label>Application No.</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <InputText class="w-full" />
-                                    <label>Application Type</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <InputText class="w-full" />
-                                    <label>Applicant Name</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <DatePicker class="w-full" />
-                                    <label>Date of Application</label>
-                                </FloatLabel>
-                            </div>
-                        </div>
-                        <div class="mt-5 grid grid-cols-1 gap-6 md:grid-cols-3">
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
-                                    <label>Chainsaw Number</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <InputText class="w-full" />
-                                    <label>Brand</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <InputText class="w-full" />
-                                    <label>Model</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <Select :options="['MS 382', 'MS 230', 'MS 162']" class="w-full" />
-                                    <label>Office</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <InputText class="w-full" />
-                                    <label>Encoded By</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="mt-4">
-                                <FloatLabel>
-                                    <DatePicker class="w-full" />
-                                    <label>Date of Expiration</label>
-                                </FloatLabel>
-                            </div>
-                        </div>
-
-                        <Button label="Search Filter" icon="pi pi-search" class="mt-2 mr-2" />
-                    </Fieldset> -->
+                <div class="box">
                     <fus_table />
                 </div>
             </div>

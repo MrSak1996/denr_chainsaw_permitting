@@ -11,7 +11,7 @@ use App\Models\Application\ChainsawIndividualApplication;
 
 class PENROController extends Controller
 {
-     const STATUS_DRAFT = 1;
+    const STATUS_DRAFT = 1;
     const STATUS_FOR_REVIEW_EVALUATION = 2;
 
     const STATUS_ENDORSED_CENRO_CHIEF = 3;
@@ -49,7 +49,7 @@ class PENROController extends Controller
     /**
      * Mapping of statuses to their labels
      */
-   
+
 
     /**
      * Fetch applications dynamically by status
@@ -64,14 +64,11 @@ class PENROController extends Controller
         $app->is_penro_chief_received = 1;
         $app->date_received_penro_chief = now();
         $app->save();
-     
-
-
 
         DB::beginTransaction();
         $penroChief = DB::table('users')
             ->where('office_id', 2)   // PENRO office
-            ->where('role_id',self::IMPLEMENTING_PENRO)                // PENRO CHIEF role
+            ->where('role_id', self::IMPLEMENTING_PENRO)                // PENRO CHIEF role
             ->orderBy('id', 'asc')
             ->first();
 
@@ -79,7 +76,7 @@ class PENROController extends Controller
             throw new \Exception("No PENRO Chief found in office_id {$user->office_id}");
         }
 
-  
+
         // 📝 Insert routing record
         DB::table('tbl_application_routing')->insert([
             'application_id' => $id,
@@ -100,64 +97,149 @@ class PENROController extends Controller
 
     public function endorseToFUS(Request $request)
     {
+        $request->validate([
+            'id' => 'required|integer|exists:tbl_application_checklist,id',
+        ]);
+
+        $officeRoutingMap = [
+            2  => 13, // PENRO Laguna → Regional Office
+            6  => 2,  // Sta. Cruz → PENRO Laguna
+            7  => 3,  // Lipa → PENRO Batangas
+            8  => 3,  // Calaca → PENRO Batangas
+            9  => 5,  // Calauag → PENRO Quezon
+            10 => 5,  // Catanauan → PENRO Quezon
+            11 => 5,  // Tayabas → PENRO Quezon
+            12 => 5,  // Real → PENRO Quezon
+            13 => 13, // Regional Office
+        ];
+
         $user = auth()->user();
-        $id = $request->id;
 
         DB::beginTransaction();
 
         try {
-            // 1️⃣ Validate Application
-            $app = ChainsawIndividualApplication::findOrFail($id);
+            /** 1️⃣ Validate routing */
+            if (!isset($officeRoutingMap[$user->office_id])) {
+                throw new \Exception("Routing not defined for office_id {$user->office_id}");
+            }
 
-            // Mark as endorsed by PENRO
-            $app->application_status = self::STATUS_FOR_RECEIVED_FUS;
-            $app->date_endorsed_penro = now();
-            $app->save();
+            $targetOfficeId = $officeRoutingMap[$user->office_id];
 
-            // 2️⃣ Identify PENRO Chief (sender)
+            /** 2️⃣ Lock and update application */
+            $app = ChainsawIndividualApplication::lockForUpdate()
+                ->findOrFail($request->id);
+
+            $app->update([
+                'application_status'     => self::STATUS_ENDORSED_LPDD_FUS,
+                'date_endorsed_penro'    => now(),
+            ]);
+
+            /** 3️⃣ Find LPDD/FUS receiver */
             $lpdd_fus = DB::table('users')
-                ->where('role_id', self::LPDD_FUS)               
-                ->orderBy('id', 'asc')
+                ->where('office_id', $targetOfficeId)
+                ->where('role_id', self::LPDD_FUS)
+                ->orderBy('id')
                 ->first();
 
             if (!$lpdd_fus) {
-                throw new \Exception("No PENRO Chief found in office_id {$user->office_id}");
+                throw new \Exception(
+                    "No LPDD/FUS user found in office_id {$targetOfficeId}"
+                );
             }
 
-        
+            /** 4️⃣ Insert routing record */
+            DB::table('tbl_application_routing')->insert([
+                'application_id' => $app->id,
+                'sender_id'      => $user->id,
+                'receiver_id'    => $lpdd_fus->id,
+                'action'         => 'Endorsed to LPDD/FUS',
+                'remarks'        => 'Waiting to be received by LPDD/FUS',
+                'is_read'        => 0,
+                'route_order'    => 7,
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
 
-            // 4️⃣ Insert routing: PENRO Chief → RPS Chief
+            DB::commit();
+
+            return response()->json([
+                'status'          => 'success',
+                'message'         => 'Application endorsed to LPDD/FUS successfully.',
+                'application_id'  => $app->id,
+                'current_status'  => $app->application_status,
+            ], 200);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => $th->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function returnApplication(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+            'remarks' => 'required|string',
+            'returnTo' => 'required|integer',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $user = auth()->user();
+            $id = $request->id;
+
+            // 🔁 Return-to → Status mapping
+            $returnStatusMap = [
+                1 => 24,
+                8 => 18,
+                3 => 19,
+                4 => 20,
+                5 => 21,
+                6 => 22,
+                7 => 23,
+                10 => 19
+            ];
+
+            if (!isset($returnStatusMap[$request->returnTo])) {
+                throw new \Exception('Invalid return destination.');
+            }
+
+            $statusId = $returnStatusMap[$request->returnTo];
+
+            // 1️⃣ Update application
+            $app = ChainsawIndividualApplication::findOrFail($id);
+            $app->application_status = $statusId;
+            $app->date_returned = now();
+            $app->save();
+
+            // 2️⃣ Insert routing history
             DB::table('tbl_application_routing')->insert([
                 'application_id' => $id,
                 'sender_id' => $user->id,
-                'receiver_id' => $lpdd_fus->id,
-                'action' => 'Endorsed to LPDD/FUS',
-                'remarks' => 'Waiting to be received by LPDD/FUS',
+                'receiver_id' => $request->returnTo, // optional if returning to pool
+                'action' => 'Returned by PENRO Chief',
+                'comments' => $request->remarks,
                 'is_read' => 0,
-                'route_order' => 7,
+                'route_order' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
             DB::commit();
 
-            // 5️⃣ Update application status
-            $app->application_status = $request->status;
-            $app->save();
-
             return response()->json([
-                'message' => 'Application successfully endorsed to RPS Chief.'
-            ], 200);
-
+                'message' => 'Application returned successfully.',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
-
-
-
-
 }

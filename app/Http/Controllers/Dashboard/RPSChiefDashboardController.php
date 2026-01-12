@@ -73,13 +73,17 @@ class RPSChiefDashboardController extends Controller
             'status' => 'required|integer',
         ]);
 
-        $office_id = $request->query('office_id');
+        $office_id = (int) $request->query('office_id');
         $status = (int) $request->input('status');
         $statusFilter = [$status];
         switch ($office_id) {
-            case '2':
-                 $officeFilter = [6];
-                break;            
+            case 2:
+                $officeFilter = [6];
+                break;
+            case 13:
+                $officeFilter = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]; // if region show all offices
+                break;
+
             default:
                 $officeFilter = [$office_id];
                 break;
@@ -106,6 +110,23 @@ class RPSChiefDashboardController extends Controller
                     self::STATUS_ENDORSED_PENRO,   // 6
                     self::STATUS_ENDORSED_LPDD_FUS, //7
                     self::STATUS_RETURN_TO_PENRO,  // 20
+                ];
+                break;
+            case '7':
+                $statusFilter = [
+                    self::STATUS_RECEIVED_FUS,   // 14
+                    self::STATUS_ENDORSED_LPDD_FUS,   // 7
+                    self::STATUS_ENDORSED_ARDTS, //8
+                    self::STATUS_RETURN_TO_LPDD_FUS,  // 21
+                ];
+                break;
+
+            case '8':
+                $statusFilter = [
+                    self::STATUS_RECEIVED_ARDTS,   // 15
+                    self::STATUS_ENDORSED_ARDTS,   // 8
+                    self::STATUS_APPROVED_BY_RED, //9
+                    self::STATUS_RETURN_TO_ARDTS,  // 22
                 ];
                 break;
 
@@ -188,7 +209,7 @@ class RPSChiefDashboardController extends Controller
         }
 
         return response()->json([
-            'status' => $status,
+            'status' => $office_id,
             'status_labels' => array_map(function ($code) {
                 return $this->statusMap[$code] ?? 'Unknown Status';
             }, $statusFilter),

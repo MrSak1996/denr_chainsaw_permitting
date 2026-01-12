@@ -5,7 +5,9 @@ import { Head } from '@inertiajs/vue3';
 import { Info } from 'lucide-vue-next';
 import Fieldset from 'primevue/fieldset';
 import ardts_table from './applications/table/ardts_tbl.vue';
+import { useOfficeTitle } from '@/composables/useOfficeTitle';
 
+const { officeTitle } = useOfficeTitle();
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'ARDTS Dashboard',
@@ -15,16 +17,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 </script>
 
 <template>
-    <Head title="RPS Chief Dashboard" />
+    <Head title="ARDTS Dashboard" />
 
-    <AppLayout :breadcrumbs="breadcrumbs">
+      <AppLayout :breadcrumbs="breadcrumbs">
         <div class="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
-            <h1 class="text-xl font-semibold">ARDTS Dashboard</h1>
-      
-
+            <h1 class="text-xl font-semibold"> ARDTS Dashboard</h1>
             <div class="grid grid-cols-1 gap-4">
-                <div class="box col-span-4 flex flex-col overflow-hidden rounded-xl border border-sidebar-border/70 p-4 dark:border-sidebar-border">
-                    <h4 class="title flex mb-4 gap-2"> <Info/> List of Applicants Submitted</h4>                 
+                <div class="box">
                     <ardts_table />
                 </div>
             </div>
