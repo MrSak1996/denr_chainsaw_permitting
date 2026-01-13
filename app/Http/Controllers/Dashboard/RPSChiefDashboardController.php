@@ -128,6 +128,15 @@ class RPSChiefDashboardController extends Controller
                     self::STATUS_APPROVED_BY_RED, //9
                     self::STATUS_RETURN_TO_ARDTS,  // 22
                 ];
+            case '25':
+                $statusFilter = [
+                    self::STATUS_RECEIVED_RED,   // 16
+                    self::STATUS_APPROVED_BY_RED,   // 9
+                    self::STATUS_RETURN_TO_RED,  // 23
+                    self::STATUS_RETURN_TO_ARDTS,
+                    25
+
+                ];
                 break;
 
             default:
@@ -209,7 +218,7 @@ class RPSChiefDashboardController extends Controller
         }
 
         return response()->json([
-            'status' => $office_id,
+            'status' => $status,
             'status_labels' => array_map(function ($code) {
                 return $this->statusMap[$code] ?? 'Unknown Status';
             }, $statusFilter),

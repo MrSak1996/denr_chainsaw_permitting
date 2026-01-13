@@ -112,8 +112,14 @@ Route::post('/applications/ardts/endorse', [ARDTSController::class, 'endorseAppl
 Route::post('/applications/ardts/receive', [ARDTSController::class, 'receivedApplication'])
     ->name('applications.ardts.receive');
 
+Route::post('/applications/ardts/return', [ARDTSController::class, 'returnApplication'])
+    ->name('applications.ardts.return');
+
 Route::post('/applications/red/receive', [RegionalExecutiveController::class, 'receivedApplication'])
     ->name('applications.red.receive');
+
+Route::post('/applications/red/return', [RegionalExecutiveController::class, 'returnApplication'])
+    ->name('applications.red.return');
 
 
 // ====================== ENDORSED TO PENRO ================================================

@@ -348,7 +348,7 @@ const getApplicationDetails = async () => {
     }
 
     try {
-        const response = await axios.get(`http://192.168.0.117:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data ?? {};
         i_city_mun.value = response.data.data?.i_city_mun ?? i_city_mun.value;
     } catch (error: any) {
@@ -363,7 +363,7 @@ const getApplicantFile = async () => {
     if (!applicationId) return;
 
     try {
-        const response = await axios.get(`http://192.168.0.117:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file: any) => ({
                 name: file.file_name,

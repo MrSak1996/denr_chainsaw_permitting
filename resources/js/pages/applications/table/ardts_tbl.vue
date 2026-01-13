@@ -70,7 +70,8 @@ const showCommentsModal = ref(false);
 const routingHistory = ref([]);
 const commentsHistory = ref([]);
 const loadingRouting = ref(false);
-const loadingComment = ref(false); const showFileModal = ref(false);
+const loadingComment = ref(false); 
+const showFileModal = ref(false);
 const selectedFile = ref(null);
 const selectedFileToUpdate = ref(null);
 const updateFileInput = ref(null);
@@ -84,11 +85,7 @@ const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 const submitted = ref(false);
-const statuses = ref([
-    { label: 'INSTOCK', value: 'instock' },
-    { label: 'LOWSTOCK', value: 'lowstock' },
-    { label: 'OUTOFSTOCK', value: 'outofstock' },
-]);
+
 
 // Define steps
 const events = ['Return for Compliance', 'For Review / Evaluation', 'Endorsed to CENRO', 'Endorsed to PENRO', 'Endorsed to R.O', 'Approved'];
@@ -218,7 +215,6 @@ const formatCurrency = (value) => {
 const applicantsTable = async () => {
     try {
         const officeId = page.props.auth.user.office_id;
-
         const { applications: endorsedApplications, count: endorsedCount } = await ProductService.getApplicationsByStatus(STATUS_ENDORSED_ARDTS, officeId);
 
         endorsed_applications.value = endorsedApplications;
@@ -235,7 +231,7 @@ const applicantsTable = async () => {
 const getSignatories = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.0.117:8000/api/getSignatories/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getSignatories/${id}`);
         progress_tracker_data.value = response.data; // 👈 store data directly
     } catch (error) {
         console.error(error);
@@ -428,7 +424,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://192.168.0.117:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -450,7 +446,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.0.117:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -475,7 +471,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.0.117:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -512,7 +508,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.0.117:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -624,7 +620,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://192.168.0.117:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -675,7 +671,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id);
         formData.append('name', selectedFileToUpdate.value.name);
 
-        const response = await axios.post('http://192.168.0.117:8000/api/files/update', formData, {
+        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -698,7 +694,7 @@ const handleFileUpdate = async (event) => {
 const openDialog = (type: 'endorse' | 'return' | 'receive', id: number) => {
     const config = {
         endorse: {
-            header: 'Endorse this application to ARDTS?',
+            header: 'Endorse this application to Regional Executive Director?',
             message: 'Please confirm that you want to endorse this application.',
             api: 'applications.ardts.endorse',
             payload: { id },
@@ -714,12 +710,12 @@ const openDialog = (type: 'endorse' | 'return' | 'receive', id: number) => {
             showTextarea: true,
             showDropdown: true,
             toastMessage: 'Application returned',
-            offices: [
+             offices: [
                 { label: 'Technical Staff', value: 1 },
                 { label: 'Chief, RPS', value: 8 },
                 { label: 'Chief, TSD', value: 10 },
                 { label: 'Chief, PENRO', value: 3 },
-                { label: 'LPDD/FUS', value: 5},
+                { label: 'LPDD/FUS', value: 5 },
             ],
         },
         receive: {
@@ -779,17 +775,17 @@ const openCommentModal = async (data) => {
         loadingComment.value = false;
     }
 };
+
 const buttonState = (row: any) => {
     const isReceived = !!row.is_ardts_received;
-    const isEndorsedToARDTS =
-        row.application_status === STATUS_ENDORSED_ARDTS;
-
+    const isEndorsedToARDTS = row.application_status === STATUS_ENDORSED_ARDTS;
+    const isReturnedToARDTS = row.application_status === STATUS_RETURN_TO_ARDTS;
     const isEndorsedToRED =
         row.application_status === STATUS_APPROVED_BY_RED || !STATUS_ENDORSED_ARDTS;
 
     return {
         // 🔵 Receive is ENABLED when endorsed to TSD and not yet received
-        receiveDisabled: !isEndorsedToARDTS,
+        receiveDisabled: isEndorsedToARDTS || isEndorsedToARDTS,
 
         // 🔵 Endorse is ENABLED only while still at TSD level
         endorseDisabled: isEndorsedToRED || isReceived,
@@ -903,7 +899,7 @@ const buttonState = (row: any) => {
 
                                         <Button
                                             style="display: inline; padding: .2em .6em .3em; font-size: 75%; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25em;"
-                                            severity="info" v-if="data.status_title === 'Returned to RPS Chief'"
+                                            severity="info" v-if="data.application_status === STATUS_RETURN_TO_ARDTS"
                                             class="rounded bg-blue-900 px-1 py-1 mt-1 text-xs text-white"
                                             @click="openCommentModal(data)" size="small">
                                             View Comments
@@ -1251,6 +1247,48 @@ const buttonState = (row: any) => {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </Dialog>
+        <Dialog v-model:visible="showCommentsModal" modal header="Comments" :style="{ width: '50vw' }">
+            <div class="overflow-x-auto">
+                <!-- Loading state -->
+                <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading comments...</div>
+                <table v-else class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border px-4 py-2 text-left">Action Officer</th>
+                            <th class="border px-4 py-2 text-left">Comments</th>
+                            <th class="border px-4 py-2 text-left">Date Return</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <tr v-for="(item, index) in commentsHistory" :key="index" class="hover:bg-gray-50">
+                            <td class="border px-4" style="width: 10rem">
+                                <b>{{ item.action_officer }}</b><br />
+                                <i>{{ item.sender_role }}</i><br />
+                            </td>
+                            <td class="border px-4">{{ item.comments }}</td>
+                            <td class="border px-4">
+                                {{
+                                    new Date(item.date_returned).toLocaleString('en-PH', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        hour12: true,
+                                    })
+                                }}
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+                </table>
+                <!-- Table -->
+
             </div>
         </Dialog>
 

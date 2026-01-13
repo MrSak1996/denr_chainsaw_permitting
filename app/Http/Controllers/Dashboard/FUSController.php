@@ -119,7 +119,7 @@ class FUSController extends Controller
 
             $app->update([
                 'application_status'     => self::STATUS_ENDORSED_ARDTS,
-                'date_endorsed_penro'    => now(),
+                'date_endorsed_fus'    => now(),
             ]);
 
             $query = DB::table('users')

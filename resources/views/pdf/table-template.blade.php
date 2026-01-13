@@ -224,6 +224,24 @@
             margin-top: 40px;
             font-size: 11pt;
         }
+
+        .approved-signature {
+            position: relative;
+            margin-top: 40px;
+        }
+
+        .approved-img {
+            position: absolute;
+            right: 20px;
+            /* 🔥 adjust horizontally */
+            top: -50px;
+            /* 🔥 adjust vertically */
+            width: 160px;
+            /* signature size */
+            opacity: 0.25;
+            /* optional */
+        }
+        
     </style>
 </head>
 
@@ -351,11 +369,15 @@
         Laguna<br>Expiry Date: <span style="text-decoration:underline;">{{ $expiry_date }}</span></p>
 
     <!-- SIGNATURE -->
-    <div class="signature">
+    <!-- SIGNATURE -->
+    <div class="signature approved-signature">
+        <img src="{{ public_path('images/approved.png') }}" class="approved-img">
+
         <p style="margin-right:50px;margin-bottom:40px;">Approved:</p>
         <p><strong>NILO B. TAMORIA, CESO III</strong></p>
         <p>Regional Executive Director</p>
     </div>
+
 
     <!-- FEES SECTION -->
 

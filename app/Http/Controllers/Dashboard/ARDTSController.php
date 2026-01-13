@@ -51,7 +51,7 @@ class ARDTSController extends Controller
     /**
      * Mapping of statuses to their labels
      */
-  
+
 
     public function receivedApplication(Request $request)
     {
@@ -97,46 +97,48 @@ class ARDTSController extends Controller
 
     public function endorseApplication(Request $request)
     {
-        $user = auth()->user();
-        $id = $request->id;
+        $request->validate([
+            'id' => 'required|integer|exists:tbl_application_checklist,id',
+        ]);
+
         $officeRoutingMap = [
-            6 => 2,  // Sta. Cruz → PENRO Laguna
-            7 => 3,  // Lipa → PENRO Batangas
-            8 => 3,  // Calaca → PENRO Batangas
-            9 => 5,  // Calauag → PENRO Quezon
-            10 => 5, // Catanauan → PENRO Quezon
-            11 => 5, // Tayabas → PENRO Quezon
-            12 => 5, // Real → PENRO Quezon
-            13 => 13 // Regional Office
+            2  => 13, // PENRO Laguna → Regional Office
+            6  => 2,  // Sta. Cruz → PENRO Laguna
+            7  => 3,  // Lipa → PENRO Batangas
+            8  => 3,  // Calaca → PENRO Batangas
+            9  => 5,  // Calauag → PENRO Quezon
+            10 => 5,  // Catanauan → PENRO Quezon
+            11 => 5,  // Tayabas → PENRO Quezon
+            12 => 5,  // Real → PENRO Quezon
+            13 => 13, // Regional Office 
         ];
 
-        // 1️⃣ Update application as received by CENRO Chief
-        $app = ChainsawIndividualApplication::findOrFail($id);
-        $app->application_status = self::STATUS_ENDORSED_RED;
-        $app->date_endorse_red = now();
-        $app->save();
-
+        $user = auth()->user();
         DB::beginTransaction();
 
         try {
-            // Validate routing
             if (!isset($officeRoutingMap[$user->office_id])) {
                 throw new \Exception("Routing not defined for office_id {$user->office_id}");
             }
+            $targetOfficeId = $officeRoutingMap[$user->office_id];
+            $app = ChainsawIndividualApplication::lockForUpdate()
+                ->findOrFail($request->id);
 
-            // 2️⃣ Get PENRO Chief
+            $app->update([
+                'application_status'  => 25, //ENDORSED TO RED
+                'date_endorse_red'    => now(),
+            ]);
+
             $red = DB::table('users')
                 ->where('role_id', self::RED) // role 3 = Chief
                 ->orderBy('id', 'asc')
                 ->first();
-
             if (!$red) {
                 throw new \Exception("No RED found in office_id");
             }
 
-            // Insert routing: CENRO Chief → PENRO Chief
             DB::table('tbl_application_routing')->insert([
-                'application_id' => $id,
+                'application_id' => $app->id,
                 'sender_id' => $user->id,
                 'receiver_id' => $red->id,
                 'action' => 'Endorsed to Regional Executive Director',
@@ -149,20 +151,77 @@ class ARDTSController extends Controller
 
             DB::commit();
 
-          
-
-
             return response()->json([
                 'message' => 'Application endorsed to ARD TS successfully.'
             ], 200);
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $th) {
             DB::rollBack();
+
             return response()->json([
-                'message' => $e->getMessage()
+                'status'  => 'error',
+                'message' => $th->getMessage(),
             ], 500);
         }
+    }
 
+    public function returnApplication(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+            'remarks' => 'required|string',
+            'returnTo' => 'required|integer',
+        ]);
+        DB::beginTransaction();
+        try {
+            $user = auth()->user();
+            $id = $request->id;
+
+            // 🔁 Return-to → Status mapping
+            $returnStatusMap = [
+                1 => 24,
+                8 => 18,
+                10 => 19,
+                3 => 20,
+                5 => 21,
+            ];
+
+            if (!isset($returnStatusMap[$request->returnTo])) {
+                throw new \Exception('Invalid return destination.');
+            }
+
+            $statusId = $returnStatusMap[$request->returnTo];
+
+            // 1️⃣ Update application
+            $app = ChainsawIndividualApplication::findOrFail($id);
+            $app->application_status = $statusId;
+            $app->date_returned = now();
+            $app->save();
+
+            // 2️⃣ Insert routing history
+            DB::table('tbl_application_routing')->insert([
+                'application_id' => $id,
+                'sender_id' => $user->id,
+                'receiver_id' => $request->returnTo, // optional if returning to pool
+                'action' => 'Returned by LPDD/FUS',
+                'comments' => $request->remarks,
+                'is_read' => 0,
+                'route_order' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Application returned successfully.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
     //
