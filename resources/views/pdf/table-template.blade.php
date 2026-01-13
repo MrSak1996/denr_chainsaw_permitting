@@ -300,11 +300,11 @@
     <table class="info-table">
         <tr>
             <td style="width: 90px;">Name:</td>
-            <td style="font-weight:bold;"><span class="field">{{ $authorized_representative }}</span></td>
+            <td style="font-weight:bold;"><span class="field">{{ $name }}</span></td>
         </tr>
         <tr>
             <td>Address:</td>
-            <td style="font-weight:bold;font-size:12px !important;"><span class="field">{{ $company_address }}</span>
+            <td style="font-weight:bold;font-size:14px !important;"><span class="field">{{ $complete_address }}</span>
             </td>
         </tr>
     </table>

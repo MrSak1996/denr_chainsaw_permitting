@@ -15,6 +15,35 @@ use Illuminate\Support\Facades\DB;
 
 class ChainsawController extends Controller
 {
+    const STATUS_DRAFT = 1;
+    const STATUS_FOR_REVIEW_EVALUATION = 2;
+
+    const STATUS_ENDORSED_CENRO_CHIEF = 3;
+    const STATUS_ENDORSED_RPS_CHIEF = 4;
+    const STATUS_ENDORSED_TSD_CHIEF = 5;
+    const STATUS_ENDORSED_PENRO = 6;
+    const STATUS_ENDORSED_LPDD_FUS = 7;
+    const STATUS_ENDORSED_ARDTS = 8;
+    const STATUS_APPROVED_BY_RED = 9;
+
+    const STATUS_RECEIVED_CENRO_CHIEF = 10;
+    const STATUS_RECEIVED_CHIEF_RPS = 11;
+    const STATUS_RECEIVED_TSD_CHIEF = 12;
+    const STATUS_RECEIVED_PENRO_CHIEF = 13;
+    const STATUS_RECEIVED_FUS = 14;
+    const STATUS_RECEIVED_ARDTS = 15;
+    const STATUS_RECEIVED_RED = 16;
+
+    const STATUS_RETURN_TO_CENRO_CHIEF = 17;
+    const STATUS_RETURN_TO_RPS_CHIEF = 18;
+    const STATUS_RETURN_TO_TSD_CHIEF = 19;
+    const STATUS_RETURN_TO_PENRO = 20;
+    const STATUS_RETURN_TO_LPDD_FUS = 21;
+    const STATUS_RETURN_TO_ARDTS = 22;
+    const STATUS_RETURN_TO_RED = 23;
+    const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
+    const CHIEF_RPS = 8;
+
     public function insertChainsawInfo(Request $request, GoogleDriveService $driveService)
     {
         try {
@@ -36,7 +65,7 @@ class ChainsawController extends Controller
                 'supplier_name' => $request->input('supplier_name'),
                 'supplier_address' => $request->input('supplier_address'),
                 'purpose' => $request->input('purpose'),
-                'permit_validity' => $request->input('permit_validity'),
+                'permit_validity'  => Carbon::parse($request->permit_validity)->format('Y-m-d'),
                 'other_details' => $request->input('other_details'),
             ]);
 
@@ -118,7 +147,7 @@ class ChainsawController extends Controller
 
             // Update the record
             $updateResult = DB::table('tbl_chainsaw_information')
-                ->where('application_id',$id) // use payload instead of route param
+                ->where('application_id', $id) // use payload instead of route param
                 ->update([
                     'permit_chainsaw_no' => $request->input('permit_chainsaw_no'),
                     'brand' => $request->input('brand'),
@@ -141,7 +170,6 @@ class ChainsawController extends Controller
                 'status' => $updateResult ? 'success' : 'error',
                 'message' => $updateResult ? 'Chainsaw info updated successfully' : 'No updates were made. Please check your data.',
             ], $updateResult ? 200 : 400);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -151,42 +179,140 @@ class ChainsawController extends Controller
             ], 500);
         }
     }
-
-
-    public function updateApplicationStatus(Request $request, $id)
+    public function endorseApplication(Request $request)
     {
-        try {
-            DB::beginTransaction();
+        $request->validate([
+            'id' => 'required|integer|exists:tbl_application_checklist,id',
+        ]);
 
-            // Perform the update
-            $updateResult = DB::table('tbl_application_checklist')
-                ->where('id', $id)
-                ->update([
-                    'application_status' => $request->input('status'), // fixed typo
-                    'updated_at' => now(),
-                ]);
+        $officeRoutingMap = [
+            6 => 2,  // Sta. Cruz → PENRO Laguna
+            7 => 3,  // Lipa → PENRO Batangas
+            8 => 3,  // Calaca → PENRO Batangas
+            9 => 5,  // Calauag → PENRO Quezon
+            10 => 5, // Catanauan → PENRO Quezon
+            11 => 5, // Tayabas → PENRO Quezon
+            12 => 5, // Real → PENRO Quezon
+            13 => 13 // Regional Office
+        ];
+
+        $user = auth()->user();
+        DB::beginTransaction();
+
+        try {
+            $app = ChainsawIndividualApplication::lockForUpdate()->findOrFail($request->id);
+
+            $app->update([
+                'application_status' => self::STATUS_ENDORSED_RPS_CHIEF,
+                'date_endorsed_tsd_chief' => now(),
+            ]);
+
+            $penroChief = DB::table('users')
+                ->where('office_id', $user->office_id)
+                ->where('role_id',8)
+                ->first();
+
+            if (!$penroChief) {
+                throw new \Exception("No PENRO found in this office.");
+            }
+
+            DB::table('tbl_application_routing')->insert([
+                'application_id' => $app->id,
+                'sender_id' => $user->id,
+                'receiver_id' => $penroChief->id,
+                'action' => 'Endorsed to RPS Chief',
+                'remarks' => 'Waiting to be received by RPS Chief',
+                'is_read' => 0,
+                'route_order' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             DB::commit();
 
-            // Return success or error based on the update result
-            if ($updateResult) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Application status updated successfully.'
-                ], 200);
-            } else {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No updates were made. Please check the application ID.'
-                ], 400);
-            }
-        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Application endorsed successfully.',
+                // 'application_id' => $app->id,
+                // 'current_status' => $app->application_status,
+            ], 200);
+        } catch (\Throwable $th) {
             DB::rollBack();
+
             return response()->json([
                 'status' => 'error',
-                'message' => $e->getMessage()
+                'message' => $th->getMessage(),
             ], 500);
         }
     }
 
+    // public function updateApplicationStatus(Request $request, $id)
+    // {
+    //     DB::beginTransaction();
+
+    //     try {
+    //         $user = auth()->user();
+
+    //         if (!$user) {
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'Unauthenticated user.'
+    //             ], 401);
+    //         }
+
+    //         $updateResult = DB::table('tbl_application_checklist')
+    //             ->where('id', $id)
+    //             ->update([
+    //                 'application_status' => $request->input('status'),
+    //                 'updated_at' => now(),
+    //             ]);
+
+    //         if (!$updateResult) {
+    //             DB::rollBack();
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'Application not found or no changes made.'
+    //             ], 400);
+    //         }
+
+    //         $receiver = DB::table('users')
+    //             ->where('office_id', 6)
+    //             ->where('role_id', self::CHIEF_RPS)
+    //             ->orderBy('id', 'asc')
+    //             ->first();
+
+    //         if (!$receiver) {
+    //             DB::rollBack();
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'No CENRO CHIEF (RPS) found.'
+    //             ], 404);
+    //         }
+
+    //         DB::table('tbl_application_routing')->insert([
+    //             'application_id' => $id,
+    //             'sender_id' => $user->id,
+    //             'receiver_id' => $receiver->id,
+    //             'action' => 'Endorsed to the CHIEF RPS',
+    //             'remarks' => 'For evaluation of CHIEF RPS',
+    //             'is_read' => 0,
+    //             'route_order' => 1,
+    //             'created_at' => now(),
+    //             'updated_at' => now(),
+    //         ]);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'Application endorsed to CHIEF RPS successfully.'
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 }

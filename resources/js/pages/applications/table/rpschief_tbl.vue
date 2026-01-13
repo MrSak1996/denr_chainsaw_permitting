@@ -220,7 +220,7 @@ const openDialog = (type: 'endorse' | 'return' | 'receive', id: number) => {
         receive: {
             header: 'Receive Application?',
             message: 'Please confirm that you want to receive this application.',
-            api: 'applications.tsd.receive',
+            api: 'applications.rpschief.receive',
             payload: { id },
             showTextarea: false,
             showDropdown: false,
@@ -779,7 +779,7 @@ const buttonState = (row:any) => {
 
                                     <!-- ✅ RECEIVE (disabled if endorsed) -->
                                     <Button :disabled="buttonState(slotProps.data).receiveDisable"
-                                        @click="receiveApplication(slotProps.data.id)" style="background-color: #0f766e"
+                                        @click="openDialog('receive',slotProps.data.id)" style="background-color: #0f766e"
                                         class="p-2 text-white">
                                         <BadgeCheck :size="15" />
                                     </Button>
@@ -1321,7 +1321,7 @@ const buttonState = (row:any) => {
                             <td class="border px-4">{{ item.comments }}</td>
                             <td class="border px-4">
                                 {{
-                                    new Date(item.date_returned).toLocaleString('en-PH', {
+                                    new Date(item.created_at).toLocaleString('en-PH', {
                                         year: 'numeric',
                                         month: 'long',
                                         day: '2-digit',

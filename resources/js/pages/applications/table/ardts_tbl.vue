@@ -231,7 +231,7 @@ const applicantsTable = async () => {
 const getSignatories = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getSignatories/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getSignatories/${id}`);
         progress_tracker_data.value = response.data; // 👈 store data directly
     } catch (error) {
         console.error(error);
@@ -424,7 +424,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -446,7 +446,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -471,7 +471,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -508,7 +508,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -620,7 +620,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -671,7 +671,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id);
         formData.append('name', selectedFileToUpdate.value.name);
 
-        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
+        const response = await axios.post('http://10.201.13.88:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -777,18 +777,19 @@ const openCommentModal = async (data) => {
 };
 
 const buttonState = (row: any) => {
-    const isReceived = !!row.is_ardts_received;
+    const isReceived = row.application_status === STATUS_RECEIVED_ARDTS;
     const isEndorsedToARDTS = row.application_status === STATUS_ENDORSED_ARDTS;
+
     const isReturnedToARDTS = row.application_status === STATUS_RETURN_TO_ARDTS;
     const isEndorsedToRED =
         row.application_status === STATUS_APPROVED_BY_RED || !STATUS_ENDORSED_ARDTS;
 
     return {
         // 🔵 Receive is ENABLED when endorsed to TSD and not yet received
-        receiveDisabled: isEndorsedToARDTS || isEndorsedToARDTS,
+        receiveDisabled: !isEndorsedToARDTS,
 
         // 🔵 Endorse is ENABLED only while still at TSD level
-        endorseDisabled: isEndorsedToRED || isReceived,
+        endorseDisabled: !isReceived,
 
         // 🔵 adjust if you later add rules
         returnDisabled: false
@@ -1167,7 +1168,7 @@ const buttonState = (row: any) => {
                 </Dialog>
             </div>
         </Dialog>
-        <Dialog v-model:visible="showProgressModal" modal header="Routing History" :style="{ width: '50vw' }">
+        <Dialog v-model:visible="showProgressModal" modal header="Routing History" :style="{ width: '70vw' }">
             <div class="overflow-x-auto">
                 <!-- Loading state -->
                 <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading routing history...</div>
@@ -1180,6 +1181,8 @@ const buttonState = (row: any) => {
                             <th class="border px-4 py-2 text-left">Sender</th>
                             <th class="border px-4 py-2 text-left">Route Details</th>
                             <th class="border px-4 py-2 text-left">Receiver</th>
+                            <th class="border px-4 py-2 text-left">Date Received</th>
+                            <th class="border px-4 py-2 text-left">Date Endorsed</th>
                             <th class="border px-4 py-2 text-left">Remarks</th>
                         </tr>
                     </thead>
@@ -1193,22 +1196,24 @@ const buttonState = (row: any) => {
 
                             <!-- Sender -->
                             <td class="border px-4" style="width: 10rem">
-                                <b>{{ item.sender_role }}</b><br />
-                                <i>{{ item.sender }}</i><br />
-                                {{ new Date(item.created_at).toLocaleDateString() }}
+                                <div v-if="[2, 4, 6, 8, 10].includes(item.route_order)"></div>
+
+                                <div v-else>
+                                    <b>{{ item.sender_role }}</b><br />
+                                    <i>{{ item.sender }}</i>
+                                </div>
                             </td>
 
                             <!-- Route details -->
-                            <td class="border px-4">
-                                <b>Route No. {{ item.route_order }}</b><br />
-                                {{ item.action }}
+                            <td class="border px-4" style="width: 7rem">
+                                <b>Route No. {{ item.route_order }}</b>
                             </td>
 
                             <!-- Receiver -->
                             <td class="border px-4" style="width: 20rem">
                                 <b>{{ item.receiver_role }}</b><br />
 
-                                <Tag v-if="item.action === 'Received'" severity="success" size="small"> Received </Tag>
+                                <Tag v-if="item.action === 'Received'" severity="danger" size="small"> Received </Tag>
 
                                 <Tag v-else-if="item.action === 'Endorsed'" severity="info" size="small"> Endorsed
                                 </Tag>
@@ -1218,20 +1223,130 @@ const buttonState = (row: any) => {
                                 </Tag>
 
                                 <br />
+                            </td>
+
+                            <td class="border px-4">
                                 <span v-if="item.route_order == 2">
-                                    {{ new Date(item.date_received_rps_chief).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_rps_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
+
                                 <span v-else-if="item.route_order == 4">
-                                    {{ new Date(item.date_received_tsd_chief).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_tsd_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
                                 <span v-else-if="item.route_order == 6">
-                                    {{ new Date(item.date_received_penro_chief).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_penro_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
                                 <span v-else-if="item.route_order == 8">
-                                    {{ new Date(item.date_received_fus).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_fus).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
+
                                 <span v-else-if="item.route_order == 10">
-                                    {{ new Date(item.date_received_ardts).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_ardts).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                            </td>
+
+                            <td class="border px-4">
+                                <span v-if="item.route_order == 3">
+                                    {{
+                                        new Date(item.date_endorsed_tsd_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-if="item.route_order == 5">
+                                    {{
+                                        new Date(item.date_endorsed_penro).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 7">
+                                    {{
+                                        new Date(item.date_endorsed_fus).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 9">
+                                    {{
+                                        new Date(item.date_endorsed_ardts).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
                             </td>
 

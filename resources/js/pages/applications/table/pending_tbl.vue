@@ -2,13 +2,14 @@
 import { router } from '@inertiajs/vue3';
 import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
-import { Send, SquarePen, EyeIcon, Trash, Undo2, Edit2, Info,PrinterCheck } from 'lucide-vue-next';
+import { Send, SquarePen, EyeIcon, Trash, Undo2, Edit2, Info, PrinterCheck } from 'lucide-vue-next';
 import Fieldset from 'primevue/fieldset';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, reactive, ref } from 'vue';
 import FileCard from '../forms/file_card.vue';
 import { ProductService } from '../service/ProductService';
 import { Link, usePage } from '@inertiajs/vue3';
+import ReusableConfirmDialog from '../modal/endorsed_modal.vue';
 
 const page = usePage();
 const userId = page.props.auth.user.id;
@@ -19,6 +20,34 @@ onMounted(() => {
     ProductService.getProducts(userId).then((data) => (products.value = data));
     // getSignatories();
 });
+const STATUS_DRAFT = 1;
+const STATUS_FOR_REVIEW_EVALUATION = 2;
+
+const STATUS_ENDORSED_CENRO_CHIEF = 3;
+const STATUS_ENDORSED_RPS_CHIEF = 4;
+const STATUS_ENDORSED_TSD_CHIEF = 5;
+const STATUS_ENDORSED_PENRO = 6;
+const STATUS_ENDORSED_LPDD_FUS = 7;
+const STATUS_ENDORSED_ARDTS = 8;
+const STATUS_APPROVED_BY_RED = 9;
+
+const STATUS_RECEIVED_CENRO_CHIEF = 10;
+const STATUS_RECEIVED_CHIEF_RPS = 11;
+const STATUS_RECEIVED_TSD_CHIEF = 12;
+const STATUS_RECEIVED_PENRO_CHIEF = 13;
+const STATUS_RECEIVED_FUS = 14;
+const STATUS_RECEIVED_ARDTS = 15;
+const STATUS_RECEIVED_RED = 16;
+
+const STATUS_RETURN_TO_CENRO_CHIEF = 17;
+const STATUS_RETURN_TO_RPS_CHIEF = 18;
+const STATUS_RETURN_TO_TSD_CHIEF = 19;
+const STATUS_RETURN_TO_PENRO = 20;
+const STATUS_RETURN_TO_LPDD_FUS = 21;
+const STATUS_RETURN_TO_ARDTS = 22;
+const STATUS_RETURN_TO_RED = 23;
+const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
+
 const toast = useToast();
 const dt = ref();
 const products = ref();
@@ -27,7 +56,13 @@ const deleteProductDialog = ref(false);
 const deleteProductsDialog = ref(false);
 const isloadingSpinner = ref(false);
 const showModal = ref(false);
-const showCommentModal = ref(false);
+const showCommentsModal = ref(false);
+const commentsHistory = ref(false);
+const loadingRouting = ref(false);
+const loadingComment = ref(false);
+const confirmDialogRef = ref<any>(null);
+
+
 const showFileModal = ref(false);
 const selectedFile = ref(null);
 const selectedFileToUpdate = ref(null)
@@ -58,10 +93,17 @@ const openNew = () => {
     productDialog.value = true;
 };
 const openCommentModal = async (data) => {
-    showCommentModal.value = true;
-    await getApplicationDetails(data.id);
-
-}
+    showCommentsModal.value = true;
+    loadingComment.value = true;
+    try {
+        const res = await axios.get(`/api/getCommentsByID/${data.id}`);
+        commentsHistory.value = res.data;
+    } catch (error) {
+        console.error(error);
+    } finally {
+        loadingComment.value = false;
+    }
+};
 
 const hideDialog = () => {
     productDialog.value = false;
@@ -181,7 +223,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -203,7 +245,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -217,7 +259,7 @@ const getApplicationDetails = async (id) => {
 const getSignatories = async () => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getSignatories`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getSignatories`);
         signatories_data.value = response.data;
         return response.data.data;
     } catch (error) {
@@ -248,7 +290,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -285,7 +327,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -321,7 +363,20 @@ const saveChainsawDetails = async () => {
 // =============================
 // Toggle Edit States
 // =============================
-
+const endorseApplication = (id: number) => {
+    confirmDialogRef.value?.open({
+        header: 'Endorse Application?',
+        message: 'Please confirm that you want to endorse this application.',
+        onConfirm: async () => {
+            try {
+                await axios.post(route('applications.technical.endorse'), { id }); //endorsed to TSD chief
+                toast.add({ severity: 'success', summary: 'Endorsed', detail: 'Application endorsed' });
+            } catch {
+                toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to endorse' });
+            }
+        },
+    });
+};
 const toggleApplicantEdit = () => {
     if (editState.applicant) {
         saveApplicantDetails();
@@ -358,8 +413,8 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
-            status: 2, //ENDORSED Only update the status field
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+            status: 4, //ENDORSED Only update the status field
         });
 
         if (response.data.status === 'success') {
@@ -409,7 +464,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
         formData.append('name', selectedFileToUpdate.value.name)
 
-        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
+        const response = await axios.post('http://10.201.13.88:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -455,7 +510,7 @@ const onRowCollapse = (event?: { originalEvent: Event; data: Customer }) => {
 }
 
 // const generatePdf = async (data) => {
-   
+
 
 //     const response = await axios.post(`/api/${data.id}/generate-table-pdf`, {
 //         method: 'POST',
@@ -499,26 +554,25 @@ const generatePdf = (data) => {
                     </div>
                 </template>
                 <Column expander style="width: 5rem" />
-
                 <Column header="Action" :exportable="false" style="min-width: 10rem">
-                    <template #body="slotProps">
-                        <Button class="mr-2" @click="openFileModal(slotProps.data)" style="background-color: #004D40;">
+                    <template #body="{ data }">
+                        <Button class="mr-2" @click="openFileModal(data)" style="background-color: #004D40;">
                             <EyeIcon :size="15" />
                         </Button>
 
 
                         <Link
                             class="mr-2 inline-flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-white rounded-md px-3 py-2"
-                            :href="route('applications.edit', { id: slotProps.data.id, type: slotProps.data.application_type })">
-                        <SquarePen :size="16" />
+                            :href="route('applications.edit', { id: data.id, type: data.application_type })">
+                            <SquarePen :size="16" />
                         </Link>
 
 
-                        <Button @click="generatePdf(slotProps.data)"
+                        <Button v-if="data.application_status == STATUS_APPROVED_BY_RED" @click="generatePdf(data)"
                             style="background-color: #0D47A1;">
                             <PrinterCheck :size="15" />
                         </Button>
-                        
+
                     </template>
                 </Column>
                 <Column field="status_title" header="Status" sortable style="min-width: 12rem">
@@ -528,7 +582,7 @@ const generatePdf = (data) => {
                                 :severity="data.application_status >= 17 ? 'danger' : 'success'"
                                 class="text-center mb-2" />
 
-                            <button v-if="data.status_title === 'Return for Compliance'"
+                            <button v-if="data.status_title === 'Returned to Technical Staff'"
                                 class="px-3 py-1 rounded bg-blue-600 text-white text-xs"
                                 @click="openCommentModal(data)">
                                 View Comments
@@ -536,10 +590,9 @@ const generatePdf = (data) => {
                         </div>
                     </template>
                 </Column>
-
                 <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
                     <template #body="{ data }">
-                        <Tag :value="data.application_no" severity="success" class="text-center" /><br />
+                        <b>{{ data.application_no }}</b>
                     </template>
                 </Column>
                 <Column field="application_type" header="Application Type" sortable />
@@ -556,11 +609,11 @@ const generatePdf = (data) => {
                             Chainsaw Information
                         </h5>
                         <DataTable size="small" showGridlines :value="[slotProps.data]">
-                            <Column header="Date Endorsed by CENRO" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
+                            <Column field="date_endorsed_tsd_chief" header="Date Endorsed by CENRO" sortable
+                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">dd
                             </Column>
-                            <Column header="Date Received by PENRO" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
+                            <Column field="date_received_penro_chief" header="Date Received by PENRO" sortable
+                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">d
                             </Column>
                             <Column header="Date Received by RO" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
@@ -568,11 +621,13 @@ const generatePdf = (data) => {
                             <Column header="Date Received by LPDD" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
-                            <Column header="Date Received by FUS" sortable
+                            <Column field="date_received_fus" header="Date Received by FUS" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
                             <Column field="application_type" header="Application Type" sortable style="min-width: 5rem"
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }" />
+
+
                             <Column header="Applicant Name"
                                 :headerStyle="{ backgroundColor: '', color: '#000', fontWeight: 'bold' }">
 
@@ -582,38 +637,37 @@ const generatePdf = (data) => {
 
                             </Column>
 
-                            <Column header="Sex" sortable
+                            <Column field="sex" header="Sex" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
-                            <Column header="Address" sortable
+                            <Column v-if="slotProps.data.application_type === 'Individual'"
+                                field="applicant_complete_address" header="Address" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
-                            <Column header="Permit" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">Permit
-                                to Import Chainsaw</Column>
-                            <Column header="Permit Number" sortable
+                            <Column v-else field="company_address" header="Company Address" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
-                            <Column header="Date Approved/Signed" sortable
+
+                            <Column field="permit_no" header="Permit Number" sortable
+                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
+                            </Column>
+                            <Column field="date_received_red" header="Date Approved/Signed" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
                             <Column field="permit_validity" header="Date of Expiration" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
-                            <Column header="Transaction Fee" sortable
+                            <Column field="permit_fee" header="Transaction Fee" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
+
                             </Column>
-                            <Column header="Amount(Php)" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
+
                             <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem"
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }" />
                             <Column header="Remarks" sortable
                                 :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
                             </Column>
-                            <Column header="Month Recorded as Accomplishment" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
+
                         </DataTable>
                     </div>
 
@@ -624,8 +678,9 @@ const generatePdf = (data) => {
 
             </DataTable>
         </div>
+        <ReusableConfirmDialog ref="confirmDialogRef"/>
 
-        <Dialog v-model:visible="showModal" modal header="Application Preview" :style="{ width: '40vw' }">
+        <Dialog  v-model:visible="showModal" modal header="Application Preview" :style="{ width: '60vw' }">
             <div v-if="isloadingSpinner" class="flex h-40 items-center justify-center">
                 <span>Loading...</span>
             </div>
@@ -633,13 +688,13 @@ const generatePdf = (data) => {
             <div v-else-if="applicationDetails">
                 <!-- Action Buttons -->
                 <Button class="mr-2 !border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
-                    @click="handleEndorseApplicationStatus">
+                    @click="endorseApplication(applicationDetails.id)">
                     <Send class="mr-1" /> Endorsed
                 </Button>
 
-                <Button class="mr-2 !border-red-600 !bg-red-900 !text-white hover:!bg-red-700">
+                <!-- <Button class="mr-2 !border-red-600 !bg-red-900 !text-white hover:!bg-red-700">
                     <Undo2 class="mr-1" /> Returned
-                </Button>
+                </Button> -->
 
                 <!-- Applicant Details -->
                 <Fieldset legend="Applicant Details" :toggleable="true">
@@ -664,43 +719,65 @@ const generatePdf = (data) => {
 
                         <!-- Date Applied -->
                         <div class="flex items-center">
-                            <span class="w-48 font-semibold">Date Applied:</span>
+                            <span class="w-24 font-semibold">Date Applied:</span>
                             <span v-if="!editState.applicant">{{ applicationDetails.date_applied }}</span>
                             <DatePicker v-else v-model="editableApplicant.date_applied" class="w-full" />
                         </div>
 
                         <!-- Type of Transaction -->
                         <div class="flex items-center">
-                            <span class="w-48 font-semibold">Type of Transaction:</span>
+                            <span class="w-24 font-semibold">Type of Transaction:</span>
                             <span v-if="!editState.applicant">{{ applicationDetails.application_type }}</span>
                             <InputText v-else v-model="editableApplicant.application_type" class="w-full" />
                         </div>
+                        <div class="flex items-center">
+                            <span class="w-24 font-semibold">Classification:</span>
+                            <span v-if="!editState.applicant">{{ applicationDetails.classification }}</span>
+                            <InputText v-else v-model="editableApplicant.classification" class="w-full" />
+                        </div>
 
                         <!-- Company Name -->
-                        <div class="flex items-center">
-                            <span class="w-48 font-semibold">Company Name:</span>
+                        <div class="flex items-center" v-if="applicationDetails.application_type === 'Individual'">
+                            <span class="w-24 font-semibold">Applicant Name:</span>
+                            <span v-if="!editState.applicant">{{ applicationDetails.first_name }} {{
+                                applicationDetails.middle_name }} {{ applicationDetails.last_name }}</span>
+
+                        </div>
+                        <div class="flex items-center" v-else>
+                            <span class="w-24 font-semibold">Company Name:</span>
                             <span v-if="!editState.applicant">{{ applicationDetails.company_name }}</span>
                             <InputText v-else v-model="editableApplicant.company_name" class="w-full" />
                         </div>
 
-                        <!-- Authorized Representative -->
                         <div class="flex items-center">
-                            <span class="w-48 font-semibold">Authorized Representative:</span>
+                            <span class="w-24 font-semibold">Email Address:</span>
+                            <span v-if="!editState.applicant">{{ applicationDetails.email_address }}</span>
+                            <InputText v-else v-model="editableApplicant.email_address" class="w-full" />
+                        </div>
+
+                        <!-- Authorized Representative -->
+                        <div class="flex items-center" v-if="applicationDetails.applicant_type === 'Company'">
+                            <span class="w-24 font-semibold">Authorized Representative:</span>
                             <span v-if="!editState.applicant">{{ applicationDetails.authorized_representative }}</span>
                             <InputText v-else v-model="editableApplicant.authorized_representative" class="w-full" />
                         </div>
 
                         <!-- Region (Read-only) -->
                         <div class="flex items-center">
-                            <span class="w-48 font-semibold">Region:</span>
+                            <span class="w-24 font-semibold">Region:</span>
                             <span class="w-full text-gray-700"> REGION IV-A (CALABARZON) </span>
                         </div>
 
                         <!-- Complete Address -->
-                        <div class="flex items-center">
-                            <span class="w-48 font-semibold">Complete Address:</span>
+                        <div class="flex items-center" v-if="applicationDetails.application_type === 'Company'">
+                            <span class="w-24 font-semibold">Complete Address:</span>
                             <span v-if="!editState.applicant">{{ applicationDetails.company_address }}</span>
                             <Textarea v-else v-model="editableApplicant.company_address" class="w-full" />
+                        </div>
+                        <div class="flex items-center" v-else>
+                            <span class="w-24 font-semibold">Complete Address:</span>
+                            <span v-if="!editState.applicant">{{ applicationDetails.applicant_complete_address }}</span>
+                            <Textarea v-else v-model="editableApplicant.applicant_complete_address" class="w-full" />
                         </div>
                     </div>
                 </Fieldset>
@@ -718,7 +795,7 @@ const generatePdf = (data) => {
 
                     <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
-                            <span class="w-48 font-semibold">Chainsaw No:</span>
+                            <span class="w-24 font-semibold">Chainsaw Permit No:</span>
                             <Tag v-if="!editState.chainsaw" :value="applicationDetails.permit_chainsaw_no"
                                 severity="success" class="text-center" />
                             <InputText v-else v-model="editableChainsaw.permit_chainsaw_no" class="w-full" />
@@ -732,22 +809,52 @@ const generatePdf = (data) => {
                         </div>
 
                         <div class="flex">
-                            <span class="w-48 font-semibold">Brand:</span>
+                            <span class="w-24 font-semibold">Brand:</span>
                             <span v-if="!editState.chainsaw">{{ applicationDetails.brand }}</span>
                             <InputText v-else v-model="editableChainsaw.brand" class="w-full" />
                         </div>
 
                         <div class="flex">
-                            <span class="w-48 font-semibold">Model:</span>
+                            <span class="w-24 font-semibold">Model:</span>
                             <span v-if="!editState.chainsaw">{{ applicationDetails.model }}</span>
                             <InputText v-else v-model="editableChainsaw.model" class="w-full" />
                         </div>
 
                         <div class="flex">
-                            <span class="w-48 font-semibold">Quantity:</span>
+                            <span class="w-24 font-semibold">Quantity:</span>
                             <span v-if="!editState.chainsaw">{{ applicationDetails.quantity }}</span>
                             <InputText v-else v-model="editableChainsaw.quantity" class="w-full" />
                         </div>
+                        <div class="flex">
+                            <span class="w-24 font-semibold">Supplier:</span>
+                            <span v-if="!editState.chainsaw">{{ applicationDetails.supplier_name }}</span>
+                            <InputText v-else v-model="editableChainsaw.supplier_name" class="w-full" />
+                        </div>
+
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Purpose of Purchase:</span>
+                            <span v-if="!editState.chainsaw">{{ applicationDetails.purpose }}</span>
+                            <InputText v-else v-model="editableChainsaw.purpose" class="w-full" />
+                        </div>
+
+                        <div class="flex">
+                            <span class="w-24 font-semibold">Other Details:</span>
+                            <span v-if="!editState.chainsaw">{{ applicationDetails.other_details }}</span>
+                            <InputText v-else v-model="editableChainsaw.other_details" class="w-full" />
+                        </div>
+
+                        <div class="flex">
+                            <span class="w-24 font-semibold">Official Receipt:</span>
+                            <Tag :value="applicationDetails.official_receipt" severity="success" class="text-center" />
+                            <br />
+                        </div>
+
+                        <div class="flex">
+                            <span class="w-24 font-semibold">Permit Fee:</span>
+                            <span>₱{{ applicationDetails.permit_fee }}.00</span>
+                        </div>
+
+
                     </div>
                 </Fieldset>
 
@@ -772,43 +879,47 @@ const generatePdf = (data) => {
             </div>
         </Dialog>
 
-        <Dialog v-model:visible="showCommentModal" modal header="Application Preview" :style="{ width: '40vw' }">
 
-            <div v-if="isloadingSpinner" class="flex h-40 items-center justify-center">
-                <span>Loading...</span>
-            </div>
-            <div v-else-if="applicationDetails" class="overflow-x-auto mt-2">
-                <table class="min-w-full border border-gray-300 text-sm">
+
+        <Dialog v-model:visible="showCommentsModal" modal header="Comments" :style="{ width: '50vw' }">
+            <div class="overflow-x-auto">
+                <!-- Loading state -->
+                <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading comments...</div>
+                <table v-else class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/3">
-                                REVIEWED BY:
-                            </th>
-                            <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/2">
-                                REMARKS</th>
-                            <th class="border border-gray-300 px-4 py-2 text-left font-semibold w-1/6">DATE
-                            </th>
+                            <th class="border px-4 py-2 text-left">Action Officer</th>
+                            <th class="border px-4 py-2 text-left">Comments</th>
+                            <th class="border px-4 py-2 text-left">Date Return</th>
                         </tr>
                     </thead>
+
                     <tbody>
-                        <tr v-for="(item, index) in signatories_data" :key="index">
-                            <td class="border border-gray-300 px-4 py-3 align-top">
-                                <div class="font-bold">{{ item.complete_name }}</div>
-                                <div class="text-gray-700 text-sm">{{ item.position }}</div>
+                        <tr v-for="(item, index) in commentsHistory" :key="index" class="hover:bg-gray-50">
+                            <td class="border px-4" style="width: 10rem">
+                                <b>{{ item.action_officer }}</b><br />
+                                <i>{{ item.sender_role }}</i><br />
+                            </td>
+                            <td class="border px-4">{{ item.comments }}</td>
+                            <td class="border px-4">
+                                {{
+                                    new Date(item.created_at).toLocaleString('en-PH', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: '2-digit',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        second: '2-digit',
+                                        hour12: true,
+                                    })
+                                }}
                             </td>
 
-                            <td class="border border-gray-300 px-4 py-3 align-top">
-                                        {{ applicationDetails.tsd_chief_comments }}
-
-                            </td>
-
-                            <td class="border border-gray-300 px-4 py-3 align-top">
-                                {{ item.created_at }}
-                            </td>
                         </tr>
+
                     </tbody>
                 </table>
-
+                <!-- Table -->
 
             </div>
         </Dialog>

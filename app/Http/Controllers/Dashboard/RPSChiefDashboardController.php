@@ -89,14 +89,15 @@ class RPSChiefDashboardController extends Controller
                 break;
         }
         switch ($status) {
-            case '4':
+            case 4:
                 $statusFilter = [
                     self::STATUS_RECEIVED_CHIEF_RPS,   // 11
+                    self::STATUS_ENDORSED_RPS_CHIEF,
                     self::STATUS_ENDORSED_TSD_CHIEF,   // 5
                     self::STATUS_RETURN_TO_RPS_CHIEF,  // 18
                 ];
                 break;
-            case '5':
+            case 5:
                 $statusFilter = [
                     self::STATUS_RECEIVED_TSD_CHIEF,   // 12
                     self::STATUS_ENDORSED_TSD_CHIEF,   // 5
@@ -104,7 +105,7 @@ class RPSChiefDashboardController extends Controller
                     self::STATUS_RETURN_TO_TSD_CHIEF,  // 19
                 ];
                 break;
-            case '6':
+            case 6:
                 $statusFilter = [
                     self::STATUS_RECEIVED_PENRO_CHIEF,   // 13
                     self::STATUS_ENDORSED_PENRO,   // 6
@@ -112,7 +113,7 @@ class RPSChiefDashboardController extends Controller
                     self::STATUS_RETURN_TO_PENRO,  // 20
                 ];
                 break;
-            case '7':
+            case 7:
                 $statusFilter = [
                     self::STATUS_RECEIVED_FUS,   // 14
                     self::STATUS_ENDORSED_LPDD_FUS,   // 7
@@ -121,14 +122,16 @@ class RPSChiefDashboardController extends Controller
                 ];
                 break;
 
-            case '8':
+            case 8:
                 $statusFilter = [
                     self::STATUS_RECEIVED_ARDTS,   // 15
                     self::STATUS_ENDORSED_ARDTS,   // 8
                     self::STATUS_APPROVED_BY_RED, //9
                     self::STATUS_RETURN_TO_ARDTS,  // 22
                 ];
-            case '25':
+                break;
+
+            case 25:
                 $statusFilter = [
                     self::STATUS_RECEIVED_RED,   // 16
                     self::STATUS_APPROVED_BY_RED,   // 9
@@ -260,7 +263,7 @@ class RPSChiefDashboardController extends Controller
         $id = $request->id;
 
         $app = ChainsawIndividualApplication::findOrFail($request->id);
-        // $app->application_status = self::STATUS_RECEIVED_CHIEF_RPS;
+        $app->application_status = self::STATUS_RECEIVED_CHIEF_RPS;
         $app->is_rps_chief_received = 1;
         $app->date_received_rps_chief = now();
         $app->save();

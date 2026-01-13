@@ -15,12 +15,34 @@ class PDFController extends Controller
     private function numberToWords(int $number): string
     {
         $dictionary = [
-            0 => 'zero', 1 => 'one', 2 => 'two', 3 => 'three', 4 => 'four', 5 => 'five',
-            6 => 'six', 7 => 'seven', 8 => 'eight', 9 => 'nine', 10 => 'ten',
-            11 => 'eleven', 12 => 'twelve', 13 => 'thirteen', 14 => 'fourteen', 15 => 'fifteen',
-            16 => 'sixteen', 17 => 'seventeen', 18 => 'eighteen', 19 => 'nineteen',
-            20 => 'twenty', 30 => 'thirty', 40 => 'forty', 50 => 'fifty', 60 => 'sixty',
-            70 => 'seventy', 80 => 'eighty', 90 => 'ninety'
+            0 => 'zero',
+            1 => 'one',
+            2 => 'two',
+            3 => 'three',
+            4 => 'four',
+            5 => 'five',
+            6 => 'six',
+            7 => 'seven',
+            8 => 'eight',
+            9 => 'nine',
+            10 => 'ten',
+            11 => 'eleven',
+            12 => 'twelve',
+            13 => 'thirteen',
+            14 => 'fourteen',
+            15 => 'fifteen',
+            16 => 'sixteen',
+            17 => 'seventeen',
+            18 => 'eighteen',
+            19 => 'nineteen',
+            20 => 'twenty',
+            30 => 'thirty',
+            40 => 'forty',
+            50 => 'fifty',
+            60 => 'sixty',
+            70 => 'seventy',
+            80 => 'eighty',
+            90 => 'ninety'
         ];
 
         if ($number < 21) {
@@ -55,6 +77,14 @@ class PDFController extends Controller
             ->select([
                 'ac.permit_no as permit_number',
                 'ac.authorized_representative',
+                DB::raw("
+        CONCAT_WS(' ',
+            ac.applicant_firstname,
+            ac.applicant_middlename,
+            ac.applicant_lastname
+        ) AS applicant_name
+    "),
+    'ac.applicant_complete_address',
                 'ci.engine_serial_no',
                 'ac.company_address',
                 DB::raw("TRIM(CONCAT(ac.applicant_firstname, ' ', IFNULL(ac.applicant_middlename, ''), ' ', ac.applicant_lastname)) as name"),
@@ -84,10 +114,10 @@ class PDFController extends Controller
         // Load PDF view
         $pdf = Pdf::loadView('pdf.table-template', [
             'permit_number' => $application->permit_number,
-            'name' => $application->name,
-            'authorized_representative' => $application->authorized_representative,
+            'name' => $application->authorized_representative
+            ?? $application->applicant_name,
             'address' => $application->address,
-            'company_address' => $application->company_address,
+            'complete_address' => $application->company_address ?? $application->applicant_complete_address,
             'quantity' => $quantityText,
             'brand' => $application->brand,
             'model' => $application->model,

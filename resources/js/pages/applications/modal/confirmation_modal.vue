@@ -24,7 +24,7 @@ const requireConfirmation = () => {
         header: 'Are you sure?',
         message: 'Please confirm to proceed.',
         accept: () => {
-            updateApplicationStatus(1); // update to status 1
+            updateApplicationStatus(4); // update to status 1
         },
         reject: () => {
             toast.add({

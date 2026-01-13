@@ -2,7 +2,7 @@ import axios from 'axios';
 
 export const ProductService = {
   async getProducts(userId) {
-    const response = await axios.get('http://192.168.2.106:8000/api/application-details', {
+    const response = await axios.get('http://10.201.13.88:8000/api/application-details', {
       params: { id: userId }
     });
     return response.data.data;
@@ -11,7 +11,7 @@ export const ProductService = {
 
 
  async getApplicationsByStatus(status,id) {
-    const response = await axios.get('http://192.168.2.106:8000/api/applicationStatus', {
+    const response = await axios.get('http://10.201.13.88:8000/api/applicationStatus', {
       params: { status:status,office_id:id }
     });
       return {
@@ -25,7 +25,7 @@ export const ProductService = {
   async updateStatus(applicationId, status) {
     try {
       const response = await axios.put(
-        `http://192.168.2.106:8000/api/applications/${applicationId}/status`,
+        `http://10.201.13.88:8000/api/applications/${applicationId}/status`,
         {
           status: status,
         }

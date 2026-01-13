@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router,usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { FilterMatchMode } from '@primevue/core/api';
 import axios from 'axios';
 import { BadgeCheck, Eye, History, SaveAll, Send, SendIcon, ShieldCheck, Undo2 } from 'lucide-vue-next';
@@ -237,7 +237,7 @@ const applicantsTable = async () => {
 const getSignatories = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getSignatories/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getSignatories/${id}`);
         progress_tracker_data.value = response.data; // 👈 store data directly
     } catch (error) {
         console.error(error);
@@ -430,7 +430,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -452,7 +452,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -471,7 +471,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -508,7 +508,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -622,7 +622,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://10.201.13.88:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 2, //ENDORSED Only update the status field
         });
 
@@ -673,7 +673,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id);
         formData.append('name', selectedFileToUpdate.value.name);
 
-        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
+        const response = await axios.post('http://10.201.13.88:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -788,7 +788,7 @@ const buttonState = (row: any) => {
         receiveDisabled: !isEndorsedToFUS,
 
         // 🔵 Endorse is ENABLED only while still at TSD level
-        endorseDisabled: isEndorsedToARDTS || isReceived,
+        endorseDisabled: isEndorsedToARDTS,
 
         // 🔵 adjust if you later add rules
         returnDisabled: false
@@ -803,20 +803,18 @@ const buttonState = (row: any) => {
             <!-- Tabs -->
             <div class="flex border-b border-gray-200">
                 <!-- For Review / Evaluation Tab -->
-                <button
-                    @click="activeTab = 're'"
-                    :class="[
-                        'flex items-center space-x-2 border-b-2 px-4 py-2 text-sm font-medium transition',
-                        activeTab === 're'
-                            ? 'border-green-600 text-green-700'
-                            : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600',
-                    ]"
-                >
+                <button @click="activeTab = 're'" :class="[
+                    'flex items-center space-x-2 border-b-2 px-4 py-2 text-sm font-medium transition',
+                    activeTab === 're'
+                        ? 'border-green-600 text-green-700'
+                        : 'border-transparent text-gray-500 hover:border-green-500 hover:text-green-600',
+                ]">
                     <!-- Tab Title -->
                     <span>List of Permit Application</span>
 
                     <div class="relative inline-block">
-                        <OverlayBadge v-if="totalCount > 0" :value="totalCount" severity="danger" size="small" class="absolute top-0 right-0" />
+                        <OverlayBadge v-if="totalCount > 0" :value="totalCount" severity="danger" size="small"
+                            class="absolute top-0 right-0" />
                         <i class="pi pi-list" style="font-size: 25px" />
                     </div>
                 </button>
@@ -826,98 +824,100 @@ const buttonState = (row: any) => {
                 <!-- For Review / Evaluation Table -->
                 <div v-if="activeTab === 're'" class="space-y-2 text-sm text-gray-700">
                     <div class="h-auto w-full">
-                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts" :value="endorsed_applications"
-                        dataKey="id" :paginator="true" :rows="20" :filters="filters" filterDisplay="menu"
-                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        :rowsPerPageOptions="[5, 10, 25]"
-                        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                        responsiveLayout="scroll" class="w-full text-sm">
-                        <template #header>
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <IconField>
-                                    <InputIcon>
-                                        <i class="pi pi-search" />
-                                    </InputIcon>
-                                    <InputText v-model="filters['global'].value" placeholder="Search..." />
-                                </IconField>
-                            </div>
-                        </template>
-                        <Column header="Action" :exportable="false" style="min-width: 2rem">
-                            <template #body="slotProps">
-                                <div class="mt-2 flex gap-2">
-
-                                    <!-- ✅ RECEIVE (disabled if endorsed) -->
-                                    <Button :disabled="buttonState(slotProps.data).receiveDisabled"
-                                        @click="openDialog('receive', slotProps.data.id)"
-                                        style="background-color: #0f766e" class="p-2 text-white">
-                                        <BadgeCheck :size="15" />
-                                    </Button>
-
-                                    <!-- ✅ ROUTING / HISTORY (ALWAYS ENABLED) -->
-                                    <Button type="button" @click="openProgressTracker(slotProps.data)"
-                                        style="background-color: #0f766e; border: 1px solid #0f766e !important"
-                                        class="rounded p-2 text-white hover:bg-teal-900">
-                                        <History :size="15" />
-                                    </Button>
-
-                                    <!-- ✅ VIEW (ALWAYS ENABLED) -->
-                                    <Button type="button" style="background-color: #0f766e"
-                                        class="rounded p-2 text-white hover:bg-teal-900">
-                                        <Link :href="route('applications.edit', {
-                                            id: slotProps.data.id,
-                                            type: slotProps.data.application_type
-                                        })">
-                                            <Eye :size="15" />
-                                        </Link>
-                                    </Button>
-
-                                    <!-- ❌ ENDORSE (disabled if endorsed) -->
-                                    <Button :disabled="buttonState(slotProps.data).endorseDisabled"
-                                        @click="openDialog('endorse', slotProps.data.id)"
-                                        style="background-color: #0f766e" class="p-2 text-white">
-                                        <SendIcon :size="15" />
-                                    </Button>
-
-                                    <!-- ❌ RETURN (disabled if endorsed) -->
-                                    <Button :disabled="buttonState(slotProps.data).returnDisabled"
-                                        @click="openDialog('return', slotProps.data.id)"
-                                        style="background-color: #bd081c; border: 1px solid #cd201f !important"
-                                        class="p-2 text-white">
-                                        <Undo2 :size="15" />
-                                    </Button>
-
+                        <DataTable ref="dt" size="small" v-model:selection="selectedProducts"
+                            :value="endorsed_applications" dataKey="id" :paginator="true" :rows="20" :filters="filters"
+                            filterDisplay="menu"
+                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                            :rowsPerPageOptions="[5, 10, 25]"
+                            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
+                            responsiveLayout="scroll" class="w-full text-sm">
+                            <template #header>
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <IconField>
+                                        <InputIcon>
+                                            <i class="pi pi-search" />
+                                        </InputIcon>
+                                        <InputText v-model="filters['global'].value" placeholder="Search..." />
+                                    </IconField>
                                 </div>
                             </template>
-                        </Column>
-                        <Column field="status_title" header="Status" sortable style="min-width: 12rem">
-                            <template #body="{ data }">
-                                <div class="flex flex-col items-center">
-                                    <Tag :value="data.status_title" :severity="data.status_title === 'Returned to RPS Chief' ? 'danger' :
-                                        data.status_title === 'Endorsed to TSD Chief' ? 'info' :
-                                            'success'
-                                        " class="text-center" />
+                            <Column header="Action" :exportable="false" style="min-width: 2rem">
+                                <template #body="slotProps">
+                                    <div class="mt-2 flex gap-2">
+
+                                        <!-- ✅ RECEIVE (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).receiveDisabled"
+                                            @click="openDialog('receive', slotProps.data.id)"
+                                            style="background-color: #0f766e" class="p-2 text-white">
+                                            <BadgeCheck :size="15" />
+                                        </Button>
+
+                                        <!-- ✅ ROUTING / HISTORY (ALWAYS ENABLED) -->
+                                        <Button type="button" @click="openProgressTracker(slotProps.data)"
+                                            style="background-color: #0f766e; border: 1px solid #0f766e !important"
+                                            class="rounded p-2 text-white hover:bg-teal-900">
+                                            <History :size="15" />
+                                        </Button>
+
+                                        <!-- ✅ VIEW (ALWAYS ENABLED) -->
+                                        <Button type="button" style="background-color: #0f766e"
+                                            class="rounded p-2 text-white hover:bg-teal-900">
+                                            <Link :href="route('applications.edit', {
+                                                id: slotProps.data.id,
+                                                type: slotProps.data.application_type
+                                            })">
+                                                <Eye :size="15" />
+                                            </Link>
+                                        </Button>
+
+                                        <!-- ❌ ENDORSE (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).endorseDisabled"
+                                            @click="openDialog('endorse', slotProps.data.id)"
+                                            style="background-color: #0f766e" class="p-2 text-white">
+                                            <SendIcon :size="15" />
+                                        </Button>
+
+                                        <!-- ❌ RETURN (disabled if endorsed) -->
+                                        <Button :disabled="buttonState(slotProps.data).returnDisabled"
+                                            @click="openDialog('return', slotProps.data.id)"
+                                            style="background-color: #bd081c; border: 1px solid #cd201f !important"
+                                            class="p-2 text-white">
+                                            <Undo2 :size="15" />
+                                        </Button>
+
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column field="status_title" header="Status" sortable style="min-width: 12rem">
+                                <template #body="{ data }">
+                                    <div class="flex flex-col items-center">
+                                        <Tag :value="data.status_title" :severity="data.status_title === 'Returned to RPS Chief' ? 'danger' :
+                                            data.status_title === 'Endorsed to TSD Chief' ? 'info' :
+                                                'success'
+                                            " class="text-center" />
 
 
-                                    <Button
-                                        style="display: inline; padding: .2em .6em .3em; font-size: 75%; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25em;"
-                                        severity="info" v-if="data.status_title === 'Returned to RPS Chief'"
-                                        class="rounded bg-blue-900 px-1 py-1 mt-1 text-xs text-white"
-                                        @click="openCommentModal(data)" size="small">
-                                        View Comments
-                                    </Button>
-                                </div>
-                            </template>
-                        </Column>
-                        <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
-                            <template #body="{ data }">
-                                <b>{{ data.application_no }}</b>
-                            </template>
-                        </Column>
-                        <Column field="application_type" header="Application Type" sortable />
-                        <Column header="Type of Transaction" field="transaction_type" sortable></Column>
-                        <Column header="Classification" field="classification" sortable></Column>
-                        <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
-                    </DataTable>
+                                        <Button
+                                            style="display: inline; padding: .2em .6em .3em; font-size: 75%; font-weight: 700; line-height: 1; color: #fff; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: .25em;"
+                                            severity="info" v-if="data.status_title === 'Returned to RPS Chief'"
+                                            class="rounded bg-blue-900 px-1 py-1 mt-1 text-xs text-white"
+                                            @click="openCommentModal(data)" size="small">
+                                            View Comments
+                                        </Button>
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
+                                <template #body="{ data }">
+                                    <b>{{ data.application_no }}</b>
+                                </template>
+                            </Column>
+                            <Column field="application_type" header="Application Type" sortable />
+                            <Column header="Type of Transaction" field="transaction_type" sortable></Column>
+                            <Column header="Classification" field="classification" sortable></Column>
+                            <Column field="date_applied" header="Date of Application" sortable
+                                style="min-width: 4rem" />
+                        </DataTable>
                     </div>
                 </div>
             </div>
@@ -935,15 +935,13 @@ const buttonState = (row: any) => {
                 <div class="flex items-center justify-between space-x-4">
                     <!-- Left Section: Buttons -->
                     <div class="flex items-center space-x-2">
-                        <Button
-                            class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
-                            @click="handleEndorseApplicationStatus"
-                            size="small"
-                        >
+                        <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
+                            @click="handleEndorseApplicationStatus" size="small">
                             <Send class="mr-1" /> Endorsed
                         </Button>
 
-                        <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700" size="small" @click="handleReturnClick">
+                        <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700" size="small"
+                            @click="handleReturnClick">
                             <Undo2 class="mr-1" /> Returned
                         </Button>
                         <Button class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700" size="small">
@@ -955,30 +953,26 @@ const buttonState = (row: any) => {
                 </div>
 
                 <!-- Applicant Details -->
-                <Fieldset v-show="showReturnFieldset" legend="Reason for Returning" :toggleable="true" :collapsed="false" class="mt-4">
-                    <textarea v-model="returnReason" class="w-full rounded border p-2" placeholder="Enter reason for returning..."></textarea>
+                <Fieldset v-show="showReturnFieldset" legend="Reason for Returning" :toggleable="true"
+                    :collapsed="false" class="mt-4">
+                    <textarea v-model="returnReason" class="w-full rounded border p-2"
+                        placeholder="Enter reason for returning..."></textarea>
                     <div class="mt-2">
-                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700" @click="handleReturnReasonClick">
+                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700"
+                            @click="handleReturnReasonClick">
                             <SaveAll class="mr-1" />
                             Submit Reason
                         </Button>
                     </div>
                 </Fieldset>
 
-                <Fieldset
-                    v-if="applicationDetails.application_status == 4"
-                    legend="Reason for Returning"
-                    :toggleable="true"
-                    :collapsed="false"
-                    class="mt-4"
-                >
-                    <textarea
-                        v-model="applicationDetails.return_reason"
-                        class="w-full rounded border p-2"
-                        placeholder="Enter reason for returning..."
-                    ></textarea>
+                <Fieldset v-if="applicationDetails.application_status == 4" legend="Reason for Returning"
+                    :toggleable="true" :collapsed="false" class="mt-4">
+                    <textarea v-model="applicationDetails.return_reason" class="w-full rounded border p-2"
+                        placeholder="Enter reason for returning..."></textarea>
                     <div class="mt-2">
-                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700" @click="handleReturnReasonClick">
+                        <Button class="!border-blue-600 !bg-blue-900 !text-white hover:!bg-blue-700"
+                            @click="handleReturnReasonClick">
                             <SaveAll class="mr-1" />
                             Submit Reason
                         </Button>
@@ -990,17 +984,21 @@ const buttonState = (row: any) => {
                         <table class="min-w-full border border-gray-300 text-sm">
                             <thead class="bg-gray-100">
                                 <tr>
-                                    <th class="w-1/3 border border-gray-300 px-4 py-2 text-left font-semibold">REVIEWED BY:</th>
-                                    <th class="w-1/2 border border-gray-300 px-4 py-2 text-left font-semibold">REMARKS</th>
+                                    <th class="w-1/3 border border-gray-300 px-4 py-2 text-left font-semibold">REVIEWED
+                                        BY:</th>
+                                    <th class="w-1/2 border border-gray-300 px-4 py-2 text-left font-semibold">REMARKS
+                                    </th>
                                     <th class="w-1/6 border border-gray-300 px-4 py-2 text-left font-semibold">DATE</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
-                                        <div class="font-bold">VIRGILIO C. ANDRES, JR., <span class="italic">RPF</span></div>
+                                        <div class="font-bold">VIRGILIO C. ANDRES, JR., <span class="italic">RPF</span>
+                                        </div>
                                         <div class="text-sm text-gray-700">
-                                            Assistant Division Chief, Licenses, Patents and Deeds Division in concurrent capacity as Chief, Forest
+                                            Assistant Division Chief, Licenses, Patents and Deeds Division in concurrent
+                                            capacity as Chief, Forest
                                             Utilization Section
                                         </div>
                                     </td>
@@ -1013,16 +1011,20 @@ const buttonState = (row: any) => {
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
                                         <div class="font-bold">NAOMI Z. PERILLA</div>
-                                        <div class="text-sm text-gray-700">Ass’t. Div. Chief, Licenses, Patents and Deeds Division</div>
+                                        <div class="text-sm text-gray-700">Ass’t. Div. Chief, Licenses, Patents and
+                                            Deeds
+                                            Division</div>
                                     </td>
-                                    <td class="border border-gray-300 px-4 py-3 align-top">Approval of PPC to recommend</td>
+                                    <td class="border border-gray-300 px-4 py-3 align-top">Approval of PPC to recommend
+                                    </td>
                                     <td class="border border-gray-300 px-4 py-3 align-top">6/24/2024</td>
                                 </tr>
 
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-3 align-top">
                                         <div class="font-bold">ERIBERTO B. SAÑOS, <span class="italic">CESE</span></div>
-                                        <div class="text-sm text-gray-700">OIC-Assistant Regional Director for Technical Services</div>
+                                        <div class="text-sm text-gray-700">OIC-Assistant Regional Director for Technical
+                                            Services</div>
                                     </td>
                                     <td class="border border-gray-300 px-4 py-3 align-top">Recommended for approval</td>
                                     <td class="border border-gray-300 px-4 py-3 align-top">6/25</td>
@@ -1042,11 +1044,13 @@ const buttonState = (row: any) => {
                         <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                             <div class="flex">
                                 <span class="w-48 font-semibold">Application No:</span>
-                                <Tag :value="applicationDetails.application_no" severity="success" class="text-center" />
+                                <Tag :value="applicationDetails.application_no" severity="success"
+                                    class="text-center" />
                             </div>
                             <div class="flex">
                                 <span class="w-48 font-semibold">Application Type:</span>
-                                <Tag :value="applicationDetails.application_type" severity="success" class="text-center" />
+                                <Tag :value="applicationDetails.application_type" severity="success"
+                                    class="text-center" />
                             </div>
                             <div class="flex">
                                 <span class="w-48 font-semibold">Date Applied:</span>
@@ -1093,7 +1097,8 @@ const buttonState = (row: any) => {
                     <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
                             <span class="w-48 font-semibold">Chainsaw No:</span>
-                            <Tag :value="applicationDetails.permit_chainsaw_no" severity="success" class="text-center" /><br />
+                            <Tag :value="applicationDetails.permit_chainsaw_no" severity="success"
+                                class="text-center" /><br />
                         </div>
                         <div class="flex">
                             <span class="w-48 font-semibold">Permit Validity:</span>
@@ -1144,13 +1149,8 @@ const buttonState = (row: any) => {
                 <Fieldset legend="Uploaded Requirements" :toggleable="true">
                     <div class="container">
                         <div class="file-list grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <FileCard
-                                v-for="(file, index) in files"
-                                :key="index"
-                                :file="file"
-                                @openPreview="openFile"
-                                @updateFile="triggerUpdateFile"
-                            />
+                            <FileCard v-for="(file, index) in files" :key="index" :file="file" @openPreview="openFile"
+                                @updateFile="triggerUpdateFile" />
                         </div>
                     </div>
                 </Fieldset>
@@ -1160,12 +1160,13 @@ const buttonState = (row: any) => {
 
                 <!-- File Preview Modal -->
                 <Dialog v-model:visible="showFileModal" modal header="File Preview" :style="{ width: '70vw' }">
-                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500" allow="autoplay"></iframe>
+                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
+                        allow="autoplay"></iframe>
                 </Dialog>
             </div>
         </Dialog>
 
-        <Dialog v-model:visible="showProgressModal" modal header="Routing History" :style="{ width: '50vw' }">
+        <Dialog v-model:visible="showProgressModal" modal header="Routing History" :style="{ width: '70vw' }">
             <div class="overflow-x-auto">
                 <!-- Loading state -->
                 <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading routing history...</div>
@@ -1178,6 +1179,8 @@ const buttonState = (row: any) => {
                             <th class="border px-4 py-2 text-left">Sender</th>
                             <th class="border px-4 py-2 text-left">Route Details</th>
                             <th class="border px-4 py-2 text-left">Receiver</th>
+                            <th class="border px-4 py-2 text-left">Date Received</th>
+                            <th class="border px-4 py-2 text-left">Date Endorsed</th>
                             <th class="border px-4 py-2 text-left">Remarks</th>
                         </tr>
                     </thead>
@@ -1191,48 +1194,157 @@ const buttonState = (row: any) => {
 
                             <!-- Sender -->
                             <td class="border px-4" style="width: 10rem">
-                                <b>{{ item.sender_role }}</b
-                                ><br />
-                                <i>{{ item.sender }}</i
-                                ><br />
-                                {{ new Date(item.created_at).toLocaleDateString() }}
+                                <div v-if="[2, 4, 6, 8, 10].includes(item.route_order)"></div>
+
+                                <div v-else>
+                                    <b>{{ item.sender_role }}</b><br />
+                                    <i>{{ item.sender }}</i>
+                                </div>
                             </td>
 
                             <!-- Route details -->
-                            <td class="border px-4">
-                                <b>Route No. {{ item.route_order }}</b
-                                ><br />
-                                {{ item.action }}
+                            <td class="border px-4" style="width: 7rem">
+                                <b>Route No. {{ item.route_order }}</b>
                             </td>
 
                             <!-- Receiver -->
                             <td class="border px-4" style="width: 20rem">
-                                <b>{{ item.receiver_role }}</b
-                                ><br />
+                                <b>{{ item.receiver_role }}</b><br />
 
-                                <Tag v-if="item.action === 'Received'" severity="success" size="small"> Received </Tag>
+                                <Tag v-if="item.action === 'Received'" severity="danger" size="small"> Received </Tag>
 
-                                <Tag v-else-if="item.action === 'Endorsed'" severity="info" size="small"> Endorsed </Tag>
+                                <Tag v-else-if="item.action === 'Endorsed'" severity="info" size="small"> Endorsed
+                                </Tag>
 
                                 <Tag v-else severity="warning" size="small">
                                     {{ item.action }}
                                 </Tag>
 
                                 <br />
+                            </td>
+
+                            <td class="border px-4">
                                 <span v-if="item.route_order == 2">
-                                    {{ new Date(item.date_received_rps_chief).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_rps_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
+
                                 <span v-else-if="item.route_order == 4">
-                                    {{ new Date(item.date_received_tsd_chief).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_tsd_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
                                 <span v-else-if="item.route_order == 6">
-                                    {{ new Date(item.date_received_penro_chief).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_penro_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
                                 <span v-else-if="item.route_order == 8">
-                                    {{ new Date(item.date_received_fus).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_fus).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
+
                                 <span v-else-if="item.route_order == 10">
-                                    {{ new Date(item.date_received_ardts).toLocaleDateString() }}
+                                    {{
+                                        new Date(item.date_received_ardts).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                            </td>
+
+                            <td class="border px-4">
+                                <span v-if="item.route_order == 3">
+                                    {{
+                                        new Date(item.date_endorsed_tsd_chief).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-if="item.route_order == 5">
+                                    {{
+                                        new Date(item.date_endorsed_penro).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 7">
+                                    {{
+                                        new Date(item.date_endorsed_fus).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
+                                </span>
+                                <span v-else-if="item.route_order == 9">
+                                    {{
+                                        new Date(item.date_endorsed_ardts).toLocaleString('en-PH', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit',
+                                            hour12: true,
+                                        })
+                                    }}
                                 </span>
                             </td>
 
@@ -1251,7 +1363,7 @@ const buttonState = (row: any) => {
             </div>
         </Dialog>
 
-        
+
     </div>
 </template>
 

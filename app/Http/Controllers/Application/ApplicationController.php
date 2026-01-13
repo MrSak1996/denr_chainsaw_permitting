@@ -73,7 +73,7 @@ class ApplicationController extends Controller
             'i_complete_address' => 'required|string',
             'mobile_no' => 'nullable|string',          // ✅ ADD
             'telephone_no' => 'nullable|string',       // ✅ ADD
-            'email_address' => 'nullable|email',
+            'email_address' => 'nullable|string',
 
             'p_place_of_operation_address' => 'nullable|string',
             'p_region' => 'nullable|string',
@@ -307,14 +307,18 @@ class ApplicationController extends Controller
 
             ->select(
                 'ac.id',
+                'ac.permit_no',
                 'u.id as user_id',
                 'u.office_id',
                 's.status_title',
+                'ac.sex',
                 'ac.application_status',
                 'ac.application_type',
                 'ac.application_no',
                 'ac.transaction_type',
                 'ac.classification',
+                'ac.applicant_complete_address',
+                'ac.company_address',
                 'ac.authorized_representative',
                 DB::raw("CONCAT(ac.applicant_lastname, ', ', ac.applicant_firstname, ' ', ac.applicant_middlename) AS applicant_name"),
                 'ci.permit_chainsaw_no',
@@ -333,6 +337,7 @@ class ApplicationController extends Controller
                 'ac.date_received_fus',
                 'ac.date_received_ardts',
                 'ac.date_received_red',
+                'ac.date_endorsed_tsd_chief',
                 'ac.date_applied',
                 'ac.rps_chief_comments'
             )
@@ -355,6 +360,22 @@ class ApplicationController extends Controller
 
                 $item->permit_validity = $item->permit_validity
                     ? \Carbon\Carbon::parse($item->permit_validity)->format('F d, Y')
+                    : null;
+
+                $item->date_endorsed_tsd_chief = $item->date_endorsed_tsd_chief
+                    ? \Carbon\Carbon::parse($item->date_endorsed_tsd_chief)->format('F d, Y')
+                    : null;
+
+                $item->date_received_penro_chief = $item->date_received_penro_chief
+                    ? \Carbon\Carbon::parse($item->date_received_penro_chief)->format('F d, Y')
+                    : null;
+
+                $item->date_received_fus = $item->date_received_fus
+                    ? \Carbon\Carbon::parse($item->date_received_fus)->format('F d, Y')
+                    : null;
+
+                $item->date_received_red = $item->date_received_red
+                    ? \Carbon\Carbon::parse($item->date_received_red)->format('F d, Y')
                     : null;
 
                 return $item;

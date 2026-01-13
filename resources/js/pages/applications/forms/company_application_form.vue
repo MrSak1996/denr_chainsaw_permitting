@@ -316,7 +316,7 @@ const saveCompanyApplication = async () => {
     formData.append('soc_certificate', company_form.soc_certificate);
 
     try {
-        const response = await insertFormData('http://192.168.2.106:8000/api/chainsaw/company_apply', {
+        const response = await insertFormData('http://10.201.13.88:8000/api/chainsaw/company_apply', {
             ...company_form,
             ...formData,
             encoded_by: userId,
@@ -358,7 +358,7 @@ const submitChainsawForm = async () => {
                 if (chainsaw[fileKey]) formData.append(fileKey, chainsaw[fileKey]);
             });
 
-            await axios.post('http://192.168.2.106:8000/api/chainsaw/insertChainsawInfo', formData, 
+            await axios.post('http://10.201.13.88:8000/api/chainsaw/insertChainsawInfo', formData, 
             {
                 params: { id: applicationId },
                 headers: { 'Content-Type': 'multipart/form-data' },
@@ -386,7 +386,7 @@ const submitORPayment = async () => {
     formData.append('or_copy', payment_form.or_copy);
 
     try {
-        await axios.post('http://192.168.2.106:8000/api/chainsaw/insert_payment', formData, {
+        await axios.post('http://10.201.13.88:8000/api/chainsaw/insert_payment', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -409,7 +409,7 @@ const getApplicationDetails = async () => {
     
 
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data || [];
         console.log(applicationData.value)
     } catch (error) {
@@ -424,7 +424,7 @@ const getApplicantFile = async () => {
     if (!applicationId) return;
 
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 name: file.file_name,

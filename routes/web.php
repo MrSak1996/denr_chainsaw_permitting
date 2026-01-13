@@ -121,10 +121,17 @@ Route::post('/applications/red/receive', [RegionalExecutiveController::class, 'r
 Route::post('/applications/red/return', [RegionalExecutiveController::class, 'returnApplication'])
     ->name('applications.red.return');
 
+    Route::post('/applications/technical/endorse', [ChainsawController::class, 'endorseApplication'])
+    ->name('applications.technical.endorse');
+
 
 // ====================== ENDORSED TO PENRO ================================================
 Route::post('/applications/endorseApplication', [RPSChiefDashboardController::class, 'endorseApplication'])
     ->name('applications.rpschief.endorse');
+
+Route::post('/applications/receive', [RPSChiefDashboardController::class, 'receivedApplication'])
+    ->name('applications.rpschief.receive');
+
 
 
 // ====================== RECEIVED BY PENRO =================================================

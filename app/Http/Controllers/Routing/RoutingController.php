@@ -41,7 +41,7 @@ class RoutingController extends Controller
             ->leftJoin('tbl_roles as rr', 'rr.id', '=', 'uu.role_id')
             ->leftJoin('tbl_application_checklist as ac', 'ac.id', '=', 'ar.application_id')
             ->where('ar.application_id', $applicationId)
-            ->orderBy('ar.route_order', 'asc')
+            ->orderBy('ar.route_order', 'desc')
             ->get();
 
         return response()->json($routes);
@@ -57,7 +57,7 @@ class RoutingController extends Controller
                 'r.role_title as sender_role',
                 'ar.comments',
                 's.status_title',
-                'ac.date_returned',
+                'ar.created_at',
             ])
             ->leftJoin('users as u', 'u.id', '=', 'ar.sender_id')
             ->leftJoin('tbl_application_checklist as ac', 'ac.id', '=', 'ar.application_id')
@@ -66,6 +66,7 @@ class RoutingController extends Controller
 
             ->where('ar.application_id', $applicationId)
             ->where('ar.route_order', 0)
+            ->orderBy('ar.id','DESC')
             ->get();
 
         return response()->json($data);

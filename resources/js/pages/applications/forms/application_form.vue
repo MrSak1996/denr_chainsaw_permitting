@@ -43,6 +43,8 @@ const currentStep = ref(1);
 const chainsaws = reactive<ChainsawForm[]>([{ ...JSON.parse(JSON.stringify(chainsaw_form)) }]);
 const userId = page.props.auth?.user?.id;
 const selectedFile = ref(null);
+const selectedFileToUpdate = ref(null)
+const updateFileInput = ref(null)
 const showModal = ref(false);
 
 // ─────────────────────────────────────────────────────────────
@@ -146,6 +148,43 @@ const openFileModal = (file) => {
     selectedFile.value = file;
     showModal.value = true;
 };
+const triggerUpdateFile = (file) => {
+    selectedFileToUpdate.value = file
+    updateFileInput.value.click()
+}
+const handleFileUpdate = async (event) => {
+    const newFile = event.target.files[0]
+    if (!newFile || !selectedFileToUpdate.value) return
+
+    try {
+        const formData = new FormData()
+        formData.append('application_id', selectedFileToUpdate.value.application_id)
+        formData.append('file', newFile)
+        formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
+        formData.append('name', selectedFileToUpdate.value.name)
+
+        const response = await axios.post('http://10.201.13.88:8000/api/files/update', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+
+        // Update file list
+        const updatedIndex = files.value.findIndex(f => f.id === selectedFileToUpdate.value.id)
+        if (updatedIndex !== -1) {
+            files.value[updatedIndex] = response.data.updatedFile
+        }
+
+        toast.add({ severity: 'success', summary: 'Successful', detail: 'File updated successfully', life: 3000 });
+
+    } catch (error) {
+        console.error(error)
+        toast.add({ severity: 'error', summary: 'Successful', detail: 'Failed to update the file.', life: 3000 });
+
+    } finally {
+        updateFileInput.value.value = '' // reset file input
+        selectedFileToUpdate.value = null
+    }
+}
+
 
 const handleORFileUpload = (event, field) => {
     payment_form[field] = event.target.files[0];
@@ -207,7 +246,7 @@ const saveIndividualApplication = async () => {
     isLoading.value = true;
 
     try {
-        const response = await insertFormData('http://192.168.2.106:8000/api/chainsaw/apply', { ...individual_form, encoded_by: userId });
+        const response = await insertFormData('http://10.201.13.88:8000/api/chainsaw/apply', { ...individual_form, encoded_by: userId });
 
         // ⚡ Change URL WITHOUT RELOAD
         const newUrl = route('applications.index', {
@@ -267,16 +306,16 @@ const submitChainsawInfo = async () => {
             });
 
             // Send to API
-            await axios.post('http://192.168.2.106:8000/api/chainsaw/insertChainsawInfo',  formData, 
-            {
-                params: { id: applicationId },
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            await axios.post('http://10.201.13.88:8000/api/chainsaw/insertChainsawInfo', formData,
+                {
+                    params: { id: applicationId },
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                });
         }
 
         return true;
     } catch (error) {
-         toast.add({
+        toast.add({
             severity: 'error',
             summary: 'Failed',
             detail: 'There was an error saving the application.',
@@ -301,7 +340,7 @@ const submitORPayment = async () => {
     formData.append('applicant_type', applicantType);
     formData.append('application_id', applicationId);
     try {
-        const response = await axios.post('http://192.168.2.106:8000/api/chainsaw/insert_payment', formData, {
+        const response = await axios.post('http://10.201.13.88:8000/api/chainsaw/insert_payment', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -361,7 +400,7 @@ const getApplicationDetails = async () => {
     }
 
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data || [];
         i_city_mun.value = response.data.data.i_city_mun;
     } catch (error) {
@@ -376,7 +415,7 @@ const getApplicantFile = async () => {
     if (!applicationId) return;
 
     try {
-        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 name: file.file_name,
@@ -509,31 +548,25 @@ onMounted(() => {
         <Toast />
         <!-- Stepper -->
         <div class="mb-6 flex items-center justify-between">
-            <div v-for="step in steps" :key="step.id" class="flex-1 cursor-pointer text-center" @click="handleStepClick(step.id)">
-                <div
-                    :class="[
-                        'mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white',
-                        currentStep === step.id ? 'bg-green-900' : step.id < currentStep ? 'bg-blue-400' : 'cursor-not-allowed bg-gray-300',
-                    ]"
-                >
+            <div v-for="step in steps" :key="step.id" class="flex-1 cursor-pointer text-center"
+                @click="handleStepClick(step.id)">
+                <div :class="[
+                    'mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white',
+                    currentStep === step.id ? 'bg-green-900' : step.id < currentStep ? 'bg-blue-400' : 'cursor-not-allowed bg-gray-300',
+                ]">
                     {{ step.id }}
                 </div>
-                <div class="mt-2 text-sm font-medium" :class="currentStep === step.id ? 'text-green-600' : 'text-gray-500'">
+                <div class="mt-2 text-sm font-medium"
+                    :class="currentStep === step.id ? 'text-green-600' : 'text-gray-500'">
                     {{ step.label }}
                 </div>
             </div>
         </div>
 
         <div v-if="currentStep === 1" class="space-y-4">
-            <chainsaw_individualInfoField
-                :form="individual_form"
-                :insertFormData="insertFormData"
-                :app_data="applicationData"
-                :getProvinceCode="getProvinceCode"
-                :city_mun="i_city_mun"
-                :getApplicationNumber="getApplicationNumber"
-                :prov_name="prov_name"
-            />
+            <chainsaw_individualInfoField :form="individual_form" :insertFormData="insertFormData"
+                :app_data="applicationData" :getProvinceCode="getProvinceCode" :city_mun="i_city_mun"
+                :getApplicationNumber="getApplicationNumber" :prov_name="prov_name" />
         </div>
 
         <div v-if="currentStep === 2" class="space-y-6">
@@ -545,16 +578,14 @@ onMounted(() => {
 
                     <div class="flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                         <ShieldAlert class="h-5 w-5 text-blue-600" />
-                        <span> Please complete all fields to proceed with your application for a Permit to Purchase Chainsaw. </span>
+                        <span> Please complete all fields to proceed with your application for a Permit to Purchase
+                            Chainsaw. </span>
                     </div>
-                    <div v-for="(chainsaw, index) in chainsaws" :key="index" class="bg-blue-40 relative rounded-lg p-5 shadow">
+                    <div v-for="(chainsaw, index) in chainsaws" :key="index"
+                        class="bg-blue-40 relative rounded-lg p-5 shadow">
                         <!-- Remove Button -->
-                        <button
-                            v-if="index > 0"
-                            @click="removeChainsaw(index)"
-                            class="absolute top-2 right-2 text-red-600 hover:text-red-800"
-                            title="Remove"
-                        >
+                        <button v-if="index > 0" @click="removeChainsaw(index)"
+                            class="absolute top-2 right-2 text-red-600 hover:text-red-800" title="Remove">
                             ✕
                         </button>
 
@@ -573,7 +604,7 @@ onMounted(() => {
                             </div>
                             <div v-if="applicationData.permit_no">
                                 <FloatLabel>
-                                    <InputText  v-model="applicationData.permit_no" class="w-full" />
+                                    <InputText v-model="applicationData.permit_no" class="w-full" />
                                     <label>Permit No.</label>
                                 </FloatLabel>
                             </div>
@@ -610,15 +641,10 @@ onMounted(() => {
                                 </FloatLabel>
                             </div>
 
-                           <div class="md:col-span-3">
-                                <Textarea
-                                    id="address"
-                                    v-model="chainsaw.supplier_address"
-                                    rows="6"
-                                    cols="3"
+                            <div class="md:col-span-3">
+                                <Textarea id="address" v-model="chainsaw.supplier_address" rows="6" cols="3"
                                     placeholder="Complete Address (Street, Purok, etc.)"
-                                    class="w-[70.5rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500"
-                                />
+                                    class="w-[70.5rem] rounded-md border border-gray-300 p-2 text-sm shadow-sm focus:border-green-500 focus:ring-green-500" />
                             </div>
 
                             <div class="space-y-4 md:col-span-3">
@@ -628,39 +654,29 @@ onMounted(() => {
                                 </FloatLabel>
 
                                 <!-- Conditional Uploads -->
-                                <div
-                                    v-if="
-                                        chainsaw.purpose === 'For selling / re-selling' ||
-                                        chainsaw.purpose === 'Forestry/landscaping service provider'
-                                    "
-                                >
-                                    <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI Registration</label>
-                                    <input
-                                        type="file"
-                                        accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                <div v-if="
+                                    chainsaw.purpose === 'For selling / re-selling' ||
+                                    chainsaw.purpose === 'Forestry/landscaping service provider'
+                                ">
+                                    <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI
+                                        Registration</label>
+                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
                                         class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                        @change="(e) => (chainsaws[index].mayorDTI = e.target.files[0])"
-                                    />
+                                        @change="(e) => (chainsaws[index].mayorDTI = e.target.files[0])" />
                                 </div>
 
                                 <div v-if="chainsaw.purpose === 'Other Legal Purpose'">
                                     <label class="text-sm font-medium text-gray-700">Upload Notarized Affidavit</label>
-                                    <input
-                                        type="file"
-                                        accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
                                         class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                        @change="(e) => (chainsaws[index].affidavit = e.target.files[0])"
-                                    />
+                                        @change="(e) => (chainsaws[index].affidavit = e.target.files[0])" />
                                 </div>
 
                                 <div v-if="chainsaw.purpose === 'Other Supporting Documents'">
                                     <label class="text-sm font-medium text-gray-700">Upload Supporting Document</label>
-                                    <input
-                                        type="file"
-                                        accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
                                         class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                        @change="(e) => (chainsaws[index].otherDocs = e.target.files[0])"
-                                    />
+                                        @change="(e) => (chainsaws[index].otherDocs = e.target.files[0])" />
                                 </div>
                             </div>
 
@@ -691,23 +707,17 @@ onMounted(() => {
                             <div class="md:col-span-3">
                                 <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
 
-                                <input
-                                    type="file"
-                                    accept=".jpg,.jpeg,.pdf,.docx,.png"
+                                <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
                                     class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                    @change="(e) => (chainsaws[index].permit = e.target.files[0])"
-                                />
+                                    @change="(e) => (chainsaws[index].permit = e.target.files[0])" />
                             </div>
                         </div>
                     </div>
 
                     <!-- Add Button -->
                     <div class="flex justify-end">
-                        <button
-                            type="button"
-                            @click="addChainsaw"
-                            class="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700"
-                        >
+                        <button type="button" @click="addChainsaw"
+                            class="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
                             <span class="text-xl">＋</span> Add Another Chainsaw
                         </button>
                     </div>
@@ -723,7 +733,8 @@ onMounted(() => {
                     </div>
                     <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                         <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
-                        <span> Please complete all fields to proceed with your application for a Permit to Purchase Chainsaw. </span>
+                        <span> Please complete all fields to proceed with your application for a Permit to Purchase
+                            Chainsaw. </span>
                     </div>
 
                     <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -752,13 +763,11 @@ onMounted(() => {
                             </FloatLabel>
                         </div>
                         <div class="md:col-span-3">
-                            <label class="text-sm font-medium text-gray-700">Upload Scanned copy of Official Receipt</label>
-                            <input
-                                type="file"
-                                accept=".jpg,.jpeg,.pdf"
+                            <label class="text-sm font-medium text-gray-700">Upload Scanned copy of Official
+                                Receipt</label>
+                            <input type="file" accept=".jpg,.jpeg,.pdf"
                                 @change="(e) => handleORFileUpload(e, 'or_copy')"
-                                class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                            />
+                                class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />
                         </div>
                         <div>
                             <FloatLabel>
@@ -781,7 +790,8 @@ onMounted(() => {
                     </div>
                     <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
                         <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
-                        <span> Please complete all fields to proceed with your application for a Permit to Purchase Chainsaw. </span>
+                        <span> Please complete all fields to proceed with your application for a Permit to Purchase
+                            Chainsaw. </span>
                     </div>
                     <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
@@ -809,7 +819,8 @@ onMounted(() => {
 
                         <div class="flex">
                             <span class="w-48 font-semibold">Applicant Name:</span>
-                            <span>{{ applicationData.first_name }} {{ applicationData.middle_name }} {{ applicationData.last_name }}</span>
+                            <span>{{ applicationData.first_name }} {{ applicationData.middle_name }} {{
+                                applicationData.last_name }}</span>
                         </div>
 
                         <div class="flex">
@@ -843,8 +854,8 @@ onMounted(() => {
             <Fieldset legend="Chainsaw Information" :toggleable="true">
                 <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                     <div class="flex">
-                        <span class="w-48 font-semibold">Permit No:</span>
-                        <Tag :value="applicationData.permit_no" severity="success" class="text-center" /><br />
+                        <span class="w-48 font-semibold">Chainsaw Permit No:</span>
+                        <Tag :value="applicationData.permit_chainsaw_no" severity="success" class="text-center" /><br />
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Validity:</span>
@@ -884,7 +895,7 @@ onMounted(() => {
                     </div>
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Fee:</span>
-                        <span>₱ {{ applicationData.permit_fee }}</span>
+                        <span>₱ {{ applicationData.permit_fee }}.00</span>
                     </div>
                 </div>
             </Fieldset>
@@ -892,12 +903,16 @@ onMounted(() => {
             <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="container">
                     <div class="file-list">
-                        <FileCard v-for="(file, index) in files" :key="index" :file="file" @openPreview="openFileModal" />
+                        <FileCard v-for="(file, index) in files" :key="index" :file="file" @openPreview="openFileModal"
+                            @updateFile="triggerUpdateFile" />
+                        <input type="file" ref="updateFileInput" class="hidden" @change="handleFileUpdate" />
+
                     </div>
                 </div>
 
                 <Dialog v-model:visible="showModal" modal header="File Preview" :style="{ width: '70vw' }">
-                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500" allow="autoplay"></iframe>
+                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
+                        allow="autoplay"></iframe>
                 </Dialog>
             </Fieldset>
         </div>
@@ -905,13 +920,8 @@ onMounted(() => {
         <div class="flex justify-between pt-6">
             <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Back</Button>
             <!-- <Button v-if="currentStep < 3" class="ml-auto" @click="nextStep">Next</Button> -->
-            <Button
-                v-if="currentStep <= 3"
-                class="ml-auto flex items-center justify-center gap-2"
-                @click="nextStep"
-                :disabled="isLoading"
-                style="background-color: #004d40"
-            >
+            <Button v-if="currentStep <= 3" class="ml-auto flex items-center justify-center gap-2" @click="nextStep"
+                :disabled="isLoading" style="background-color: #004d40">
                 <LoaderCircle v-if="isLoading" class="h-4 w-4 animate-spin" />
                 <span>Save as Draft</span>
             </Button>
@@ -944,16 +954,14 @@ onMounted(() => {
     padding-inline: 1lh;
     padding-bottom: var(--f);
     border-image: conic-gradient(#0008 0 0) 51% / var(--f);
-    clip-path: polygon(
-        100% calc(100% - var(--f)),
-        100% 100%,
-        calc(100% - var(--f)) calc(100% - var(--f)),
-        var(--f) calc(100% - var(--f)),
-        0 100%,
-        0 calc(100% - var(--f)),
-        999px calc(100% - var(--f) - 999px),
-        calc(100% - 999px) calc(100% - var(--f) - 999px)
-    );
+    clip-path: polygon(100% calc(100% - var(--f)),
+            100% 100%,
+            calc(100% - var(--f)) calc(100% - var(--f)),
+            var(--f) calc(100% - var(--f)),
+            0 100%,
+            0 calc(100% - var(--f)),
+            999px calc(100% - var(--f) - 999px),
+            calc(100% - 999px) calc(100% - var(--f) - 999px));
     transform: translate(calc((1 - cos(45deg)) * 100%), -100%) rotate(45deg);
     transform-origin: 0% 100%;
     background-color: #bd1550;
