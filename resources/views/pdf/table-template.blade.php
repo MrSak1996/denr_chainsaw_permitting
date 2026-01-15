@@ -400,7 +400,6 @@
     background: white;
     z-index: 1000;
 ">
-        <div style="position:fixed;z-index:1000; width:100%; height:10px; background:#8D1010;"></div>
         <br>
         <b>DENR IV-A (CALABARZON) Compound, Mayapa Main Road (along SLEX),<br>
             Barangay Mayapa, Calamba City, Laguna</b><br>

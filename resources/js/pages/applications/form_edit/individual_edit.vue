@@ -40,7 +40,7 @@ const applicationData = ref<any>({});
 const files = ref<any[]>([]);
 const i_city_mun = ref<number | string>(0);
 const errorMessage = ref('');
-const currentStep = ref(1);
+const currentStep = ref(4);
 
 // IMPORTANT: initialize chainsaws correctly using createChainsaw()
 // Use ref (so handlers calling chainsaws.value.push(...) work)
@@ -49,7 +49,40 @@ const chainsaws = ref<ReturnType<typeof createChainsaw>[]>([createChainsaw()]);
 const userId = page.props.auth?.user?.id ?? null;
 const selectedFile = ref(null);
 const showModal = ref(false);
+const selectedFileToUpdate = ref(null)
+const updateFileInput = ref(null)
 
+const brand = ref('')
+const models = ref([
+    { model: '' }
+])
+
+const addRow = () => {
+    models.value.push({ model: '' })
+}
+
+const removeRow = (index) => {
+    models.value.splice(index, 1)
+}
+
+// Laravel-ready payload
+const getPayload = () => {
+    return {
+        brand: brand.value,
+        models: models.value.map(m => m.model)
+    }
+}
+const tabMap = {
+    1: ['request_letter', 'secretary_certificate'],
+    2: ['mayors_permit', 'notarized_documents', 'permit', 'others'],
+    3: ['official_receipt']
+};
+const filesByTab = ref({
+    0: [],
+    1: [],
+    2: [],
+    3: []
+});
 // ─────────────────────────────────────────────────────────────
 // STEPPER
 // ─────────────────────────────────────────────────────────────
@@ -59,7 +92,42 @@ const steps = ref([
     { label: 'Payment of Application Fee', id: 3 },
     { label: 'Submit and Review', id: 4 },
 ]);
+const triggerUpdateFile = (file) => {
+    selectedFileToUpdate.value = file
+    updateFileInput.value.click();
+}
+const handleFileUpdate = async (event) => {
+    const newFile = event.target.files[0]
+    if (!newFile || !selectedFileToUpdate.value) return
 
+    try {
+        const formData = new FormData()
+        formData.append('application_id', selectedFileToUpdate.value.application_id)
+        formData.append('file', newFile)
+        formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
+        formData.append('name', selectedFileToUpdate.value.name)
+
+        const response = await axios.post('http://10.201.12.154:8000/api/files/update', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        })
+
+        // Update file list
+        const updatedIndex = files.value.findIndex(f => f.id === selectedFileToUpdate.value.id)
+        if (updatedIndex !== -1) {
+            files.value[updatedIndex] = response.data.updatedFile
+        }
+
+        toast.add({ severity: 'success', summary: 'Successful', detail: 'File updated successfully', life: 3000 });
+        location.reload();
+
+    } catch (error) {
+        console.error(error)
+        toast.add({ severity: 'error', summary: 'Failed', detail: 'Failed to update the file.', life: 3000 });
+    } finally {
+        updateFileInput.value.value = '' // reset file input
+        selectedFileToUpdate.value = null
+    }
+}
 const formValidationRules = {
     1: {
         form: 'individual_form',
@@ -348,7 +416,7 @@ const getApplicationDetails = async () => {
     }
 
     try {
-        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://10.201.12.154:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data ?? {};
         i_city_mun.value = response.data.data?.i_city_mun ?? i_city_mun.value;
     } catch (error: any) {
@@ -358,29 +426,69 @@ const getApplicationDetails = async () => {
     }
 };
 
-const getApplicantFile = async () => {
-    const applicationId = page.props.application.id;
-    if (!applicationId) return;
+// const getApplicantFile = async () => {
+//     const applicationId = page.props.application.id;
+//     if (!applicationId) return;
 
+//     try {
+//         const response = await axios.get(`http://10.201.12.154:8000/api/getApplicantFile/${applicationId}`);
+//         if (response.data.status && Array.isArray(response.data.data)) {
+//             files.value = response.data.data.map((file: any) => ({
+//                 name: file.file_name,
+//                 size: 'Unknown',
+//                 dateUploaded: new Date(file.created_at).toLocaleDateString(),
+//                 dateOpened: new Date().toLocaleDateString(),
+//                 icon: 'png',
+//                 thumbnail: null,
+//                 url: file.file_url,
+//             }));
+//         } else {
+//             console.log('No files');
+//         }
+//     } catch (error) {
+//         console.error('Failed to fetch files:', error);
+//     }
+// };
+const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://10.201.13.88:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(
+            `http://10.201.12.154:8000/api/getApplicantFile/${id}`
+        );
+
         if (response.data.status && Array.isArray(response.data.data)) {
-            files.value = response.data.data.map((file: any) => ({
+
+            const fetchedFiles = response.data.data.map((file) => ({
+                attachment_id: file.id,
+                application_id: file.application_id,
                 name: file.file_name,
                 size: 'Unknown',
                 dateUploaded: new Date(file.created_at).toLocaleDateString(),
                 dateOpened: new Date().toLocaleDateString(),
-                icon: 'png',
+                icon: file.file_name.split('.').pop(),
                 thumbnail: null,
                 url: file.file_url,
             }));
-        } else {
-            console.log('No files');
+
+            // CLASSIFY FILES BY TAB
+            Object.keys(tabMap).forEach(tabId => {
+                const prefixes = tabMap[tabId];
+
+                filesByTab.value[tabId] = fetchedFiles.filter(f =>
+                    prefixes.some(prefix =>
+                        f.name.toLowerCase().startsWith(prefix)
+                    )
+                );
+            });
+
+            // NEW: Add ALL FILES tab
+            filesByTab.value[0] = fetchedFiles;
+
+
         }
-    } catch (error) {
-        console.error('Failed to fetch files:', error);
+    } catch (err) {
+        console.error(err);
     }
-};
+}
 
 const getEmbedUrl = (url: string) => {
     const match = url.match(/[-\w]{25,}/);
@@ -480,7 +588,7 @@ onMounted(() => {
         currentStep.value = 4;
     }
     getProvinceCode();
-    getApplicantFile();
+    getApplicantFile(page.props.application.id);
 });
 </script>
 
@@ -663,13 +771,51 @@ onMounted(() => {
 
                         </div>
                     </div>
-                    <div class="flex justify-end">
+                    <!-- <div class="flex justify-end">
                         <button type="button" @click="addChainsaw"
                             class="mt-4 inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
                             <span class="text-xl">＋</span> Add Another Chainsaw
                         </button>
-                    </div>
+                    </div> -->
                 </div>
+                <div class="table-container">
+                    <table class="chainsaw-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%">Brand</th>
+                                <th style="width: 50%">Model</th>
+                                <th style="width: 10%">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr v-for="(row, index) in models" :key="index">
+                                <!-- Brand (only first row) -->
+                                <td>
+                                    <input v-if="index === 0" v-model="brand" type="text" placeholder="Enter brand"
+                                        class="input" />
+                                </td>
+
+                                <!-- Model -->
+                                <td>
+                                    <input v-model="row.model" type="text" placeholder="Enter model" class="input" />
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="actions">
+                                    <button v-if="index === models.length - 1" @click="addRow" class="btn add">
+                                        ＋
+                                    </button>
+
+                                    <button v-if="models.length > 1" @click="removeRow(index)" class="btn remove">
+                                        ✕
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
             </Fieldset>
         </div>
 
@@ -854,6 +1000,21 @@ onMounted(() => {
                 </div>
             </Fieldset>
             <Fieldset legend="Uploaded Files" :toggleable="true">
+                <div class="container">
+                    <div class="file-list">
+                        <FileCard v-for="file in filesByTab[0]" :key="index" :file="file" @openPreview="openFileModal"
+                            @updateFile="triggerUpdateFile" />
+                        <input type="file" ref="updateFileInput" class="hidden" @change="handleFileUpdate" />
+
+                    </div>
+                </div>
+
+                <Dialog v-model:visible="showModal" modal header="File Preview" :style="{ width: '70vw' }">
+                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
+                        allow="autoplay"></iframe>
+                </Dialog>
+            </Fieldset>
+            <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="overflow-x-auto mt-4">
                     <table class="min-w-full border border-gray-300 rounded-lg bg-white">
                         <thead class="bg-gray-100">
@@ -945,5 +1106,64 @@ onMounted(() => {
         #BD1550 padding-box;
     /* the color  */
     width: fit-content;
+}
+
+
+
+.table-container {
+    max-width: 800px;
+    margin: 20px auto;
+}
+
+.chainsaw-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+}
+
+.chainsaw-table th,
+.chainsaw-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+}
+
+.chainsaw-table th {
+    background-color: #f3f4f6;
+    font-weight: bold;
+}
+
+.input {
+    width: 100%;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+.actions {
+    text-align: center;
+}
+
+.btn {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn.add {
+    background-color: #16a34a;
+    color: #fff;
+}
+
+.btn.remove {
+    background-color: #dc2626;
+    color: #fff;
+    margin-left: 5px;
+}
+
+.btn:hover {
+    opacity: 0.85;
 }
 </style>

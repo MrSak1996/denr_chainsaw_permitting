@@ -65,7 +65,7 @@ class ChainsawController extends Controller
                 'supplier_name' => $request->input('supplier_name'),
                 'supplier_address' => $request->input('supplier_address'),
                 'purpose' => $request->input('purpose'),
-                'permit_validity'  => Carbon::parse($request->permit_validity)->format('Y-m-d'),
+                'permit_validity' => Carbon::parse( $request->permit_validity, 'Asia/Manila' )->format('Y-m-d'),
                 'other_details' => $request->input('other_details'),
             ]);
 

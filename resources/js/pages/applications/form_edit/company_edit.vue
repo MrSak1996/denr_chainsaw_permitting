@@ -545,7 +545,7 @@ const filesByTab = ref({
 const getApplicantFile = async (id) => {
     try {
         const response = await axios.get(
-            `http://10.201.13.88:8000/api/getApplicantFile/${id}`
+            `http://10.201.12.154:8000/api/getApplicantFile/${id}`
         );
 
         if (response.data.status && Array.isArray(response.data.data)) {
@@ -591,7 +591,7 @@ const getApplicantFile = async (id) => {
 //     if (!applicationId) return;
 
 //     try {
-//         const response = await axios.get(`http://10.201.13.88:8000/api/getApplicantFile/${applicationId}`);
+//         const response = await axios.get(`http://10.201.12.154:8000/api/getApplicantFile/${applicationId}`);
 //         if (response.data.status && Array.isArray(response.data.data)) {
 //             files.value = response.data.data.map((file) => ({
 //                 name: file.file_name,
@@ -631,7 +631,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
         formData.append('name', selectedFileToUpdate.value.name)
 
-        const response = await axios.post('http://10.201.13.88:8000/api/files/update', formData, {
+        const response = await axios.post('http://10.201.12.154:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -1082,7 +1082,9 @@ onMounted(() => {
                 <div class="container">
                     <div class="file-list">
                         <FileCard v-for="file in filesByTab[0]" :key="index" :file="file"
-                            @openPreview="openFileModal" />
+                            @openPreview="openFileModal" @updateFile="triggerUpdateFile"/>
+                            <input type="file" ref="updateFileInput" class="hidden" @change="handleFileUpdate" />
+
                     </div>
                 </div>
 
@@ -1096,8 +1098,8 @@ onMounted(() => {
 
         <div class="flex justify-between pt-6">
             <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Back</Button>
-            <Button v-if="currentStep <= 3" class="ml-auto" @click="nextStep">Save as Draft</Button>
-            <Button v-if="currentStep === 4" class="ml-auto" @click="submitApplication"> Submit Application </Button>
+            <Button v-if="currentStep <= 3" class="ml-auto bg-green-900" @click="nextStep">Save as Draft</Button>
+            <Button v-if="currentStep === 4" class="ml-auto bg-green-900" @click="submitApplication"> Submit Application </Button>
         </div>
     </div>
 </template>

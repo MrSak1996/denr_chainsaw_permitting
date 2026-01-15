@@ -12,7 +12,7 @@ defineProps<{
 </script>
 <style>
 .login-wall {
-    background-image: url('../../../images/bg7.png');
+    background-image: url('../../../images/bg8.jpg');
     background-size: cover;
     background-position: center;
 }
@@ -32,6 +32,10 @@ defineProps<{
                 </blockquote>
             </div>
         </div>
+         <div class="flex items-center justify-center px-6">
+      <div
+        class="w-full max-w-md rounded-2xl bg-white/90 backdrop-blur shadow-xl p-8 space-y-6"
+      >
         <div class="lg:p-8">
             <div class="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
                 <div class="flex flex-col space-y-2 text-center">
@@ -40,6 +44,8 @@ defineProps<{
                 </div>
                 <slot />
             </div>
+        </div>
+        </div>
         </div>
     </div>
 </template>

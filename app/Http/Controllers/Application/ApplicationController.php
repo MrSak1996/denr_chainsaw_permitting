@@ -21,13 +21,33 @@ use Carbon\Carbon;
 class ApplicationController extends Controller
 {
     // Define status constants
-    const STATUS_RETURN_FOR_COMPLIANCE = 0;
-    const STATUS_FOR_REVIEW_EVALUATION = 1;
-    const STATUS_ENDORSED_CENRO = 2;
-    const STATUS_ENDORSED_PENRO = 3;
-    const STATUS_ENDORSED_RO = 4;
-    const STATUS_APPROVED = 5;
+    const STATUS_DRAFT = 1;
+    const STATUS_FOR_REVIEW_EVALUATION = 2;
 
+    const STATUS_ENDORSED_CENRO_CHIEF = 3;
+    const STATUS_ENDORSED_RPS_CHIEF = 4;
+    const STATUS_ENDORSED_TSD_CHIEF = 5;
+    const STATUS_ENDORSED_PENRO = 6;
+    const STATUS_ENDORSED_LPDD_FUS = 7;
+    const STATUS_ENDORSED_ARDTS = 8;
+    const STATUS_APPROVED_BY_RED = 9;
+
+    const STATUS_RECEIVED_CENRO_CHIEF = 10;
+    const STATUS_RECEIVED_CHIEF_RPS = 11;
+    const STATUS_RECEIVED_TSD_CHIEF = 12;
+    const STATUS_RECEIVED_PENRO_CHIEF = 13;
+    const STATUS_RECEIVED_FUS = 14;
+    const STATUS_RECEIVED_ARDTS = 15;
+    const STATUS_RECEIVED_RED = 16;
+
+    const STATUS_RETURN_TO_CENRO_CHIEF = 17;
+    const STATUS_RETURN_TO_RPS_CHIEF = 18;
+    const STATUS_RETURN_TO_TSD_CHIEF = 19;
+    const STATUS_RETURN_TO_PENRO = 20;
+    const STATUS_RETURN_TO_LPDD_FUS = 21;
+    const STATUS_RETURN_TO_ARDTS = 22;
+    const STATUS_RETURN_TO_RED = 23;
+    const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
     // IMPLEMENTING PENRO
     const TECHNICAL_STAFF = 1;
     const CHIEF_RPS = 8;
@@ -36,16 +56,7 @@ class ApplicationController extends Controller
     /**
      * Mapping of statuses to their labels
      */
-    protected $statusMap = [
-        self::STATUS_RETURN_FOR_COMPLIANCE => 'Return for Compliance',
-        self::STATUS_FOR_REVIEW_EVALUATION => 'For Review / Evaluation',
-        self::STATUS_ENDORSED_CENRO => 'Endorsed to CENRO',
-        self::STATUS_ENDORSED_PENRO => 'Endorsed to PENRO',
-        self::STATUS_ENDORSED_RO => 'Endorsed to R.O',
-        self::STATUS_APPROVED => 'Approved',
-
-        self::TECHNICAL_STAFF => ''
-    ];
+    
 
 
 
@@ -148,7 +159,7 @@ class ApplicationController extends Controller
             ]);
 
             $application = ChainsawIndividualApplication::create([
-                'application_status' => null,
+                'application_status' => self::STATUS_DRAFT,
                 'application_type' => $request->input('application_type'),
                 'transaction_type' => $request->input('type_of_transaction'),
                 'application_no' => $request->input('application_no'),
@@ -389,66 +400,82 @@ class ApplicationController extends Controller
 
     public function getApplicationDetails($application_id)
     {
-        $applicationDetails = DB::table('tbl_application_checklist as ac')
-            ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
-            ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
-            ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
-            ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
-            ->select(
-                'ac.id',
-                'ac.applicant_lastname as last_name',
-                'ac.applicant_firstname as first_name',
-                'ac.applicant_middlename as middle_name',
-                'ac.sex',
-                'ac.government_id as gov_id_type',
-                'ac.gov_id_number as gov_id_number',
-                'ac.applicant_contact_details as mobile_no',
-                'ac.applicant_telephone_no as telephone_no',
-                'ac.applicant_email_address as email_address',
-                'ac.applicant_province_c as i_province',
-                'ac.applicant_city_mun_c as i_city_mun',
-                'ac.applicant_brgy_c as i_barangay',
-                'ac.applicant_complete_address',
-                'ac.classification',
-                's.status_title',
-                'ac.return_reason',
-                'ac.application_no',
-                'ac.permit_no',
-                'ac.application_status',
-                'ac.application_type',
-                'ac.authorized_representative',
-                'ac.date_applied',
-                'ac.company_name',
-                'ac.company_address',
-                'ac.company_c_province',
-                'ac.company_c_province as prov_code',
-                'ac.company_c_city_mun',
-                'ac.company_c_barangay',
-                'ac.company_mobile_no',
-                'ac.operation_complete_address',
-                'ac.transaction_type as type_of_transaction',
-                'ac.rps_chief_comments',
-                'ac.cenro_comments',
-                'ac.tsd_chief_comments',
-                'ac.penro_comments',
-                'ac.ro_comments',
-                'ac.ardts_comments',
-                'g.prov_name',
-                'ci.supplier_name',
-                'ci.permit_chainsaw_no',
-                'ci.brand',
-                'ci.model',
-                'ci.quantity',
-                'ci.purpose',
-                'ci.other_details',
-                'ap.official_receipt',
-                'ap.permit_fee',
-                'ap.date_of_payment',
-                'ci.permit_validity',
-                'ac.created_at',
-            )
-            ->where('ac.id', $application_id)
-            ->first(); // get a single record
+       $applicationDetails = DB::table('tbl_application_checklist as ac')
+    ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
+    ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+    ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
+    ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
+    ->leftJoin('users as u', 'u.id', '=', 'ac.encoded_by')
+    ->leftJoin('tbl_office as o', 'o.id', '=', 'u.office_id')
+    ->leftJoin('tbl_roles as r', 'r.id', '=', 'u.role_id')
+    ->select([
+        'ac.id',
+        'u.name as registered_by',
+        'o.office_title',
+        'r.role_title',
+
+        'ac.applicant_lastname as last_name',
+        'ac.applicant_firstname as first_name',
+        'ac.applicant_middlename as middle_name',
+        'ac.sex',
+        'ac.government_id as gov_id_type',
+        'ac.gov_id_number as gov_id_number',
+        'ac.applicant_contact_details as mobile_no',
+        'ac.applicant_telephone_no as telephone_no',
+        'ac.applicant_email_address as email_address',
+
+        'ac.applicant_province_c as i_province',
+        'ac.applicant_city_mun_c as i_city_mun',
+        'ac.applicant_brgy_c as i_barangay',
+        'ac.applicant_complete_address',
+        'ac.classification',
+
+        's.status_title',
+        'ac.return_reason',
+        'ac.application_no',
+        'ac.permit_no',
+        'ac.application_status',
+        'ac.application_type',
+        'ac.authorized_representative',
+        'ac.date_applied',
+
+        'ac.company_name',
+        'ac.company_address',
+        'ac.company_c_province',
+        'ac.company_c_province as prov_code',
+        'ac.company_c_city_mun',
+        'ac.company_c_barangay',
+        'ac.company_mobile_no',
+        'ac.operation_complete_address',
+
+        'ac.transaction_type as type_of_transaction',
+        'ac.rps_chief_comments',
+        'ac.cenro_comments',
+        'ac.tsd_chief_comments',
+        'ac.penro_comments',
+        'ac.ro_comments',
+        'ac.ardts_comments',
+
+        'g.prov_name',
+
+        'ci.supplier_name',
+        'ci.permit_chainsaw_no',
+        'ci.brand',
+        'ci.model',
+        'ci.quantity',
+        'ci.purpose',
+        'ci.other_details',
+        'ci.permit_validity',
+
+        'ap.official_receipt',
+        'ap.permit_fee',
+        'ap.date_of_payment',
+
+        'ac.created_at',
+    ])
+    ->where('ac.id', $application_id) // 17
+    ->first();
+
 
         if ($applicationDetails) {
             $applicationDetails->created_at = $applicationDetails->created_at

@@ -142,11 +142,11 @@ onMounted(() => {
             <div class="box">
 
                 <!-- SHOW BUTTONS ONLY BEFORE SELECTION -->
-                <div v-if="!hasSelected" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                <div v-if="!hasSelected" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
 
                     <!-- Individual Applicant -->
                     <button @click="() => { checked = false; hasSelected = true; }"
-                        class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl shadow-md border hover:shadow-lg transition-all bg-white hover:bg-gray-50">
+                        class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl shadow-md border hover:shadow-lg transition-all bg-white hover:bg-gray-50 ">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-600" fill="none"
                             viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -166,16 +166,7 @@ onMounted(() => {
                         <span class="text-lg font-semibold">Business / Private Corporation</span>
                     </button>
 
-                    <!-- Government Agency -->
-                    <button @click="() => { checked = true; hasSelected = true; }"
-                        class="flex flex-col items-center justify-center gap-3 p-6 rounded-2xl shadow-md border hover:shadow-lg transition-all bg-white hover:bg-gray-50">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-yellow-600" fill="none"
-                            viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M3 10l9-7 9 7v10a2 2 0 01-2 2H5a2 2 0 01-2-2V10z" />
-                        </svg>
-                        <span class="text-lg font-semibold">Government Agency</span>
-                    </button>
+                   
 
                 </div>
 
