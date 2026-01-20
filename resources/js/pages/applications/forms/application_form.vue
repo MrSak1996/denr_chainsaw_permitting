@@ -163,7 +163,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
         formData.append('name', selectedFileToUpdate.value.name)
 
-        const response = await axios.post('http://10.201.12.154:8000/api/files/update', formData, {
+        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -246,7 +246,7 @@ const saveIndividualApplication = async () => {
     isLoading.value = true;
 
     try {
-        const response = await insertFormData('http://10.201.12.154:8000/api/chainsaw/apply', { ...individual_form, encoded_by: userId });
+        const response = await insertFormData('http://192.168.2.106:8000/api/chainsaw/apply', { ...individual_form, encoded_by: userId });
 
         // ⚡ Change URL WITHOUT RELOAD
         const newUrl = route('applications.index', {
@@ -306,7 +306,7 @@ const submitChainsawInfo = async () => {
             });
 
             // Send to API
-            await axios.post('http://10.201.12.154:8000/api/chainsaw/insertChainsawInfo', formData,
+            await axios.post('http://192.168.2.106:8000/api/chainsaw/insertChainsawInfo', formData,
                 {
                     params: { id: applicationId },
                     headers: { 'Content-Type': 'multipart/form-data' },
@@ -340,7 +340,7 @@ const submitORPayment = async () => {
     formData.append('applicant_type', applicantType);
     formData.append('application_id', applicationId);
     try {
-        const response = await axios.post('http://10.201.12.154:8000/api/chainsaw/insert_payment', formData, {
+        const response = await axios.post('http://192.168.2.106:8000/api/chainsaw/insert_payment', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
 
@@ -400,7 +400,7 @@ const getApplicationDetails = async () => {
     }
 
     try {
-        const response = await axios.get(`http://10.201.12.154:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data || [];
         i_city_mun.value = response.data.data.i_city_mun;
     } catch (error) {
@@ -415,7 +415,7 @@ const getApplicantFile = async () => {
     if (!applicationId) return;
 
     try {
-        const response = await axios.get(`http://10.201.12.154:8000/api/getApplicantFile/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${applicationId}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 name: file.file_name,

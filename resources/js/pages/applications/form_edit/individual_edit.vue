@@ -6,6 +6,7 @@ import { useForm, usePage, router } from '@inertiajs/vue3';
 
 // UI & Icons
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import InputError from '@/components/InputError.vue';
 import Fieldset from 'primevue/fieldset';
 import { LoaderCircle, ShieldAlert } from 'lucide-vue-next';
@@ -45,7 +46,8 @@ const currentStep = ref(4);
 // IMPORTANT: initialize chainsaws correctly using createChainsaw()
 // Use ref (so handlers calling chainsaws.value.push(...) work)
 const chainsaws = ref<ReturnType<typeof createChainsaw>[]>([createChainsaw()]);
-
+const is_not_compliance = ref();
+const is_compliance = ref();
 const userId = page.props.auth?.user?.id ?? null;
 const selectedFile = ref(null);
 const showModal = ref(false);
@@ -107,7 +109,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
         formData.append('name', selectedFileToUpdate.value.name)
 
-        const response = await axios.post('http://10.201.12.154:8000/api/files/update', formData, {
+        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -416,7 +418,7 @@ const getApplicationDetails = async () => {
     }
 
     try {
-        const response = await axios.get(`http://10.201.12.154:8000/api/getApplicationDetails/${applicationId}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
         applicationData.value = response.data.data ?? {};
         i_city_mun.value = response.data.data?.i_city_mun ?? i_city_mun.value;
     } catch (error: any) {
@@ -426,33 +428,33 @@ const getApplicationDetails = async () => {
     }
 };
 
-// const getApplicantFile = async () => {
-//     const applicationId = page.props.application.id;
-//     if (!applicationId) return;
+const getDocumentaryRequirements = async () => {
+    const applicationId = page.props.application.id;
+    if (!applicationId) return;
 
-//     try {
-//         const response = await axios.get(`http://10.201.12.154:8000/api/getApplicantFile/${applicationId}`);
-//         if (response.data.status && Array.isArray(response.data.data)) {
-//             files.value = response.data.data.map((file: any) => ({
-//                 name: file.file_name,
-//                 size: 'Unknown',
-//                 dateUploaded: new Date(file.created_at).toLocaleDateString(),
-//                 dateOpened: new Date().toLocaleDateString(),
-//                 icon: 'png',
-//                 thumbnail: null,
-//                 url: file.file_url,
-//             }));
-//         } else {
-//             console.log('No files');
-//         }
-//     } catch (error) {
-//         console.error('Failed to fetch files:', error);
-//     }
-// };
+    try {
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${applicationId}`);
+        if (response.data.status && Array.isArray(response.data.data)) {
+            files.value = response.data.data.map((file: any) => ({
+                name: file.file_name,
+                size: 'Unknown',
+                dateUploaded: new Date(file.created_at).toLocaleDateString(),
+                dateOpened: new Date().toLocaleDateString(),
+                icon: 'png',
+                thumbnail: null,
+                url: file.file_url,
+            }));
+        } else {
+            console.log('No files');
+        }
+    } catch (error) {
+        console.error('Failed to fetch files:', error);
+    }
+};
 const getApplicantFile = async (id) => {
     try {
         const response = await axios.get(
-            `http://10.201.12.154:8000/api/getApplicantFile/${id}`
+            `http://192.168.2.106:8000/api/getApplicantFile/${id}`
         );
 
         if (response.data.status && Array.isArray(response.data.data)) {
@@ -589,6 +591,7 @@ onMounted(() => {
     }
     getProvinceCode();
     getApplicantFile(page.props.application.id);
+    getDocumentaryRequirements()
 });
 </script>
 
@@ -999,7 +1002,7 @@ onMounted(() => {
                     </div>
                 </div>
             </Fieldset>
-            <Fieldset legend="Uploaded Files" :toggleable="true">
+            <!-- <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="container">
                     <div class="file-list">
                         <FileCard v-for="file in filesByTab[0]" :key="index" :file="file" @openPreview="openFileModal"
@@ -1013,19 +1016,29 @@ onMounted(() => {
                     <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
                         allow="autoplay"></iframe>
                 </Dialog>
-            </Fieldset>
+            </Fieldset> -->
             <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="overflow-x-auto mt-4">
-                    <table class="min-w-full border border-gray-300 rounded-lg bg-white">
+                    <table class="min-w-full border border-gray-300 rounded-lg bg-white" style="font-size: 14px;">
                         <thead class="bg-gray-100">
                             <tr>
-                                <th class="px-4 py-2 border text-left">#</th>
-                                <th class="px-4 py-2 border text-left">Documentary Requirements</th>
-                                <th class="px-4 py-2 border text-left">File Name</th>
-                                <th class="px-4 py-2 border text-left">Type</th>
-                                <th class="px-4 py-2 border text-left">Size</th>
-                                <th class="px-4 py-2 border text-left">Uploaded At</th>
-                                <th class="px-4 py-2 border text-center">Action</th>
+                                <th class="px-4 py-2 border text-left" rowspan="2">#</th>
+                                <th class="px-4 py-2 border text-left" rowspan="2">
+                                    Documentary Requirements
+                                </th>
+                                <th class="px-4 py-2 border text-left" rowspan="2">File Name</th>
+                                <th class="px-4 py-2 border text-left" rowspan="2">Size</th>
+                                <th class="px-4 py-2 border text-left" rowspan="2">
+                                    Uploaded Date
+                                </th>
+                                <th class="px-4 py-2 border text-center" colspan="2">
+                                    Compliance
+                                </th>
+                            </tr>
+
+                            <tr>
+                                <th class="px-4 py-2 border text-center">Yes</th>
+                                <th class="px-4 py-2 border text-center">No</th>
                             </tr>
                         </thead>
 
@@ -1034,19 +1047,27 @@ onMounted(() => {
                                 <td class="px-4 py-2 border">{{ index + 1 }}</td>
 
                                 <!-- AUTOMATIC DOCUMENT TITLE -->
-                                <td class="px-4 py-2 border">{{ getDocumentTitle(file.name) }}</td>
-
-                                <td class="px-4 py-2 border">{{ file.name }}</td>
-                                <td class="px-4 py-2 border">{{ getFileType(file.name) || 'Unknown' }}</td>
-                                <td class="px-4 py-2 border">{{ file.size }}</td>
-                                <td class="px-4 py-2 border">{{ file.created_at }}</td>
-
-                                <td class="px-4 py-2 border text-center">
-                                    <button class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                <td class="px-4 py-2 border">{{ getDocumentTitle(file.name) }}<br><button
+                                        class="px-3 py-1 rounded bg-blue-600 text-white text-xs"
                                         @click="openFileModal(file)">
                                         Preview
-                                    </button>
+                                    </button></td>
+
+                                <td class="px-4 py-2 border">{{ file.name }}</td>
+                                <td class="px-4 py-2 border">{{ file.size }}</td>
+                                <td class="px-4 py-2 border">{{ file.dateUploaded }}</td>
+
+                                <td class="px-4 py-2 border text-center">
+                                    <Checkbox v-model="is_compliance" inputId="size_large" name="size" value="Large" class="chklist_yes"
+                                        size="large" style="width: 20px !important;height:20px !important;" />
+                                       
                                 </td>
+                                <td class="px-4 py-2 border text-center">
+                                    <Checkbox v-model="is_not_compliance" inputId="size_large" name="size" value="Large" class="chklist_no"
+                                        size="large" style="width: 20px !important;height:20px !important;" />
+                                   
+                                    </td>
+
                             </tr>
 
                             <tr v-if="files.length === 0">
@@ -1084,6 +1105,7 @@ onMounted(() => {
 </template>
 
 <style>
+
 /* HTML: <div class="ribbon">Your text content</div> */
 .ribbon {
     font-size: 19px;

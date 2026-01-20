@@ -223,7 +223,7 @@ const editableChainsaw = reactive({});
 
 const getApplicantFile = async (id) => {
     try {
-        const response = await axios.get(`http://10.201.12.154:8000/api/getApplicantFile/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicantFile/${id}`);
         if (response.data.status && Array.isArray(response.data.data)) {
             files.value = response.data.data.map((file) => ({
                 attachment_id: file.id,
@@ -245,7 +245,7 @@ const getApplicantFile = async (id) => {
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://10.201.12.154:8000/api/getApplicationDetails/${id}`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
         return response.data.data;
@@ -259,7 +259,7 @@ const getApplicationDetails = async (id) => {
 const getSignatories = async () => {
     isloadingSpinner.value = true;
     try {
-        const response = await axios.get(`http://10.201.12.154:8000/api/getSignatories`);
+        const response = await axios.get(`http://192.168.2.106:8000/api/getSignatories`);
         signatories_data.value = response.data;
         return response.data.data;
     } catch (error) {
@@ -290,7 +290,7 @@ const saveApplicantDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.12.154:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicantDetails/${applicationDetails.value.id}`, editableApplicant);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -327,7 +327,7 @@ const saveChainsawDetails = async () => {
     try {
         isloadingSpinner.value = true;
 
-        const response = await axios.put(`http://10.201.12.154:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateChainsawInformation/${applicationDetails.value.id}`, editableChainsaw);
 
         if (response.data.status === 'success') {
             toast.add({
@@ -413,7 +413,7 @@ const handleEndorseApplicationStatus = async () => {
         isloadingSpinner.value = true;
 
         // Send PUT request to update the application status to 'endorsed'
-        const response = await axios.put(`http://10.201.12.154:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
+        const response = await axios.put(`http://192.168.2.106:8000/api/updateApplicationStatus/${applicationDetails.value.id}`, {
             status: 4, //ENDORSED Only update the status field
         });
 
@@ -464,7 +464,7 @@ const handleFileUpdate = async (event) => {
         formData.append('attachment_id', selectedFileToUpdate.value.attachment_id)
         formData.append('name', selectedFileToUpdate.value.name)
 
-        const response = await axios.post('http://10.201.12.154:8000/api/files/update', formData, {
+        const response = await axios.post('http://192.168.2.106:8000/api/files/update', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         })
 
@@ -532,414 +532,410 @@ const generatePdf = (data) => {
 <template>
     <div class="flex flex-col gap-4 rounded-xl p-4">
         <Toast />
-        <div class="rounded-lg bg-white p-4 shadow">
 
-            <DataTable ref="dt" size="small" v-model:expandedRows="expandedRows" :value="products" dataKey="id"
-                stripedRows showGridlines :paginator="true" :rows="10" :filters="filters" filterDisplay="menu"
-                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                :rowsPerPageOptions="[5, 10, 25]"
-                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
-                responsiveLayout="scroll" class="w-full text-sm" @rowExpand="onRowExpand" @rowCollapse="onRowCollapse"
-                tableStyle="min-width: 60rem">
+        <DataTable ref="dt" size="small" v-model:expandedRows="expandedRows" :value="products" dataKey="id" stripedRows
+            showGridlines :paginator="true" :rows="10" :filters="filters" filterDisplay="menu"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            :rowsPerPageOptions="[5, 10, 25]"
+            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products" responsiveLayout="scroll"
+            class="w-full text-sm" @rowExpand="onRowExpand" @rowCollapse="onRowCollapse" tableStyle="min-width: 60rem">
 
-                <template #header>
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <!-- <h4 class="m-0 font-semibold">Manage Products</h4> -->
-                        <IconField>
-                            <InputIcon>
-                                <i class="pi pi-search" />
-                            </InputIcon>
-                            <InputText v-model="filters['global'].value" placeholder="Search..." />
-                        </IconField>
-                    </div>
+            <template #header>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <!-- <h4 class="m-0 font-semibold">Manage Products</h4> -->
+                    <IconField>
+                        <InputIcon>
+                            <i class="pi pi-search" />
+                        </InputIcon>
+                        <InputText v-model="filters['global'].value" placeholder="Search..." />
+                    </IconField>
+                </div>
+            </template>
+            <Column expander style="width: 5rem" />
+            <Column field="application_type" header="Application Type" sortable />
+            <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
+                <template #body="{ data }">
+                    <b>{{ data.application_no }}</b>
                 </template>
-                <Column expander style="width: 5rem" />
-                <Column header="Action" :exportable="false" style="min-width: 10rem">
-                    <template #body="{ data }">
-                        <Button class="mr-2" @click="openFileModal(data)" style="background-color: #004D40;">
-                            <EyeIcon :size="15" />
-                        </Button>
+            </Column>
+            <Column header="Applicant Name" style="min-width: 12rem"
+                :headerStyle="{ backgroundColor: '', color: '#000', fontWeight: 'bold' }">
 
-
-                        <Link
-                            class="mr-2 inline-flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-white rounded-md px-3 py-2"
-                            :href="route('applications.edit', { id: data.id, type: data.application_type })">
-                            <SquarePen :size="16" />
-                        </Link>
-
-
-                        <Button v-if="data.application_status == STATUS_APPROVED_BY_RED" @click="generatePdf(data)"
-                            style="background-color: #0D47A1;">
-                            <PrinterCheck :size="15" />
-                        </Button>
-
-                    </template>
-                </Column>
-                <Column field="status_title" header="Status" sortable style="min-width: 12rem">
-                    <template #body="{ data }">
-                        <div class="flex flex-col items-center">
-                            <Tag :value="data.status_title"
-                                :severity="data.application_status >= 17 ? 'danger' : 'success'"
-                                class="text-center mb-2" />
-
-                            <button v-if="data.status_title === 'Returned to Technical Staff'"
-                                class="px-3 py-1 rounded bg-blue-600 text-white text-xs"
-                                @click="openCommentModal(data)">
-                                View Comments
-                            </button>
-                        </div>
-                    </template>
-                </Column>
-                <Column field="application_no" header="Application No" sortable style="min-width: 12rem">
-                    <template #body="{ data }">
-                        <b>{{ data.application_no }}</b>
-                    </template>
-                </Column>
-                <Column field="application_type" header="Application Type" sortable />
-                <Column header="Type of Transaction" field="transaction_type" sortable></Column>
-                <Column header="Classification" field="classification" sortable></Column>
-                <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
-
-
-
-                <template #expansion="slotProps">
-                    <div class="p-4">
-                        <h5 class="font-semibold mb-2 flex items-center gap-2">
-                            <Info />
-                            Chainsaw Information
-                        </h5>
-                        <DataTable size="small" showGridlines :value="[slotProps.data]">
-                            <Column field="date_endorsed_tsd_chief" header="Date Endorsed by CENRO" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">dd
-                            </Column>
-                            <Column field="date_received_penro_chief" header="Date Received by PENRO" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">d
-                            </Column>
-                            <Column header="Date Received by RO" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column header="Date Received by LPDD" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column field="date_received_fus" header="Date Received by FUS" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column field="application_type" header="Application Type" sortable style="min-width: 5rem"
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }" />
-
-
-                            <Column header="Applicant Name"
-                                :headerStyle="{ backgroundColor: '', color: '#000', fontWeight: 'bold' }">
-
-                                <template #body="slotProps">
-                                    {{ slotProps.data.authorized_representative || slotProps.data.applicant_name }}
-                                </template>
-
-                            </Column>
-
-                            <Column field="sex" header="Sex" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column v-if="slotProps.data.application_type === 'Individual'"
-                                field="applicant_complete_address" header="Address" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column v-else field="company_address" header="Company Address" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-
-                            <Column field="permit_no" header="Permit Number" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column field="date_received_red" header="Date Approved/Signed" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column field="permit_validity" header="Date of Expiration" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-                            <Column field="permit_fee" header="Transaction Fee" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-
-                            </Column>
-
-                            <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem"
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }" />
-                            <Column header="Remarks" sortable
-                                :headerStyle="{ backgroundcolor: '#B0BEC5', color: '#000', fontWeight: 'bold' }">
-                            </Column>
-
-                        </DataTable>
-                    </div>
-
+                <template #body="slotProps">
+                    {{ slotProps.data.authorized_representative || slotProps.data.applicant_name }}
                 </template>
 
+            </Column>
+
+            <Column field="status_title" header="Status" sortable style="min-width: 12rem">
+                <template #body="{ data }">
+                    <div class="flex flex-col items-center">
+                        <Tag :value="data.status_title" :severity="data.application_status >= 17 ? 'danger' : 'success'"
+                            class="text-center mb-2" />
+
+                        <button v-if="data.status_title === 'Returned to Technical Staff'"
+                            class="px-3 py-1 rounded bg-blue-600 text-white text-xs" @click="openCommentModal(data)">
+                            View Comments
+                        </button>
+                    </div>
+                </template>
+            </Column>
+
+            <Column header="Type of Transaction" field="transaction_type" sortable></Column>
+            <Column header="Classification" field="classification" sortable></Column>
+            <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
+            <Column header="Action" :exportable="false" style="min-width: 10rem">
+                <template #body="{ data }">
+                    <Button class="mr-2" @click="openFileModal(data)" style="background-color: #004D40;">
+                        <EyeIcon :size="15" />
+                    </Button>
+
+
+                    <Link
+                        class="mr-2 inline-flex items-center justify-center bg-orange-700 hover:bg-orange-600 text-white rounded-md px-3 py-2"
+                        :href="route('applications.edit', { id: data.id, type: data.application_type })">
+                        <SquarePen :size="16" />
+                    </Link>
+
+
+                    <Button v-if="data.application_status == STATUS_APPROVED_BY_RED" @click="generatePdf(data)"
+                        style="background-color: #0D47A1;">
+                        <PrinterCheck :size="15" />
+                    </Button>
+
+                </template>
+            </Column>
+
+
+            <template #expansion="slotProps">
+                <div class="p-4">
+                    <h5 class="font-semibold mb-2 flex items-center gap-2">
+                        <Info />
+                        Chainsaw Information
+                    </h5>
+                    <DataTable size="small" showGridlines :value="[slotProps.data]">
+                        <Column field="date_endorsed_tsd_chief" header="Date Endorsed by CENRO" sortable :headerStyle="{
+                            backgroundColor: '#0D47A1',
+                            color: '#fff',
+                            fontWeight: 'bold'
+                        }" />
+                        <Column field="date_received_penro_chief" header="Date Received by PENRO" sortable
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">d
+                        </Column>
+                        <Column header="Date Received by RO" sortable
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column header="Date Received by LPDD" sortable
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column field="date_received_fus" header="Date Received by FUS" sortable
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column field="application_type" header="Application Type" sortable style="min-width: 5rem"
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }" />
 
 
 
-            </DataTable>
+
+                        <Column field="sex" header="Sex" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column v-if="slotProps.data.application_type === 'Individual'"
+                            field="applicant_complete_address" header="Address" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column v-else field="company_address" header="Company Address" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+
+                        <Column field="permit_no" header="Permit Number" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column field="date_received_red" header="Date Approved/Signed" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column field="permit_validity" header="Date of Expiration" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+                        <Column field="permit_fee" header="Transaction Fee" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+
+                        </Column>
+
+                        <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem"
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }" />
+                        <Column header="Remarks" sortable
+                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                        </Column>
+
+                    </DataTable>
+                </div>
+
+            </template>
+
+
+
+
+        </DataTable>
+    </div>
+    <ReusableConfirmDialog ref="confirmDialogRef" />
+
+    <Dialog v-model:visible="showModal" modal header="Application Preview" :style="{ width: '60vw' }">
+        <div v-if="isloadingSpinner" class="flex h-40 items-center justify-center">
+            <span>Loading...</span>
         </div>
-        <ReusableConfirmDialog ref="confirmDialogRef"/>
 
-        <Dialog  v-model:visible="showModal" modal header="Application Preview" :style="{ width: '60vw' }">
-            <div v-if="isloadingSpinner" class="flex h-40 items-center justify-center">
-                <span>Loading...</span>
-            </div>
+        <div v-else-if="applicationDetails">
+            <!-- Action Buttons -->
+            <Button class="mr-2 !border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
+                @click="endorseApplication(applicationDetails.id)">
+                <Send class="mr-1" /> Endorsed
+            </Button>
 
-            <div v-else-if="applicationDetails">
-                <!-- Action Buttons -->
-                <Button class="mr-2 !border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
-                    @click="endorseApplication(applicationDetails.id)">
-                    <Send class="mr-1" /> Endorsed
-                </Button>
-
-                <!-- <Button class="mr-2 !border-red-600 !bg-red-900 !text-white hover:!bg-red-700">
+            <!-- <Button class="mr-2 !border-red-600 !bg-red-900 !text-white hover:!bg-red-700">
                     <Undo2 class="mr-1" /> Returned
                 </Button> -->
 
-                <!-- Applicant Details -->
-                <Fieldset legend="Applicant Details" :toggleable="true">
-                    <div class="mb-4 flex items-center justify-between">
-                        <h3 class="text-lg font-semibold">Applicant Details</h3>
-                        <Button size="small" class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
-                            @click="toggleApplicantEdit">
-                            <Edit2 />
-                            {{ editState.applicant ? 'Save' : 'Edit' }}
-                        </Button>
+            <!-- Applicant Details -->
+            <Fieldset legend="Applicant Details" :toggleable="true">
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Applicant Details</h3>
+                    <Button size="small" class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
+                        @click="toggleApplicantEdit">
+                        <Edit2 />
+                        {{ editState.applicant ? 'Save' : 'Edit' }}
+                    </Button>
 
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+                    <!-- Application Number -->
+                    <div class="flex items-center">
+                        <span class="w-32 font-semibold">Application No:</span>
+                        <Tag v-if="!editState.applicant" :value="applicationDetails.application_no" severity="success"
+                            class="text-center" />
+                        <InputText v-else v-model="editableApplicant.application_no" class="w-full" disabled />
                     </div>
 
-                    <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
-                        <!-- Application Number -->
-                        <div class="flex items-center">
-                            <span class="w-32 font-semibold">Application No:</span>
-                            <Tag v-if="!editState.applicant" :value="applicationDetails.application_no"
-                                severity="success" class="text-center" />
-                            <InputText v-else v-model="editableApplicant.application_no" class="w-full" disabled />
-                        </div>
-
-                        <!-- Date Applied -->
-                        <div class="flex items-center">
-                            <span class="w-24 font-semibold">Date Applied:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.date_applied }}</span>
-                            <DatePicker v-else v-model="editableApplicant.date_applied" class="w-full" />
-                        </div>
-
-                        <!-- Type of Transaction -->
-                        <div class="flex items-center">
-                            <span class="w-24 font-semibold">Type of Transaction:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.application_type }}</span>
-                            <InputText v-else v-model="editableApplicant.application_type" class="w-full" />
-                        </div>
-                        <div class="flex items-center">
-                            <span class="w-24 font-semibold">Classification:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.classification }}</span>
-                            <InputText v-else v-model="editableApplicant.classification" class="w-full" />
-                        </div>
-
-                        <!-- Company Name -->
-                        <div class="flex items-center" v-if="applicationDetails.application_type === 'Individual'">
-                            <span class="w-24 font-semibold">Applicant Name:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.first_name }} {{
-                                applicationDetails.middle_name }} {{ applicationDetails.last_name }}</span>
-
-                        </div>
-                        <div class="flex items-center" v-else>
-                            <span class="w-24 font-semibold">Company Name:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.company_name }}</span>
-                            <InputText v-else v-model="editableApplicant.company_name" class="w-full" />
-                        </div>
-
-                        <div class="flex items-center">
-                            <span class="w-24 font-semibold">Email Address:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.email_address }}</span>
-                            <InputText v-else v-model="editableApplicant.email_address" class="w-full" />
-                        </div>
-
-                        <!-- Authorized Representative -->
-                        <div class="flex items-center" v-if="applicationDetails.applicant_type === 'Company'">
-                            <span class="w-24 font-semibold">Authorized Representative:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.authorized_representative }}</span>
-                            <InputText v-else v-model="editableApplicant.authorized_representative" class="w-full" />
-                        </div>
-
-                        <!-- Region (Read-only) -->
-                        <div class="flex items-center">
-                            <span class="w-24 font-semibold">Region:</span>
-                            <span class="w-full text-gray-700"> REGION IV-A (CALABARZON) </span>
-                        </div>
-
-                        <!-- Complete Address -->
-                        <div class="flex items-center" v-if="applicationDetails.application_type === 'Company'">
-                            <span class="w-24 font-semibold">Complete Address:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.company_address }}</span>
-                            <Textarea v-else v-model="editableApplicant.company_address" class="w-full" />
-                        </div>
-                        <div class="flex items-center" v-else>
-                            <span class="w-24 font-semibold">Complete Address:</span>
-                            <span v-if="!editState.applicant">{{ applicationDetails.applicant_complete_address }}</span>
-                            <Textarea v-else v-model="editableApplicant.applicant_complete_address" class="w-full" />
-                        </div>
-                    </div>
-                </Fieldset>
-
-                <!-- Chainsaw Information -->
-                <Fieldset legend="Chainsaw Information" :toggleable="true">
-                    <div class="mb-4 flex items-center justify-between">
-                        <h3 class="text-lg font-semibold">Chainsaw Information</h3>
-                        <Button size="small" class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
-                            @click="toggleChainsawEdit">
-                            <Edit2 />
-                            {{ editState.chainsaw ? 'Save' : 'Edit' }}
-                        </Button>
+                    <!-- Date Applied -->
+                    <div class="flex items-center">
+                        <span class="w-24 font-semibold">Date Applied:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.date_applied }}</span>
+                        <DatePicker v-else v-model="editableApplicant.date_applied" class="w-full" />
                     </div>
 
-                    <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Chainsaw Permit No:</span>
-                            <Tag v-if="!editState.chainsaw" :value="applicationDetails.permit_chainsaw_no"
-                                severity="success" class="text-center" />
-                            <InputText v-else v-model="editableChainsaw.permit_chainsaw_no" class="w-full" />
-                        </div>
+                    <!-- Type of Transaction -->
+                    <div class="flex items-center">
+                        <span class="w-24 font-semibold">Type of Transaction:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.application_type }}</span>
+                        <InputText v-else v-model="editableApplicant.application_type" class="w-full" />
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-24 font-semibold">Classification:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.classification }}</span>
+                        <InputText v-else v-model="editableApplicant.classification" class="w-full" />
+                    </div>
 
-                        <div class="flex">
-                            <span class="w-32 font-semibold">Permit Validity:</span>
-                            <Tag v-if="!editState.chainsaw" :value="applicationDetails.permit_validity"
-                                severity="danger" class="text-center" />
-                            <DatePicker v-else v-model="editableChainsaw.permit_validity" class="w-full" />
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Brand:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.brand }}</span>
-                            <InputText v-else v-model="editableChainsaw.brand" class="w-full" />
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Model:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.model }}</span>
-                            <InputText v-else v-model="editableChainsaw.model" class="w-full" />
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Quantity:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.quantity }}</span>
-                            <InputText v-else v-model="editableChainsaw.quantity" class="w-full" />
-                        </div>
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Supplier:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.supplier_name }}</span>
-                            <InputText v-else v-model="editableChainsaw.supplier_name" class="w-full" />
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Purpose of Purchase:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.purpose }}</span>
-                            <InputText v-else v-model="editableChainsaw.purpose" class="w-full" />
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Other Details:</span>
-                            <span v-if="!editState.chainsaw">{{ applicationDetails.other_details }}</span>
-                            <InputText v-else v-model="editableChainsaw.other_details" class="w-full" />
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Official Receipt:</span>
-                            <Tag :value="applicationDetails.official_receipt" severity="success" class="text-center" />
-                            <br />
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-24 font-semibold">Permit Fee:</span>
-                            <span>₱{{ applicationDetails.permit_fee }}.00</span>
-                        </div>
-
+                    <!-- Company Name -->
+                    <div class="flex items-center" v-if="applicationDetails.application_type === 'Individual'">
+                        <span class="w-24 font-semibold">Applicant Name:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.first_name }} {{
+                            applicationDetails.middle_name }} {{ applicationDetails.last_name }}</span>
 
                     </div>
-                </Fieldset>
-
-                <Fieldset legend="Registration Information">
-                    
-                    <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
-                        <div class="flex">
-                            <span class="w-64 font-semibold">Encoded By:</span>
-                            <Tag severity="success">{{ applicationDetails.registered_by }}</Tag>
-                            {{ applicationDetails.office_title }} - {{ applicationDetails.role_title }}
-                        </div>
-                         <div class="flex">
-                            <span class="w-64 font-semibold">Registered Date & Time</span>
-                            {{ applicationDetails.created_at }}
-                        </div>
-                        </div>
-                </Fieldset>
-
-                <!-- Uploaded Files Section -->
-                <Fieldset legend="Uploaded Files" :toggleable="true">
-                    <div class="container">
-                        <div class="file-list grid grid-cols-1 gap-2 md:grid-cols-2">
-                            <FileCard v-for="(file, index) in files" :key="index" :file="file" @openPreview="openFile"
-                                @updateFile="triggerUpdateFile" />
-                        </div>
+                    <div class="flex items-center" v-else>
+                        <span class="w-24 font-semibold">Company Name:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.company_name }}</span>
+                        <InputText v-else v-model="editableApplicant.company_name" class="w-full" />
                     </div>
-                </Fieldset>
 
-                <!-- Hidden Input for File Update -->
-                <input type="file" ref="updateFileInput" class="hidden" @change="handleFileUpdate" />
+                    <div class="flex items-center">
+                        <span class="w-24 font-semibold">Email Address:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.email_address }}</span>
+                        <InputText v-else v-model="editableApplicant.email_address" class="w-full" />
+                    </div>
 
-                <!-- File Preview Modal -->
-                <Dialog v-model:visible="showFileModal" modal header="File Preview" :style="{ width: '70vw' }">
-                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
-                        allow="autoplay"></iframe>
-                </Dialog>
-            </div>
-        </Dialog>
+                    <!-- Authorized Representative -->
+                    <div class="flex items-center" v-if="applicationDetails.applicant_type === 'Company'">
+                        <span class="w-24 font-semibold">Authorized Representative:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.authorized_representative }}</span>
+                        <InputText v-else v-model="editableApplicant.authorized_representative" class="w-full" />
+                    </div>
+
+                    <!-- Region (Read-only) -->
+                    <div class="flex items-center">
+                        <span class="w-24 font-semibold">Region:</span>
+                        <span class="w-full text-gray-700"> REGION IV-A (CALABARZON) </span>
+                    </div>
+
+                    <!-- Complete Address -->
+                    <div class="flex items-center" v-if="applicationDetails.application_type === 'Company'">
+                        <span class="w-24 font-semibold">Complete Address:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.company_address }}</span>
+                        <Textarea v-else v-model="editableApplicant.company_address" class="w-full" />
+                    </div>
+                    <div class="flex items-center" v-else>
+                        <span class="w-24 font-semibold">Complete Address:</span>
+                        <span v-if="!editState.applicant">{{ applicationDetails.applicant_complete_address }}</span>
+                        <Textarea v-else v-model="editableApplicant.applicant_complete_address" class="w-full" />
+                    </div>
+                </div>
+            </Fieldset>
+
+            <!-- Chainsaw Information -->
+            <Fieldset legend="Chainsaw Information" :toggleable="true">
+                <div class="mb-4 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Chainsaw Information</h3>
+                    <Button size="small" class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
+                        @click="toggleChainsawEdit">
+                        <Edit2 />
+                        {{ editState.chainsaw ? 'Save' : 'Edit' }}
+                    </Button>
+                </div>
+
+                <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Chainsaw Permit No:</span>
+                        <Tag v-if="!editState.chainsaw" :value="applicationDetails.permit_chainsaw_no"
+                            severity="success" class="text-center" />
+                        <InputText v-else v-model="editableChainsaw.permit_chainsaw_no" class="w-full" />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-32 font-semibold">Permit Validity:</span>
+                        <Tag v-if="!editState.chainsaw" :value="applicationDetails.permit_validity" severity="danger"
+                            class="text-center" />
+                        <DatePicker v-else v-model="editableChainsaw.permit_validity" class="w-full" />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Brand:</span>
+                        <span v-if="!editState.chainsaw">{{ applicationDetails.brand }}</span>
+                        <InputText v-else v-model="editableChainsaw.brand" class="w-full" />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Model:</span>
+                        <span v-if="!editState.chainsaw">{{ applicationDetails.model }}</span>
+                        <InputText v-else v-model="editableChainsaw.model" class="w-full" />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Quantity:</span>
+                        <span v-if="!editState.chainsaw">{{ applicationDetails.quantity }}</span>
+                        <InputText v-else v-model="editableChainsaw.quantity" class="w-full" />
+                    </div>
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Supplier:</span>
+                        <span v-if="!editState.chainsaw">{{ applicationDetails.supplier_name }}</span>
+                        <InputText v-else v-model="editableChainsaw.supplier_name" class="w-full" />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-48 font-semibold">Purpose of Purchase:</span>
+                        <span v-if="!editState.chainsaw">{{ applicationDetails.purpose }}</span>
+                        <InputText v-else v-model="editableChainsaw.purpose" class="w-full" />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Other Details:</span>
+                        <span v-if="!editState.chainsaw">{{ applicationDetails.other_details }}</span>
+                        <InputText v-else v-model="editableChainsaw.other_details" class="w-full" />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Official Receipt:</span>
+                        <Tag :value="applicationDetails.official_receipt" severity="success" class="text-center" />
+                        <br />
+                    </div>
+
+                    <div class="flex">
+                        <span class="w-24 font-semibold">Permit Fee:</span>
+                        <span>₱{{ applicationDetails.permit_fee }}.00</span>
+                    </div>
+
+
+                </div>
+            </Fieldset>
+
+            <Fieldset legend="Registration Information">
+
+                <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+                    <div class="flex">
+                        <span class="w-64 font-semibold">Encoded By:</span>
+                        <Tag severity="success">{{ applicationDetails.registered_by }}</Tag>
+                        {{ applicationDetails.office_title }} - {{ applicationDetails.role_title }}
+                    </div>
+                    <div class="flex">
+                        <span class="w-64 font-semibold">Registered Date & Time</span>
+                        {{ applicationDetails.created_at }}
+                    </div>
+                </div>
+            </Fieldset>
+
+            <!-- Uploaded Files Section -->
+            <Fieldset legend="Uploaded Files" :toggleable="true">
+                <div class="container">
+                    <div class="file-list grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <FileCard v-for="(file, index) in files" :key="index" :file="file" @openPreview="openFile"
+                            @updateFile="triggerUpdateFile" />
+                    </div>
+                </div>
+            </Fieldset>
+
+            <!-- Hidden Input for File Update -->
+            <input type="file" ref="updateFileInput" class="hidden" @change="handleFileUpdate" />
+
+            <!-- File Preview Modal -->
+            <Dialog v-model:visible="showFileModal" modal header="File Preview" :style="{ width: '70vw' }">
+                <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
+                    allow="autoplay"></iframe>
+            </Dialog>
+        </div>
+    </Dialog>
 
 
 
-        <Dialog v-model:visible="showCommentsModal" modal header="Comments" :style="{ width: '50vw' }">
-            <div class="overflow-x-auto">
-                <!-- Loading state -->
-                <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading comments...</div>
-                <table v-else class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="border px-4 py-2 text-left">Action Officer</th>
-                            <th class="border px-4 py-2 text-left">Comments</th>
-                            <th class="border px-4 py-2 text-left">Date Return</th>
-                        </tr>
-                    </thead>
+    <Dialog v-model:visible="showCommentsModal" modal header="Comments" :style="{ width: '50vw' }">
+        <div class="overflow-x-auto">
+            <!-- Loading state -->
+            <div v-if="loadingRouting" class="p-4 text-center text-gray-500">Loading comments...</div>
+            <table v-else class="min-w-full rounded-lg border border-gray-300 bg-white text-[12px]">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="border px-4 py-2 text-left">Action Officer</th>
+                        <th class="border px-4 py-2 text-left">Comments</th>
+                        <th class="border px-4 py-2 text-left">Date Return</th>
+                    </tr>
+                </thead>
 
-                    <tbody>
-                        <tr v-for="(item, index) in commentsHistory" :key="index" class="hover:bg-gray-50">
-                            <td class="border px-4" style="width: 10rem">
-                                <b>{{ item.action_officer }}</b><br />
-                                <i>{{ item.sender_role }}</i><br />
-                            </td>
-                            <td class="border px-4">{{ item.comments }}</td>
-                            <td class="border px-4">
-                                {{
-                                    new Date(item.created_at).toLocaleString('en-PH', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        second: '2-digit',
-                                        hour12: true,
-                                    })
-                                }}
-                            </td>
+                <tbody>
+                    <tr v-for="(item, index) in commentsHistory" :key="index" class="hover:bg-gray-50">
+                        <td class="border px-4" style="width: 10rem">
+                            <b>{{ item.action_officer }}</b><br />
+                            <i>{{ item.sender_role }}</i><br />
+                        </td>
+                        <td class="border px-4">{{ item.comments }}</td>
+                        <td class="border px-4">
+                            {{
+                                new Date(item.created_at).toLocaleString('en-PH', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    hour12: true,
+                                })
+                            }}
+                        </td>
 
-                        </tr>
+                    </tr>
 
-                    </tbody>
-                </table>
-                <!-- Table -->
+                </tbody>
+            </table>
+            <!-- Table -->
 
-            </div>
-        </Dialog>
-
-
-
-    </div>
+        </div>
+    </Dialog>
 </template>
