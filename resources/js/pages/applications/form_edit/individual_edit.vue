@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast';
 import { useForm, usePage, router } from '@inertiajs/vue3';
 
 // UI & Icons
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import InputError from '@/components/InputError.vue';
@@ -19,6 +20,7 @@ import ConfirmModal from '../modal/confirmation_modal.vue';
 import { useAppForm } from '@/composables/useAppForm';
 import { useFormHandler } from '@/composables/useFormHandler';
 import { useApi } from '@/composables/useApi';
+import Textarea from 'primevue/textarea';
 
 // State
 const props = defineProps({
@@ -616,6 +618,10 @@ onMounted(() => {
                 </div>
             </div>
         </div>
+        <Button class="ml-auto gap-2 mr-2" style="background-color: rgba(0,77,64,1);"
+            @click="nextStep">Received</Button>
+        <Button style="background-color: #bd1550;">Return</Button>
+
 
         <div v-if="currentStep === 1" class="space-y-4">
             <chainsaw_individualInfoField :form="individual_form" :insertFormData="insertFormData"
@@ -890,60 +896,63 @@ onMounted(() => {
                         {{ individual_form.status_title ?? "DRAFT" }}
                     </div>
 
-                    <div class="grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+                    <div class="grid grid-cols-3 gap-x-12 gap-y-4 text-sm text-gray-800">
+                        <!-- Row 1 -->
                         <div class="flex">
-                            <span class="w-48 font-bold">Application No:</span>
+                            <span class="w-32 font-bold">Application No:</span>
                             <Tag :value="individual_form.application_no" severity="success"
                                 class="text-center font-extrabold" />
                         </div>
 
                         <div class="flex">
-                            <span class="w-48 font-semibold">Date Applied:</span>
+                            <span class="w-32 font-bold">Permit No:</span>
+                            <Tag :value="individual_form.permit_no" severity="danger"
+                                class="text-center font-extrabold" />
+                        </div>
+
+                        <div class="flex">
+                                        <DynamicFormLabel>Username</DynamicFormLabel>
+
+                            <span class="w-24 font-semibold">Date Applied:</span>
                             <span>{{ individual_form.date_applied }}</span>
                         </div>
-
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Type of Transaction:</span>
-                            <span>{{ individual_form.type_of_transaction }}</span>
-                        </div>
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Classification:</span>
-                            <span>{{ individual_form.classification }}</span>
-                        </div>
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Contact Details:</span>
-                            <span>{{ individual_form.mobile_no }}</span>
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Applicant Name:</span>
-                            <span>{{ individual_form.first_name }} {{ individual_form.middle_name }} {{
-                                individual_form.last_name }}</span>
-                        </div>
-
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Email Address:</span>
-                            <span>{{ individual_form.email_address }}</span>
-                        </div>
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Region:</span>
-                            <span>REGION IV-A (CALABARZON)</span>
-                        </div>
-                        <!-- <div class="flex">
-                        <span class="w-48 font-semibold">Province:</span>
-                        <span>{{ applicationData.prov_name }}</span>
                     </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Municipality:</span>
-                        <span>Lipa City</span>
-                    </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Barangay:</span>
-                        <span>Barangay 1</span>
-                    </div> -->
-                        <div class="flex">
-                            <span class="w-48 font-semibold">Complete Address:</span>
-                            <span>{{ individual_form.i_complete_address }}</span>
+                    <div class="relative">
+                        <div class="grid grid-cols-3 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+
+
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Type of Transaction:</span>
+                                <span>{{ individual_form.type_of_transaction }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Classification:</span>
+                                <span>{{ individual_form.classification }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Contact Details:</span>
+                                <span>{{ individual_form.mobile_no }}</span>
+                            </div>
+
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Applicant Name:</span>
+                                <span>{{ individual_form.first_name }} {{ individual_form.middle_name }} {{
+                                    individual_form.last_name }}</span>
+                            </div>
+
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Email Address:</span>
+                                <span>{{ individual_form.email_address }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Region:</span>
+                                <span>REGION IV-A (CALABARZON)</span>
+                            </div>
+
+                            <div class="flex">
+                                <span class="w-48 font-semibold">Complete Address:</span>
+                                <span>{{ individual_form.i_complete_address }}</span>
+                            </div>
                         </div>
 
 
@@ -1019,20 +1028,28 @@ onMounted(() => {
             </Fieldset> -->
             <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="overflow-x-auto mt-4">
-                    <table class="min-w-full border border-gray-300 rounded-lg bg-white" style="font-size: 14px;">
+                    <table class="min-w-full border border-gray-300 rounded-lg bg-white" style="font-size: 11px;">
                         <thead class="bg-gray-100">
                             <tr>
                                 <th class="px-4 py-2 border text-left" rowspan="2">#</th>
                                 <th class="px-4 py-2 border text-left" rowspan="2">
-                                    Documentary Requirements
+                                    Requirements
                                 </th>
+                                 <th class="px-4 py-2 border text-left" rowspan="2">
+                                     MOVs to be Produced/ Uploaded
+                                </th>
+                              
                                 <th class="px-4 py-2 border text-left" rowspan="2">File Name</th>
-                                <th class="px-4 py-2 border text-left" rowspan="2">Size</th>
+                                <th class="px-4 py-2 border text-left" rowspan="2">Attachments</th>
+                                <th class="px-4 py-2 border text-left" rowspan="2">Comments</th>
                                 <th class="px-4 py-2 border text-left" rowspan="2">
                                     Uploaded Date
                                 </th>
                                 <th class="px-4 py-2 border text-center" colspan="2">
                                     Compliance
+                                </th>
+                                 <th class="px-4 py-2 border text-left" rowspan="2">
+                                    Assessment
                                 </th>
                             </tr>
 
@@ -1040,6 +1057,7 @@ onMounted(() => {
                                 <th class="px-4 py-2 border text-center">Yes</th>
                                 <th class="px-4 py-2 border text-center">No</th>
                             </tr>
+                           
                         </thead>
 
                         <tbody>
@@ -1047,26 +1065,43 @@ onMounted(() => {
                                 <td class="px-4 py-2 border">{{ index + 1 }}</td>
 
                                 <!-- AUTOMATIC DOCUMENT TITLE -->
-                                <td class="px-4 py-2 border">{{ getDocumentTitle(file.name) }}<br><button
-                                        class="px-3 py-1 rounded bg-blue-600 text-white text-xs"
+                                <td class="px-4 py-2 border">{{ getDocumentTitle(file.name) }}<br>
+                                   </td>
+                                     <td class="px-4 py-2 border">
+                                        <ul>
+                                            <li>Photo of the Applicants Form</li>
+                                        </ul>
+                                        
+                                    </td>
+                                     <td class="px-4 py-2 border">
+                                        <button
+                                        class="px-3 py-1 rounded bg-yellow-500 text-white text-xs"
                                         @click="openFileModal(file)">
-                                        Preview
-                                    </button></td>
+                                        View
+                                    </button>
+                                     </td>
 
                                 <td class="px-4 py-2 border">{{ file.name }}</td>
-                                <td class="px-4 py-2 border">{{ file.size }}</td>
+                                <td class="px-4 py-2 border"><Textarea style="font-size: 11px;"/>    </td>
+
                                 <td class="px-4 py-2 border">{{ file.dateUploaded }}</td>
 
                                 <td class="px-4 py-2 border text-center">
-                                    <Checkbox v-model="is_compliance" inputId="size_large" name="size" value="Large" class="chklist_yes"
-                                        size="large" style="width: 20px !important;height:20px !important;" />
-                                       
+                                    <Checkbox v-model="is_compliance" inputId="size_large" name="size" value="Large"
+                                        class="chklist_yes" size="large"
+                                        style="width: 20px !important;height:20px !important;" />
+
                                 </td>
                                 <td class="px-4 py-2 border text-center">
-                                    <Checkbox v-model="is_not_compliance" inputId="size_large" name="size" value="Large" class="chklist_no"
-                                        size="large" style="width: 20px !important;height:20px !important;" />
-                                   
-                                    </td>
+                                    <Checkbox v-model="is_not_compliance" inputId="size_large" name="size" value="Large"
+                                        class="chklist_no" size="large"
+                                        style="width: 20px !important;height:20px !important;" />
+
+                                </td>
+                                <td>
+                                   <button class="px-3 py-1 text-left rounded bg-red-900 text-white text-xs item-center " > Failed </button>
+
+                                </td>
 
                             </tr>
 
@@ -1105,7 +1140,6 @@ onMounted(() => {
 </template>
 
 <style>
-
 /* HTML: <div class="ribbon">Your text content</div> */
 .ribbon {
     font-size: 19px;

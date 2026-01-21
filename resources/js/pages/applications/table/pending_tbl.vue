@@ -569,9 +569,9 @@ const generatePdf = (data) => {
 
             <Column field="status_title" header="Status" sortable style="min-width: 12rem">
                 <template #body="{ data }">
-                    <div class="flex flex-col items-center">
+                    <div class="flex flex-col ">
                         <Tag :value="data.status_title" :severity="data.application_status >= 17 ? 'danger' : 'success'"
-                            class="text-center mb-2" />
+                            class=" mb-2" stlye="text-align:left !important;" />
 
                         <button v-if="data.status_title === 'Returned to Technical Staff'"
                             class="px-3 py-1 rounded bg-blue-600 text-white text-xs" @click="openCommentModal(data)">
@@ -581,7 +581,6 @@ const generatePdf = (data) => {
                 </template>
             </Column>
 
-            <Column header="Type of Transaction" field="transaction_type" sortable></Column>
             <Column header="Classification" field="classification" sortable></Column>
             <Column field="date_applied" header="Date of Application" sortable style="min-width: 4rem" />
             <Column header="Action" :exportable="false" style="min-width: 10rem">
@@ -634,6 +633,8 @@ const generatePdf = (data) => {
                         <Column field="application_type" header="Application Type" sortable style="min-width: 5rem"
                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }" />
 
+            <Column header="Type of Transaction" field="transaction_type" sortable
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }"/>
 
 
 
