@@ -92,7 +92,7 @@ const filesByTab = ref({
 // ─────────────────────────────────────────────────────────────
 const steps = ref([
     { label: 'Applicant Form', id: 1 },
-    { label: 'Permit to Sell', id: 2 },
+    { label: 'Permit to Sell Chainsaw', id: 2 },
     { label: 'Payment of Application Fee', id: 3 },
     { label: 'Submit and Review', id: 4 },
 ]);

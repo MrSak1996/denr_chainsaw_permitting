@@ -36,9 +36,10 @@ import type { DefineComponent } from 'vue';
 import { createApp, h } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
 import { initializeTheme } from './composables/useAppearance';
+import { lettersOnlyUppercase, lettersNumbersDashUppercase } from './composables/useUppercaseLettersOnly'
 
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'DENR Chainsaw Permitting';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
@@ -49,6 +50,10 @@ createInertiaApp({
         ),
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) });
+
+
+        app.directive('letters-only-uppercase', lettersOnlyUppercase);
+        app.directive('letters-numbers-dash-uppercase', lettersNumbersDashUppercase);
 
         app.use(plugin)
             .use(PrimeVue, {

@@ -140,8 +140,8 @@ export function useAppForm() {
         application_type: 'Company',
         date_applied: new Date().toISOString().slice(0, 10), // auto-set to today
         geo_code: '',
-        type_of_transaction: '',
-        classification: '',
+        type_of_transaction: 'G2B',
+        classification: 'Complex',
         company_name: '',
         company_address: '',
         company_mobile_no:'',
@@ -217,8 +217,8 @@ export function useAppForm() {
         permit_no: '',
         application_type: 'Individual',
         date_applied: new Date().toISOString().slice(0, 10), // auto-set to today
-        type_of_transaction: '',
-        classification: '',
+        type_of_transaction: 'G2C',
+        classification: 'Complex',
         geo_code: '',
         last_name: '',
         first_name: '',

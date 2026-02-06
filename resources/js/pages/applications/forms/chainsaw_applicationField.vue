@@ -30,12 +30,37 @@ const props = defineProps({
 });
 
 const handleFileUpload = (event: Event, field: string) => {
-    const target = event.target as HTMLInputElement;
-    if (target.files && target.files.length > 0) {
-        props.form[field] = target.files[0];
-    }
-};
+    const target = event.target as HTMLInputElement
+    const file = target.files?.[0]
 
+    if (!file) return
+
+    // PDF validation
+    if (
+        file.type !== 'application/pdf' &&
+        !file.name.toLowerCase().endsWith('.pdf')
+    ) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Invalid File Format',
+            detail: 'Only PDF files are allowed.',
+            life: 3000
+        })
+
+        target.value = '' // reset input
+        return
+    }
+
+    props.form[field] = file
+
+    // Optional success message
+    toast.add({
+        severity: 'success',
+        summary: 'File Accepted',
+        detail: 'PDF file uploaded successfully.',
+        life: 3000
+    })
+}
 
 
 
@@ -75,7 +100,7 @@ onMounted(() => {
                         </FloatLabel>
                         <InputError />
                     </div>
-                    <FloatLabel>
+                    <FloatLabel :hidden="true">
                         <InputText id="permit_no" v-model="props.form.permit_no" class="w-full font-bold" />
                         <label for="permit_no">Permit No.</label>
                     </FloatLabel>
@@ -117,7 +142,9 @@ onMounted(() => {
                     <!-- Company Name -->
                     <div class="md:col-span-2">
                         <FloatLabel>
-                            <InputText id="surname" v-model="props.form.company_name" class="w-full" />
+
+                            <InputText id="surname" v-model="props.form.company_name" v-letters-only-uppercase
+                                class="w-full" />
                             <label for="surname">Company / Corporation / Cooperative Name</label>
                         </FloatLabel>
                         <InputError />
@@ -126,13 +153,14 @@ onMounted(() => {
                     <!-- Authorized Representative -->
                     <div class="md:col-span-1">
                         <FloatLabel>
-                            <InputText id="first_name" v-model="props.form.authorized_representative" class="w-full" />
+                            <InputText id="first_name" v-model="props.form.authorized_representative"
+                                v-letters-only-uppercase class="w-full" />
                             <label for="first_name">Name of Authorized Representative</label>
                         </FloatLabel>
                         <InputError />
                     </div>
                 </div>
-                
+
 
 
                 <!-- Additional Fields -->
@@ -142,12 +170,12 @@ onMounted(() => {
                     <div class="flex flex-col md:col-span-2">
                         <label for="requestLetter" class="mb-2 text-sm font-medium text-gray-700"> Upload Application
                             Letter / Request Letter </label>
-
-                        <input id="requestLetter" type="file" accept=".jpg,.jpeg,.pdf"
-                            @change="(e) => handleFileUpload(e, 'request_letter')"
+                        <input type="file" id="requestLetter" accept="application/pdf"
+                            @change="e => handleFileUpload(e, 'request_letter')"
                             class="w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />
+
                     </div>
-                </div> 
+                </div>
 
                 <!-- Soc. Certificate Upload -->
                 <div class="mt-4 grid gap-6 md:grid-cols-1">
@@ -155,11 +183,11 @@ onMounted(() => {
                         <label for="socCertificate" class="mb-2 text-sm font-medium text-gray-700">
                             Upload Soc. Certificate / Business Registration
                         </label>
-                        <input id="socCertificate" type="file" accept=".jpg,.jpeg,.pdf"
-                            @change="(e) => handleFileUpload(e, 'soc_certificate')"
+                        <input id="socCertificate" type="file" accept="application/pdf"
+                            @change="e => handleFileUpload(e, 'soc_certificate')"
                             class="w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50" />
                     </div>
-                </div> 
+                </div>
             </div>
         </Fieldset>
 

@@ -8,6 +8,8 @@ use App\Models\Chainsaw\ChainsawInformation;
 use Illuminate\Support\Facades\Storage;
 use App\Services\GoogleDriveService;
 use App\Models\Application\ChainsawIndividualApplication;
+use App\Models\Chainsaw\ChainsawBrand;
+use App\Models\Chainsaw\ChainsawModels;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -44,32 +46,40 @@ class ChainsawController extends Controller
     const STATUS_RETURN_TO_TECHNICAL_STAFF = 24;
     const CHIEF_RPS = 8;
 
+
     public function insertChainsawInfo(Request $request, GoogleDriveService $driveService)
     {
+        DB::beginTransaction();
+
         try {
-            $application = ChainsawIndividualApplication::where('id', $request->input('id'))->first();
-            if (!$application) {
-                return response()->json(['error' => $request->input('application_no')], 404);
+            $application = ChainsawIndividualApplication::findOrFail($request->id);
+
+            // ✅ 1. Save brands + models
+            $brands = json_decode($request->brands, true);
+
+            if (!is_array($brands)) {
+                return response()->json([
+                    'message' => 'Invalid brands payload'
+                ], 422);
             }
 
-            $application_id = $application->id;
-            $application_no = $application->application_no;
-            $permit_no = $application->permit_no;
+            foreach ($brands as $brandData) {
+                $brand = ChainsawBrand::create([
+                    'application_id' => $application->id,
+                    'brand_name' => $brandData['name'],
+                ]);
 
-            $chainsaw = ChainsawInformation::create([
-                'application_id' => $application_id,
-                'brand' => $request->input('brand'),
-                'model' => $request->input('model'),
-                'engine_serial_no' => $request->input('engine_serial_no'),
-                'quantity' => $request->input('quantity'),
-                'supplier_name' => $request->input('supplier_name'),
-                'supplier_address' => $request->input('supplier_address'),
-                'purpose' => $request->input('purpose'),
-                'permit_validity' => Carbon::parse( $request->permit_validity, 'Asia/Manila' )->format('Y-m-d'),
-                'other_details' => $request->input('other_details'),
-            ]);
+                foreach ($brandData['models'] as $modelData) {
+                    ChainsawModels::create([
+                        'brand_id' => $brand->id,
+                        'model' => $modelData['model'],
+                        'quantity' => $modelData['quantity'],
+                    ]);
+                }
+            }
 
 
+            // ✅ 2. Upload files ONCE
             $filesToUpload = [
                 'mayorDTI' => 'Mayors Permit',
                 'affidavit' => 'Notarized Affidavit',
@@ -77,31 +87,94 @@ class ChainsawController extends Controller
                 'permit' => 'Permit to Sell'
             ];
 
-            $applicantType = $request->input('applicant_type');
-            $folderPath = $applicantType === 'individual'
-                ? "CHAINSAW_PERMITTING/Individual Applications/{$application_no}"
-                : ($applicantType === 'company'
-                    ? "CHAINSAW_PERMITTING/Company Applications/{$application_no}"
-                    : ($applicantType === 'government'
-                        ? "CHAINSAW_PERMITTING/Government Applications/{$application_no}"
-                        : "CHAINSAW_PERMITTING/Other/{$application_no}"
-                    )
-                );
+            $folderPath = match ($request->applicant_type) {
+                'Individual' => "CHAINSAW_PERMITTING/Individual Applications/{$application->application_no}",
+                'Company' => "CHAINSAW_PERMITTING/Company Applications/{$application->application_no}",
+                default => "CHAINSAW_PERMITTING/Other/{$application->application_no}",
+            };
 
-            $result = $driveService->storeAttachments($application_no, $request, $application_id, $folderPath, $filesToUpload);
+            $uploadResult = $driveService->storeAttachments(
+                $application->application_no,
+                $request,
+                $application->id,
+                $folderPath,
+                $filesToUpload
+            );
+
+            DB::commit();
 
             return response()->json([
-                'message' => 'Chainsaw information inserted successfully',
-                'data' => $chainsaw,
-                'google_drive' => $result,
+                'message' => 'Chainsaw application saved successfully',
+                'google_drive' => $uploadResult,
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
             return response()->json([
-                'message' => 'An error occurred while processing your request.',
+                'message' => 'Failed to save chainsaw application',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
+    // public function insertChainsawInfo(Request $request, GoogleDriveService $driveService)
+    // {
+    //     try {
+    //         $application = ChainsawIndividualApplication::where('id', $request->input('id'))->first();
+    //         if (!$application) {
+    //             return response()->json(['error' => $request->input('application_no')], 404);
+    //         }
+
+    //         $application_id = $application->id;
+    //         $application_no = $application->application_no;
+    //         $permit_no = $application->permit_no;
+
+    //         $chainsaw = ChainsawInformation::create([
+    //             'application_id' => $application_id,
+    //             'brand' => $request->input('brand'),
+    //             'model' => $request->input('model'),
+    //             'engine_serial_no' => $request->input('engine_serial_no'),
+    //             'quantity' => $request->input('quantity'),
+    //             'supplier_name' => $request->input('supplier_name'),
+    //             'supplier_address' => $request->input('supplier_address'),
+    //             'purpose' => $request->input('purpose'),
+    //             'permit_validity' => Carbon::parse( $request->permit_validity, 'Asia/Manila' )->format('Y-m-d'),
+    //             'other_details' => $request->input('other_details'),
+    //         ]);
+
+
+    //         $filesToUpload = [
+    //             'mayorDTI' => 'Mayors Permit',
+    //             'affidavit' => 'Notarized Affidavit',
+    //             'otherDocs' => 'Other supporting documents',
+    //             'permit' => 'Permit to Sell'
+    //         ];
+
+    //         $applicantType = $request->input('applicant_type');
+    //         $folderPath = $applicantType === 'individual'
+    //             ? "CHAINSAW_PERMITTING/Individual Applications/{$application_no}"
+    //             : ($applicantType === 'company'
+    //                 ? "CHAINSAW_PERMITTING/Company Applications/{$application_no}"
+    //                 : ($applicantType === 'government'
+    //                     ? "CHAINSAW_PERMITTING/Government Applications/{$application_no}"
+    //                     : "CHAINSAW_PERMITTING/Other/{$application_no}"
+    //                 )
+    //             );
+
+    //         $result = $driveService->storeAttachments($application_no, $request, $application_id, $folderPath, $filesToUpload);
+
+    //         return response()->json([
+    //             'message' => 'Chainsaw information inserted successfully',
+    //             'data' => $chainsaw,
+    //             'google_drive' => $result,
+    //         ], 201);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'message' => 'An error occurred while processing your request.',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
 
     public function updateApplicantDetails(Request $request, $id)
     {
@@ -209,7 +282,7 @@ class ChainsawController extends Controller
 
             $penroChief = DB::table('users')
                 ->where('office_id', $user->office_id)
-                ->where('role_id',8)
+                ->where('role_id', 8)
                 ->first();
 
             if (!$penroChief) {

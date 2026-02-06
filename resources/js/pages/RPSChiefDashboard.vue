@@ -3,9 +3,10 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import PendingTable from './applications/table/rpschief_tbl.vue';
- import { useOfficeTitle } from '@/composables/useOfficeTitle';
-const { officeTitle } = useOfficeTitle();
+import { useOfficeTitle } from '@/composables/useOfficeTitle';
 
+
+const { officeTitle } = useOfficeTitle();
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'RPS Chief Dashboard',

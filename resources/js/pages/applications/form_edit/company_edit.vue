@@ -96,7 +96,7 @@ const isStepValid = (stepId) => {
 // ─────────────────────────────────────────────────────────────
 const steps = ref([
     { label: 'Applicant Form', id: 1 },
-    { label: 'Permit to Sell', id: 2 },
+    { label: 'Permit to Sell Chainsaw', id: 2 },
     { label: 'Payment of Application Fee', id: 3 },
     { label: 'Submit and Review', id: 4 },
 ]);
@@ -677,7 +677,7 @@ onMounted(() => {
                 @click="handleStepClick(step.id)">
                 <div :class="[
                     'mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white',
-                    currentStep === step.id ? 'bg-green-600' : 'bg-gray-300',
+                    currentStep === step.id ? 'bg-green-900' : 'bg-gray-300',
                 ]">
                     {{ step.id }}
                 </div>
@@ -864,6 +864,7 @@ onMounted(() => {
 
                         </div>
                     </div>
+                    
                     <div class="md:col-span-3">
                         <Fieldset legend="Uploaded Requirements" :toggleable="true">
                             <div class="container">

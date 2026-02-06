@@ -10,14 +10,29 @@ import InputError from '@/components/InputError.vue'
 import axios from 'axios'
 import { usePage  } from '@inertiajs/vue3';
 
-
+// ------------------------------
+// Props
+// ------------------------------
 const props = defineProps<{
-    form: Object,
-    city_mun: any,
-    insertFormData: Function,
-    getProvinceCode: Function,
-    prov_name: Array
+  form: any,
+//   app_data: any, // this will be your fetched application data
+  city_mun: any,
+  insertFormData: Function,
+  getProvinceCode: Function,
+  prov_name: Array
 }>()
+
+const formData = computed(() => props.form)
+// const applicationData = computed(() => props.app_data) 
+
+// ------------------------------
+// Reactive references
+// ------------------------------
+
+const city_mun_opts = ref<any[]>([])
+const barangay_opts = ref<any[]>([])
+const PREFIX = "DENR-IV-A-"
+
 
 const page = usePage();
 
@@ -40,37 +55,32 @@ const govIdOptions = [
     { label: "OWWA / iDOLE Card", value: "owwa_idole" },
 ];
 
-// Detect edit mode
-const getApplicationIdFromUrl = () => {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('application_id') || params.get('id')
-}
-const application_id = getApplicationIdFromUrl()
+// ------------------------------
 
-// Main source of data (form or app_data)
-const formData = computed(() => props.form)
-///how can i add application data in this if else
-
-// Dropdown options
-const city_mun_opts = ref([])
-const barangay_opts = ref([])
-const PREFIX = "DENR-IV-A-";
-
+// ------------------------------
+// Computed: formatted application number
+// ------------------------------
 const applicationNo = computed({
     get: () => formData.value.permit_no ?? PREFIX,
     set: (value: string) => {
-        if (!value.startsWith(PREFIX)) {
-            value = PREFIX + value.replace(PREFIX, "");
-        }
-        formData.value.permit_no = value;
-    },
-});
+        if (!value.startsWith(PREFIX)) value = PREFIX + value.replace(PREFIX, "")
+        formData.value.permit_no = value
+    }
+})
+
 
 
 // ------------------------------
 // Load initial values for EDIT MODE
 // ------------------------------
+// ------------------------------
+// Load initial dropdowns on mount
+// ------------------------------
 onMounted(async () => {
+    const provinceId = Number(formData.value.i_province)
+    const cityId = Number(formData.value.i_city_mun)
+    console.log(props.app_data.application_type);
+
 
     // Load municipality list if province exists
     if (formData.value.i_province) {
@@ -181,7 +191,9 @@ watch(() => formData.value.i_city_mun, (val) => {
 
 
 
+
 <template>
+    <div>
     <Fieldset legend="Chainsaw Application">    
         <div class="relative">
             <div class="ribbon">
@@ -227,17 +239,17 @@ watch(() => formData.value.i_city_mun, (val) => {
             <!-- NAME FIELDS -->
             <div class="grid gap-6 md:grid-cols-3">
                 <FloatLabel>
-                    <InputText id="surname" v-model="formData.last_name" class="w-full" />
+                    <InputText id="surname" v-model="formData.last_name" v-letters-only-uppercase class="w-full" />
                     <label for="surname">Last Name</label>
                 </FloatLabel>
 
                 <FloatLabel>
-                    <InputText id="first_name" v-model="formData.first_name" class="w-full" />
+                    <InputText id="first_name" v-model="formData.first_name" v-letters-only-uppercase class="w-full" />
                     <label for="first_name">First Name</label>
                 </FloatLabel>
 
                 <FloatLabel>
-                    <InputText id="middlename" v-model="formData.middle_name" class="w-full" />
+                    <InputText id="middlename" v-model="formData.middle_name" v-letters-only-uppercase class="w-full" />
                     <label for="middlename">Middle Name</label>
                 </FloatLabel>
 
@@ -245,7 +257,7 @@ watch(() => formData.value.i_city_mun, (val) => {
                     <Select id="sex" v-model="formData.sex" :options="[
                         { label: 'Male', value: 'male' },
                         { label: 'Female', value: 'female' },
-                        { label: 'Prefer not to say', value: 'prefer_not_to_say' }
+                        { label: 'Prefer not to say', value: 'prefer_not_to_say' }  
                     ]" optionLabel="label" optionValue="value" class="w-full" />
                     <label for="sex">Sex</label>
                 </FloatLabel>
@@ -324,7 +336,7 @@ watch(() => formData.value.i_city_mun, (val) => {
                 <label for="address" class="mb-1 block text-sm font-medium text-gray-700">
                     Complete Address
                 </label>
-                <Textarea id="address" rows="6" v-model="formData.i_complete_address"
+                <Textarea id="address" rows="6" v-model="formData.i_complete_address" 
                     placeholder="Complete Address (Street, Purok, etc.)"
                     class="w-[73rem] rounded-md border border-gray-300 p-2 text-sm" >
                     {{ formData.i_complete_address }}
@@ -332,4 +344,5 @@ watch(() => formData.value.i_city_mun, (val) => {
             </div>
         </div>
     </Fieldset>
+    </div>
 </template>
