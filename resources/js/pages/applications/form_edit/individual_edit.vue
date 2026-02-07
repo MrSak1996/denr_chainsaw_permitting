@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import InputError from '@/components/InputError.vue';
 import Fieldset from 'primevue/fieldset';
-import { LoaderCircle, ShieldAlert } from 'lucide-vue-next';
+import { LoaderCircle, ShieldAlert, Trash2, CirclePlus, MonitorUp } from 'lucide-vue-next';
 import Chainsaw_operationField from './chainsaw_operationField.vue';
 import chainsaw_individualInfoField from '../forms/chainsaw_individualInfoField.vue';
 import FileCard from '../forms/file_card.vue';
@@ -56,17 +56,38 @@ const showModal = ref(false);
 const selectedFileToUpdate = ref(null)
 const updateFileInput = ref(null)
 
-const brand = ref('')
-const models = ref([
-    { model: '' }
+const brands = ref([
+    {
+        name: '',
+        models: [{ model: '', quantity: 1 }]
+    }
 ])
 
-const addRow = () => {
-    models.value.push({ model: '' })
+
+// BRAND ACTIONS
+const addBrand = () => {
+    brands.value.push({
+        name: '',
+        models: [{ model: '', quantity: 1 }]
+    })
 }
 
-const removeRow = (index) => {
-    models.value.splice(index, 1)
+const removeBrand = (index: number) => {
+    if (brands.value.length > 1) {
+        brands.value.splice(index, 1)
+    }
+}
+
+// MODEL ACTIONS
+const addModel = (brandIndex: number) => {
+    brands.value[brandIndex].models.push({ model: '', quantity: 1 })
+}
+
+const removeModel = (brandIndex: number, modelIndex: number) => {
+    const models = brands.value[brandIndex].models
+    if (models.length > 1) {
+        models.splice(modelIndex, 1)
+    }
 }
 
 // Laravel-ready payload
@@ -445,6 +466,8 @@ const getDocumentaryRequirements = async () => {
                 icon: 'png',
                 thumbnail: null,
                 url: file.file_url,
+                isPassed: null, // null = not selected, true = pass, false = fail
+
             }));
         } else {
             console.log('No files');
@@ -453,6 +476,24 @@ const getDocumentaryRequirements = async () => {
         console.error('Failed to fetch files:', error);
     }
 };
+const loadBrands = async () => {
+    const applicationId = page.props.application.id;
+    if (!applicationId) {
+        errorMessage.value = 'No application ID found in the query.';
+        isLoading.value = false;
+        return;
+    }
+
+    const res = await axios.get(
+        `http://192.168.2.106:8000/api/chainsaw/${applicationId}/brands`
+    )
+
+    // If data exists, overwrite
+    if (res.data.length) {
+        brands.value = res.data
+    }
+}
+
 const getApplicantFile = async (id) => {
     try {
         const response = await axios.get(
@@ -586,13 +627,23 @@ const getFileType = (fileName?: string) => {
     if (!fileName) return '';
     return fileName.split('.').pop()?.toLowerCase() ?? '';
 };
+const isPassed = ref(null); // null = not selected, true = pass, false = fail
 
+const setStatus = (status) => {
+    if (status === 'pass') {
+        isPassed.value = true;
+    } else if (status === 'fail') {
+        isPassed.value = false;
+    }
+    console.log('Selected status:', isPassed.value ? 'Pass' : 'Failed');
+};
 onMounted(() => {
     if (props.mode === 'view') {
         currentStep.value = 4;
     }
     getProvinceCode();
     getApplicantFile(page.props.application.id);
+    loadBrands();
     getDocumentaryRequirements()
 });
 </script>
@@ -624,207 +675,244 @@ onMounted(() => {
 
 
         <div v-if="currentStep === 1" class="space-y-4">
+
             <chainsaw_individualInfoField :form="individual_form" :insertFormData="insertFormData"
                 :getProvinceCode="getProvinceCode" :city_mun="i_city_mun" :prov_name="prov_name" />
         </div>
 
         <div v-if="currentStep === 2" class="space-y-4">
             <Fieldset legend="Chainsaw Information">
-                <div class="relative">
+                <div class="relative space-y-6">
                     <div class="ribbon">
-                        {{ page.props.application.status_title || 'DRAFT' }}
-                    </div>
-                    <div v-for="(chainsaw, index) in chainsaws" :key="index" class="p-4 rounded-lg mb-6 relative">
-                        <!-- Remove Button -->
-                        <button v-if="index > 0" @click="chainsaws.splice(index, 1)"
-                            class="absolute top-2 right-2 text-red-600 hover:text-red-800">
-                            ✕
-                        </button>
+                        {{ chainsaw_form.status_title || "DRAFT" }}
 
-                        <!-- COPY ALL FROM FIRST -->
-                        <div v-if="index > 0" class="mb-4 flex items-center gap-2 text-sm text-gray-600">
-                            <input type="checkbox" v-model="chainsaw_form.copyAll" @change="copyAllFields(index)" />
-                            <label>Same details as first chainsaw</label>
+                    </div>
+                    <!-- ALERT -->
+                    <div class="flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700 shadow-sm">
+                        <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
+                        <span>
+                            Please complete all fields to proceed with your application for a Permit to Purchase
+                            Chainsaw.
+                        </span>
+                    </div>
+
+                    <!-- BRANDS -->
+                    <div class="space-y-6">
+
+                        <div v-for="(brand, bIndex) in brands" :key="bIndex"
+                            class="bg-white border rounded-lg shadow-sm p-5 space-y-4">
+                            <!-- BRAND HEADER -->
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <FloatLabel class="flex-1">
+                                    <InputText v-model="brand.name" v-letters-numbers-dash-uppercase class="w-full" />
+                                    <label>Brand Name</label>
+                                </FloatLabel>
+
+                                <Button icon="pi pi-times" severity="danger" text
+                                    class="bg-red-900 hover:bg-red-700 self-start" @click="removeBrand(bIndex)"
+                                    v-if="brands.length > 1">
+                                    <Trash2 :size="15" />
+                                </Button>
+                            </div>
+
+                            <!-- MODELS TABLE -->
+                            <DataTable :value="brand.models" responsiveLayout="scroll"
+                                class="border rounded-lg overflow-hidden">
+                                <Column header="Model"
+                                    :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                                    <template #body="{ data }">
+                                        <InputText v-model="data.model" v-letters-numbers-dash-uppercase
+                                            placeholder="Enter model" class="w-full" />
+                                    </template>
+                                </Column>
+
+                                <Column header="Quantity" style="width: 150px"
+                                    :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                                    <template #body="{ data }">
+                                        <InputNumber v-model="data.quantity" :min="1" class="w-full" />
+                                    </template>
+                                </Column>
+
+                                <Column header="Actions" style="width: 120px"
+                                    :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                                    <template #body="{ index }">
+                                        <div class="flex gap-2 justify-center">
+                                            <Button icon="pi pi-plus" severity="success" text @click="addModel(bIndex)"
+                                                class="bg-green-900 hover:bg-green-700">
+                                                <CirclePlus :size="15" />
+                                            </Button>
+                                            <Button icon="pi pi-times" severity="danger" text
+                                                @click="removeModel(bIndex, index)" v-if="brand.models.length > 1"
+                                                class="bg-red-900 hover:bg-red-700">
+                                                <Trash2 :size="15" />
+                                            </Button>
+                                        </div>
+                                    </template>
+                                </Column>
+                            </DataTable>
                         </div>
 
-                        <!-- FORM CONTENT -->
-                        <div class="mb-6 grid gap-6 md:grid-cols-3">
-                            <FloatLabel>
-                                <InputText v-model="chainsaw_form.application_no" class="w-full font-bold" disabled />
-                                <label>Application No.</label>
-                            </FloatLabel>
-                            <div>
-                                <FloatLabel>
-                                    <InputText :disabled="true" v-model="chainsaw_form.permit_no"
-                                        class="w-full font-bold" />
-                                    <label>Permit No.</label>
-                                </FloatLabel>
-                            </div>
+                        <!-- ADD BRAND BUTTON -->
+                        <div class="flex justify-end">
+                            <Button icon="pi pi-plus" label="Add Brand" class="bg-green-900 hover:bg-green-700"
+                                @click="addBrand">
+                                <CirclePlus :size="15" />
+                            </Button>
+                        </div>
+                    </div>
 
-                            <div></div>
+                    <!-- SUPPLIER & PURPOSE -->
+                    <div class="border-t pt-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Supplier Information</h3>
 
-                            <div>
-                                <FloatLabel>
-                                    <InputText v-model="chainsaw_form.quantity" type="number" class="w-full" />
-                                    <label>Quantity</label>
-                                </FloatLabel>
-                            </div>
-
-                            <div>
-                                <FloatLabel>
-                                    <InputText v-model="chainsaw_form.brand" class="w-full" />
-                                    <label>Brand</label>
-                                </FloatLabel>
-                            </div>
-
-                            <div>
-                                <FloatLabel>
-                                    <InputText v-model="chainsaw_form.model" class="w-full" />
-                                    <label>Model</label>
-                                </FloatLabel>
-                            </div>
-
-
-                            <div class="grid grid-cols-1 gap-4 md:col-span-3 md:grid-cols-2">
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <!-- Left Column: Data Capture -->
+                            <div class="flex-1">
                                 <!-- Supplier Name -->
-                                <FloatLabel>
-                                    <InputText v-model="chainsaw_form.supplier_name" class="w-full" />
-                                    <label>Supplier Name</label>
-                                </FloatLabel>
-
-                                <!-- Engine Serial No -->
-                                <FloatLabel>
-                                    <InputText v-model="chainsaw_form.engine_serial_no" class="w-full" />
-                                    <label>Engine Serial No</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="md:col-span-3">
-                                <Textarea v-model="chainsaw_form.supplier_address" rows="6"
-                                    placeholder="Complete Address"
-                                    class="w-full rounded-md border border-gray-300 p-2 text-sm" />
-                            </div>
-
-                            <div class="space-y-4 md:col-span-3">
-                                <FloatLabel>
-                                    <Select v-model="chainsaw_form.purpose" :options="purposeOptions" class="w-full" />
-                                    <label>Purpose of Purchase</label>
-                                </FloatLabel>
-
-                                <!-- Conditional Uploads -->
-                                <!-- <div v-if="
-                                        page.props.application.purpose === 'For selling / re-selling' ||
-                                        page.props.application.purpose === 'Forestry/landscaping service provider'
-                                    ">
-                                        <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI
-                                            Registration</label>
-                                        <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                            @change="(e) => (chainsaws[index].mayorDTI = e.target.files[0])" />
-                                    </div>
-
-                                    <div v-if="page.props.application.purpose === 'Other Legal Purpose'">
-                                        <label class="text-sm font-medium text-gray-700">Upload Notarized
-                                            Affidavit</label>
-                                        <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                            @change="(e) => (chainsaws[index].affidavit = e.target.files[0])" />
-                                    </div>
-
-                                    <div v-if="page.props.application.purpose === 'Other Supporting Documents'">
-                                        <label class="text-sm font-medium text-gray-700">Upload Supporting
-                                            Document</label>
-                                        <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                            class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                            @change="(e) => (chainsaws[index].otherDocs = e.target.files[0])" />
-                                    </div> -->
-                            </div>
-
-                            <div class="md:col-span-3">
-                                <FloatLabel>
-                                    <InputText v-model="chainsaw_form.other_details" class="w-full" />
-                                    <label>Other Details</label>
-                                </FloatLabel>
-                            </div>
-                            <div class="grid gap-6 md:col-span-3 md:grid-cols-2">
-                                <!-- Permit Number -->
-                                <!-- <div>
+                                <div class="mt-4">
                                     <FloatLabel>
-                                        <InputText v-model="chainsaw.permit_chainsaw_no" class="w-full" />
-                                        <label>Permit to Sell / Re-Sell Chainsaw No.</label>
-                                    </FloatLabel>
-                                </div> -->
-
-                                <!-- Permit Validity -->
-                                <div>
-                                    <FloatLabel>
-                                        <InputText v-model="chainsaw_form.permit_chainsaw_no" class="w-full" />
-                                        <label>Permit to Sell No.</label>
+                                        <InputText v-model="chainsaw_form.supplier_name"
+                                            v-letters-numbers-dash-uppercase class="w-full" />
+                                        <label>Supplier Name</label>
                                     </FloatLabel>
                                 </div>
-                                <div>
+
+                                <!-- Supplier Address -->
+                                <div class="mt-4">
+                                    <label class="text-sm font-medium text-gray-700 mb-1 block">Supplier Address</label>
+                                    <Textarea v-model="chainsaw_form.supplier_address" v-letters-only-uppercase rows="3"
+                                        class="w-full" />
+                                </div>
+
+                                <!-- Purpose -->
+                                <div class="mt-4">
                                     <FloatLabel>
-                                        <DatePicker type="date" id="permit_validity"
-                                            v-model="chainsaw_form.permit_validity" class="w-full" />
+                                        <Select v-model="chainsaw_form.purpose" :options="purposeOptions"
+                                            class="w-full" />
+                                        <label>Purpose of Purchase</label>
+                                    </FloatLabel>
+                                </div>
+
+                                <!-- Permit Validity -->
+                                <div class="mt-6">
+                                    <FloatLabel>
+                                        <DatePicker v-model="chainsaw_form.permit_validity" class="w-full" />
                                         <label>Permit Validity</label>
                                     </FloatLabel>
                                 </div>
+
+                                <!-- Other Details -->
+                                <div class="mt-6">
+                                    <FloatLabel>
+                                        <InputText v-model="chainsaw_form.other_details" class="w-full" />
+                                        <label>Other Details</label>
+                                    </FloatLabel>
+                                </div>
                             </div>
-                            <!-- 
-                                <div class="md:col-span-3">
-                                    <label class="text-sm font-medium text-gray-700">Upload Permit (JPG/PDF)</label>
 
-                                    <input type="file" accept=".jpg,.jpeg,.pdf,.docx,.png"
-                                        class="mt-1 w-full cursor-pointer rounded-lg border border-dashed border-gray-400 bg-white p-3 text-sm text-gray-700 file:mr-4 file:rounded file:border-0 file:bg-blue-100 file:px-4 file:py-2 file:text-blue-700 hover:bg-gray-50"
-                                        @change="(e) => (chainsaws[index].permit = e.target.files[0])" />
-                                </div> -->
 
+                            <!-- Right Column: File Uploads -->
+                            <div class="flex-1 space-y-4">
+                                <div
+                                    v-if="['For selling / re-selling', 'Forestry/landscaping service provider'].includes(chainsaw_form.purpose)">
+                                    <label class="text-sm font-medium text-gray-700">Upload Mayor's Permit & DTI
+                                        Registration</label>
+                                    <div
+                                        class="mt-1 w-full h-[330px] border-4 border-dashed border-blue-400 rounded-xl bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition relative">
+                                        <MonitorUp :size="64" class="h-12 w-12 text-blue-400 mb-4" />
+
+                                        <p class="text-center text-gray-700 text-sm mb-2">
+                                            Drag & drop files here or click to upload
+                                        </p>
+                                        <p class="text-center text-gray-400 text-xs">
+                                            Allowed: PDF only, max 5 MB
+                                        </p>
+                                        <input type="file" accept="application/pdf"
+                                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            @change="(e) => handleApplicationFileUpload(e, 'mayorDTI')" />
+
+                                    </div>
+                                </div>
+
+
+                                <div v-else-if="['Other Legal Purpose'].includes(chainsaw_form.purpose)">
+                                    <label class="text-sm font-medium text-gray-700">Upload Notarized Affidavit</label>
+                                    <div
+                                        class="mt-1 w-full h-[330px] border-4 border-dashed border-blue-400  rounded-xl bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition relative">
+                                        <!-- Upload Icon -->
+                                        <MonitorUp :size="64" class="h-12 w-12 text-blue-400 mb-4" />
+
+                                        <!-- Instructions -->
+                                        <p class="text-center text-gray-700 text-sm mb-2">
+                                            Drag & drop notarized affidavit here or click to upload
+                                        </p>
+                                        <p class="text-center text-gray-400 text-xs">
+                                            Allowed: PDF only, max 5 MB
+
+                                        </p>
+
+                                        <!-- Hidden Input -->
+
+                                        <input type="file" accept="application/pdf"
+                                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            @change="(e) => handleApplicationFileUpload(e, 'affidavit')" />
+
+
+                                    </div>
+
+                                </div>
+
+                                <div v-else-if="['Other Supporting Documents'].includes(chainsaw_form.purpose)">
+                                    <label class="text-sm font-medium text-gray-700">Upload Supporting Documents</label>
+
+                                    <div
+                                        class="mt-1 w-full h-[330px] border-4 border-dashed border-blue-400  rounded-xl bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition relative">
+                                        <!-- Upload Icon -->
+                                        <MonitorUp :size="64" class="h-12 w-12 text-blue-400 mb-4" />
+
+
+                                        <!-- Instructions -->
+                                        <p class="text-center text-gray-700 text-sm mb-2">
+                                            Drag & drop supporting document here or click to upload
+                                        </p>
+                                        <p class="text-center text-gray-400 text-xs">
+                                            Allowed: PDF only, max 5 MB
+
+                                        </p>
+
+                                        <!-- Hidden File Input -->
+
+
+                                        <input type="file" accept="application/pdf"
+                                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            @change="(e) => handleApplicationFileUpload(e, 'permit')" />
+
+
+
+                                    </div>
+
+                                </div>
+
+                                <div v-else
+                                    class=" w-full flex items-center justify-center p-4 border-2 border-gray-300 rounded-xl bg-gray-50 text-gray-600 h-[380px] space-x-2">
+                                    <!-- Info Icon -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                                    </svg>
+
+                                    <!-- Message -->
+                                    <span class="text-sm font-medium">
+                                        No additional documents are required for this purpose.
+                                    </span>
+                                </div>
+
+                            </div>
                         </div>
                     </div>
-                    <!-- <div class="flex justify-end">
-                        <button type="button" @click="addChainsaw"
-                            class="mt-4 inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
-                            <span class="text-xl">＋</span> Add Another Chainsaw
-                        </button>
-                    </div> -->
+
                 </div>
-                <div class="table-container">
-                    <table class="chainsaw-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 40%">Brand</th>
-                                <th style="width: 50%">Model</th>
-                                <th style="width: 10%">Action</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <tr v-for="(row, index) in models" :key="index">
-                                <!-- Brand (only first row) -->
-                                <td>
-                                    <input v-if="index === 0" v-model="brand" type="text" placeholder="Enter brand"
-                                        class="input" />
-                                </td>
-
-                                <!-- Model -->
-                                <td>
-                                    <input v-model="row.model" type="text" placeholder="Enter model" class="input" />
-                                </td>
-
-                                <!-- Actions -->
-                                <td class="actions">
-                                    <button v-if="index === models.length - 1" @click="addRow" class="btn add">
-                                        ＋
-                                    </button>
-
-                                    <button v-if="models.length > 1" @click="removeRow(index)" class="btn remove">
-                                        ✕
-                                    </button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
             </Fieldset>
         </div>
 
@@ -893,171 +981,163 @@ onMounted(() => {
                 <!-- <h1 class="font-xl">Below is the checklist of requirements currently pending approval.</h1> -->
                 <div class="relative">
                     <div class="ribbon">
-                        {{ individual_form.status_title ?? "DRAFT" }}
+                        {{ individual_form.status_title ?? 'DRAFT' }}
                     </div>
-
-                    <div class="grid grid-cols-3 gap-x-12 gap-y-4 text-sm text-gray-800">
-                        <!-- Row 1 -->
+                    <div class="mb-6 flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700">
+                        <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
+                        <span> Please complete all fields to proceed with your application for a Permit to Purchase
+                            Chainsaw. </span>
+                    </div>
+                    <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
                         <div class="flex">
-                            <span class="w-32 font-bold">Application No:</span>
-                            <Tag :value="individual_form.application_no" severity="success"
-                                class="text-center font-extrabold" />
+                            <span class="w-48 font-semibold">Application No:</span>
+                            <Tag :value="individual_form.application_no" severity="success" class="text-center" />
                         </div>
 
                         <div class="flex">
-                            <span class="w-32 font-bold">Permit No:</span>
-                            <Tag :value="individual_form.permit_no" severity="danger"
-                                class="text-center font-extrabold" />
-                        </div>
-
-                        <div class="flex">
-                                        <DynamicFormLabel>Username</DynamicFormLabel>
-
-                            <span class="w-24 font-semibold">Date Applied:</span>
+                            <span class="w-48 font-semibold">Date Applied:</span>
                             <span>{{ individual_form.date_applied }}</span>
                         </div>
-                    </div>
-                    <div class="relative">
-                        <div class="grid grid-cols-3 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
 
-
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Type of Transaction:</span>
-                                <span>{{ individual_form.type_of_transaction }}</span>
-                            </div>
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Classification:</span>
-                                <span>{{ individual_form.classification }}</span>
-                            </div>
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Contact Details:</span>
-                                <span>{{ individual_form.mobile_no }}</span>
-                            </div>
-
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Applicant Name:</span>
-                                <span>{{ individual_form.first_name }} {{ individual_form.middle_name }} {{
-                                    individual_form.last_name }}</span>
-                            </div>
-
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Email Address:</span>
-                                <span>{{ individual_form.email_address }}</span>
-                            </div>
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Region:</span>
-                                <span>REGION IV-A (CALABARZON)</span>
-                            </div>
-
-                            <div class="flex">
-                                <span class="w-48 font-semibold">Complete Address:</span>
-                                <span>{{ individual_form.i_complete_address }}</span>
-                            </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Type of Transaction:</span>
+                            <span>{{ individual_form.type_of_transaction }}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Classification:</span>
+                            <span>{{ individual_form.classification }}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Contact Details:</span>
+                            <span>{{ individual_form.mobile_no }}</span>
                         </div>
 
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Applicant Name:</span>
+                            <span>{{ individual_form.first_name }} {{ individual_form.middle_name }} {{
+                                individual_form.last_name }}</span>
+                        </div>
 
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Email Address:</span>
+                            <span>{{ individual_form.email_address }}</span>
+                        </div>
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Region:</span>
+                            <span>REGION IV-A (CALABARZON)</span>
+                        </div>
+                        <!-- <div class="flex">
+                        <span class="w-48 font-semibold">Province:</span>
+                        <span>{{ applicationData.prov_name }}</span>
+                    </div>
+                    <div class="flex">
+                        <span class="w-48 font-semibold">Municipality:</span>
+                        <span>Lipa City</span>
+                    </div>
+                    <div class="flex">
+                        <span class="w-48 font-semibold">Barangay:</span>
+                        <span>Barangay 1</span>
+                    </div> -->
+                        <div class="flex">
+                            <span class="w-48 font-semibold">Complete Address:</span>
+                            <span>{{ applicationData.applicant_complete_address }}</span>
+                        </div>
                     </div>
                 </div>
             </Fieldset>
+
             <Fieldset legend="Chainsaw Information" :toggleable="true">
                 <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Permit No:</span>
-                        <Tag :value="chainsaw_form.permit_no" severity="success" class="text-center" /><br />
-                    </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Validity:</span>
-                        <Tag :value="chainsaw_form.permit_validity" severity="danger" class="text-center" /><br />
+                        <Tag :value="chainsaw_form.permit_validity" severity="danger" />
                     </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Brand:</span>
-                        <span>{{ chainsaw_form.brand }}</span>
-                    </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Model:</span>
-                        <span>{{ chainsaw_form.model }}</span>
-                    </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Quantity:</span>
-                        <span>{{ chainsaw_form.quantity }}</span>
-                    </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Supplier Name:</span>
                         <span>{{ chainsaw_form.supplier_name }}</span>
                     </div>
-                    <!-- <div class="flex">
-                        <span class="w-48 font-semibold">Supplier Address:</span>
-                        <span>123 Supplier St., Calabarzon</span>
-                    </div> -->
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Purpose of Purchase:</span>
                         <span>{{ chainsaw_form.purpose }}</span>
                     </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Other Details:</span>
                         <span>{{ chainsaw_form.other_details }}</span>
                     </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Official Receipt:</span>
-                        <Tag :value="chainsaw_form.official_receipt" severity="success" class="text-center" /><br />
+                        <Tag :value="chainsaw_form.official_receipt" severity="success" />
                     </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Fee:</span>
-                        <span>₱ {{ chainsaw_form.permit_fee }}</span>
+                        <span>₱ {{ chainsaw_form.permit_fee }}.00</span>
                     </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Remarks:</span>
-                        <span>{{ chainsaw_form.remarks }}</span>
+
+                    <!-- ✅ Brands & Models -->
+                    <div class="md:col-span-2">
+                        <span class="block mb-2 font-semibold">Chainsaw Details:</span>
+
+                        <div v-for="(brand, bIndex) in brands" :key="bIndex"
+                            class="mb-4 rounded-lg border bg-gray-50 p-4">
+                            <div class="mb-2">
+                                <span class="font-semibold">Brand:</span>
+                                <span class="ml-2">{{ brand.name }}</span>
+                            </div>
+
+                            <table class="w-full text-sm border">
+                                <thead class="bg-blue-900 text-white">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Model</th>
+                                        <th class="px-3 py-2 text-center w-32">Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(model, mIndex) in brand.models" :key="mIndex">
+                                        <td class="px-3 py-2">{{ model.model }}</td>
+                                        <td class="px-3 py-2 text-center">{{ model.quantity }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
+
                 </div>
             </Fieldset>
-            <!-- <Fieldset legend="Uploaded Files" :toggleable="true">
-                <div class="container">
-                    <div class="file-list">
-                        <FileCard v-for="file in filesByTab[0]" :key="index" :file="file" @openPreview="openFileModal"
-                            @updateFile="triggerUpdateFile" />
-                        <input type="file" ref="updateFileInput" class="hidden" @change="handleFileUpdate" />
 
-                    </div>
-                </div>
-
-                <Dialog v-model:visible="showModal" modal header="File Preview" :style="{ width: '70vw' }">
-                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
-                        allow="autoplay"></iframe>
-                </Dialog>
-            </Fieldset> -->
             <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="overflow-x-auto mt-4">
-                    <table class="min-w-full border border-gray-300 rounded-lg bg-white" style="font-size: 11px;">
+                    <table class="min-w-full border border-gray-300 rounded-lg bg-white">
                         <thead class="bg-gray-100">
                             <tr>
                                 <th class="px-4 py-2 border text-left" rowspan="2">#</th>
                                 <th class="px-4 py-2 border text-left" rowspan="2">
                                     Requirements
                                 </th>
-                                 <th class="px-4 py-2 border text-left" rowspan="2">
-                                     MOVs to be Produced/ Uploaded
+                                <th class="px-4 py-2 border text-left" rowspan="2">
+                                    MOVs to be
+                                    Produced/ Uploaded
                                 </th>
-                              
+
+
                                 <th class="px-4 py-2 border text-left" rowspan="2">File Name</th>
-                                <th class="px-4 py-2 border text-left" rowspan="2">Attachments</th>
                                 <th class="px-4 py-2 border text-left" rowspan="2">Comments</th>
                                 <th class="px-4 py-2 border text-left" rowspan="2">
                                     Uploaded Date
                                 </th>
-                                <th class="px-4 py-2 border text-center" colspan="2">
-                                    Compliance
-                                </th>
-                                 <th class="px-4 py-2 border text-left" rowspan="2">
+                              
+                                <th class="px-4 py-2 border text-left" rowspan="2">
                                     Assessment
                                 </th>
                             </tr>
 
-                            <tr>
-                                <th class="px-4 py-2 border text-center">Yes</th>
-                                <th class="px-4 py-2 border text-center">No</th>
-                            </tr>
-                           
+                         
+
                         </thead>
 
                         <tbody>
@@ -1066,42 +1146,47 @@ onMounted(() => {
 
                                 <!-- AUTOMATIC DOCUMENT TITLE -->
                                 <td class="px-4 py-2 border">{{ getDocumentTitle(file.name) }}<br>
-                                   </td>
-                                     <td class="px-4 py-2 border">
-                                        <ul>
-                                            <li>Photo of the Applicants Form</li>
-                                        </ul>
-                                        
-                                    </td>
-                                     <td class="px-4 py-2 border">
-                                        <button
-                                        class="px-3 py-1 rounded bg-yellow-500 text-white text-xs"
+                                </td>
+
+                                <td class="px-4 py-2 border">
+                                    <button class="px-3 py-1 rounded bg-yellow-500 text-white text-xs"
                                         @click="openFileModal(file)">
                                         View
                                     </button>
-                                     </td>
-
+                                </td>
                                 <td class="px-4 py-2 border">{{ file.name }}</td>
-                                <td class="px-4 py-2 border"><Textarea style="font-size: 11px;"/>    </td>
+
+                                <td class="px-2 py-2 border"><Textarea style="font-size: 11px;resize: none;" rows="9"
+                                        cols="50" /> </td>
 
                                 <td class="px-4 py-2 border">{{ file.dateUploaded }}</td>
 
-                                <td class="px-4 py-2 border text-center">
-                                    <Checkbox v-model="is_compliance" inputId="size_large" name="size" value="Large"
-                                        class="chklist_yes" size="large"
-                                        style="width: 20px !important;height:20px !important;" />
-
-                                </td>
-                                <td class="px-4 py-2 border text-center">
-                                    <Checkbox v-model="is_not_compliance" inputId="size_large" name="size" value="Large"
-                                        class="chklist_no" size="large"
-                                        style="width: 20px !important;height:20px !important;" />
-
-                                </td>
+                              
                                 <td>
-                                   <button class="px-3 py-1 text-left rounded bg-red-900 text-white text-xs item-center " > Failed </button>
+                                    <div class="flex space-x-2">
+                                        <!-- Pass Button -->
+                                        <button 
+                                       
+                                       :class="[
+                                            'flex items-center px-3 py-1 rounded text-white text-sm',
+                                            file.isPassed === true ? 'bg-green-900' : 'bg-green-600'
+                                        ]" @click="file.isPassed = true">
+                                            <i class="fa fa-check mr-1"></i>
+                                            {{ file.isPassed === true ? 'Passed' : 'Pass' }}
+                                        </button>
+
+                                        <!-- Fail Button -->
+                                        <button :class="[
+                                            'flex items-center px-3 py-1 rounded text-white text-sm',
+                                            file.isPassed === false ? 'bg-red-900' : 'bg-red-600'
+                                        ]" @click="file.isPassed = false">
+                                            <i class="fa fa-times mr-1"></i>
+                                            {{ file.isPassed === false ? 'Failed' : 'Fail' }}
+                                        </button>
+                                    </div>
 
                                 </td>
+
 
                             </tr>
 
@@ -1165,6 +1250,10 @@ onMounted(() => {
 }
 
 
+/* Optional: smooth transition when switching colors */
+button {
+    transition: background-color 0.2s ease;
+}
 
 .table-container {
     max-width: 800px;

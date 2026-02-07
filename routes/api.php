@@ -27,6 +27,7 @@ Route::get('/getSignatories',[RPSChiefDashboardController::class,'getSignatories
 Route::get('/getSignatories/{id}',[RPSChiefDashboardController::class,'getSignatories']);
 
 Route::get('/applicationStatus', [RPSChiefDashboardController::class,'getApplicationsByStatus']);
+Route::get( '/chainsaw/{applicationId}/brands', [ChainsawController::class, 'getChainsawBrandsWithModels'] );
 
 Route::post('/chainsaw/apply', [ApplicationController::class, 'apply']);
 Route::post('/chainsaw/company_apply', [ApplicationController::class, 'company_apply']);

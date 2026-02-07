@@ -4,6 +4,7 @@ import { useToast } from "primevue/usetoast";
 import { LoaderCircle } from 'lucide-vue-next';
 import { ref } from "vue";
 import axios from 'axios';
+import { usePage, router } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 
 
@@ -36,14 +37,13 @@ const requireConfirmation = () => {
         }
     }); 
 };
-
-const updateApplicationStatus = async (status: number) => {
+const updateApplicationStatus = async (status) => {
     isLoading.value = true;
 
     try {
         const response = await axios.post(route('applications.updateStatus'), {
             id: props.applicationId,
-            status: status
+            status
         });
 
         toast.add({
@@ -52,12 +52,16 @@ const updateApplicationStatus = async (status: number) => {
             detail: response.data.message || 'Application status has been updated.',
             life: 3000
         });
+
+          router.get(route('applications.pending_application'));
+
     } catch (error) {
-       console.log(error)
+        console.error(error);
     } finally {
         isLoading.value = false;
     }
 };
+
 </script>
 
 <template>

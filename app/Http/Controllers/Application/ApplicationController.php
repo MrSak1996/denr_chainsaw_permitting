@@ -95,8 +95,7 @@ class ApplicationController extends Controller
 
         // Create the application using the validated data
         $application = ChainsawIndividualApplication::create([
-            'application_status' => null,
-            // 'geo_code' => $validated['geo_code'],
+            'application_status' => self::STATUS_DRAFT,
             'application_type' => $validated['application_type'],
             'transaction_type' => $validated['type_of_transaction'],
             'application_no' => $validated['application_no'],
@@ -401,14 +400,14 @@ class ApplicationController extends Controller
     public function getApplicationDetails($application_id)
     {
        $applicationDetails = DB::table('tbl_application_checklist as ac')
-    ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
-    ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
-    ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
-    ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
-    ->leftJoin('users as u', 'u.id', '=', 'ac.encoded_by')
-    ->leftJoin('tbl_office as o', 'o.id', '=', 'u.office_id')
-    ->leftJoin('tbl_roles as r', 'r.id', '=', 'u.role_id')
-    ->select([
+        ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
+        ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+        ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
+        ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
+        ->leftJoin('users as u', 'u.id', '=', 'ac.encoded_by')
+        ->leftJoin('tbl_office as o', 'o.id', '=', 'u.office_id')
+        ->leftJoin('tbl_roles as r', 'r.id', '=', 'u.role_id')
+        ->select([
         'ac.id',
         'u.name as registered_by',
         'o.office_title',
@@ -459,7 +458,9 @@ class ApplicationController extends Controller
         'g.prov_name',
 
         'ci.supplier_name',
+        'ci.supplier_address',
         'ci.permit_chainsaw_no',
+        'ci.other_details',
         'ci.brand',
         'ci.model',
         'ci.quantity',

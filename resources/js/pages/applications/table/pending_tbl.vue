@@ -81,6 +81,12 @@ const statuses = ref([
     { label: 'LOWSTOCK', value: 'lowstock' },
     { label: 'OUTOFSTOCK', value: 'outofstock' },
 ]);
+const brands = ref([
+    {
+        name: '',
+        models: [{ model: '', quantity: 1 }]
+    }
+])
 const applicationDetails = ref(null);
 const files = ref([]);
 const formatCurrency = (value) => {
@@ -242,12 +248,26 @@ const getApplicantFile = async (id) => {
     }
 };
 
+const loadBrands = async (id) => {
+
+
+    const res = await axios.get(
+        `http://192.168.2.106:8000/api/chainsaw/${id}/brands`
+    )
+
+    // If data exists, overwrite
+    if (res.data.length) {
+        brands.value = res.data
+    }
+}
+
 const getApplicationDetails = async (id) => {
     isloadingSpinner.value = true;
     try {
         const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${id}`);
         applicationDetails.value = response.data.data;
         await getApplicantFile(id);
+        loadBrands(id);
         return response.data.data;
     } catch (error) {
         console.error(error);
@@ -633,40 +653,40 @@ const generatePdf = (data) => {
                         <Column field="application_type" header="Application Type" sortable style="min-width: 5rem"
                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }" />
 
-            <Column header="Type of Transaction" field="transaction_type" sortable
-                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }"/>
+                        <Column header="Type of Transaction" field="transaction_type" sortable
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }" />
 
 
 
                         <Column field="sex" header="Sex" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
                         </Column>
                         <Column v-if="slotProps.data.application_type === 'Individual'"
                             field="applicant_complete_address" header="Address" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
                         </Column>
                         <Column v-else field="company_address" header="Company Address" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
                         </Column>
 
                         <Column field="permit_no" header="Permit Number" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
                         </Column>
                         <Column field="date_received_red" header="Date Approved/Signed" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
                         </Column>
                         <Column field="permit_validity" header="Date of Expiration" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
                         </Column>
                         <Column field="permit_fee" header="Transaction Fee" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
 
                         </Column>
 
                         <Column field="date_of_payment" header="Date Paid" sortable style="min-width: 4rem"
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }" />
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }" />
                         <Column header="Remarks" sortable
-                             :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
+                            :headerStyle="{ backgroundColor: '#0D47A1', color: '#fff', fontWeight: 'bold' }">
                         </Column>
 
                     </DataTable>
@@ -701,11 +721,11 @@ const generatePdf = (data) => {
             <Fieldset legend="Applicant Details" :toggleable="true">
                 <div class="mb-4 flex items-center justify-between">
                     <h3 class="text-lg font-semibold">Applicant Details</h3>
-                    <Button size="small" class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
+                    <!-- <Button size="small" class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
                         @click="toggleApplicantEdit">
                         <Edit2 />
                         {{ editState.applicant ? 'Save' : 'Edit' }}
-                    </Button>
+                    </Button> -->
 
                 </div>
 
@@ -785,93 +805,93 @@ const generatePdf = (data) => {
 
             <!-- Chainsaw Information -->
             <Fieldset legend="Chainsaw Information" :toggleable="true">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold">Chainsaw Information</h3>
-                    <Button size="small" class="!border-green-600 !bg-green-900 !text-white hover:!bg-green-700"
-                        @click="toggleChainsawEdit">
-                        <Edit2 />
-                        {{ editState.chainsaw ? 'Save' : 'Edit' }}
-                    </Button>
-                </div>
-
                 <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
+
                     <div class="flex">
-                        <span class="w-24 font-semibold">Chainsaw Permit No:</span>
-                        <Tag v-if="!editState.chainsaw" :value="applicationDetails.permit_chainsaw_no"
-                            severity="success" class="text-center" />
-                        <InputText v-else v-model="editableChainsaw.permit_chainsaw_no" class="w-full" />
+                        <span class="w-48 font-semibold">Permit Validity:</span>
+                        <Tag :value="applicationDetails.permit_validity" severity="danger" />
                     </div>
 
                     <div class="flex">
-                        <span class="w-32 font-semibold">Permit Validity:</span>
-                        <Tag v-if="!editState.chainsaw" :value="applicationDetails.permit_validity" severity="danger"
-                            class="text-center" />
-                        <DatePicker v-else v-model="editableChainsaw.permit_validity" class="w-full" />
-                    </div>
-
-                    <div class="flex">
-                        <span class="w-24 font-semibold">Brand:</span>
-                        <span v-if="!editState.chainsaw">{{ applicationDetails.brand }}</span>
-                        <InputText v-else v-model="editableChainsaw.brand" class="w-full" />
-                    </div>
-
-                    <div class="flex">
-                        <span class="w-24 font-semibold">Model:</span>
-                        <span v-if="!editState.chainsaw">{{ applicationDetails.model }}</span>
-                        <InputText v-else v-model="editableChainsaw.model" class="w-full" />
-                    </div>
-
-                    <div class="flex">
-                        <span class="w-24 font-semibold">Quantity:</span>
-                        <span v-if="!editState.chainsaw">{{ applicationDetails.quantity }}</span>
-                        <InputText v-else v-model="editableChainsaw.quantity" class="w-full" />
-                    </div>
-                    <div class="flex">
-                        <span class="w-24 font-semibold">Supplier:</span>
-                        <span v-if="!editState.chainsaw">{{ applicationDetails.supplier_name }}</span>
-                        <InputText v-else v-model="editableChainsaw.supplier_name" class="w-full" />
+                        <span class="w-48 font-semibold">Supplier Name:</span>
+                        <span>{{ applicationDetails.supplier_name }}</span>
                     </div>
 
                     <div class="flex">
                         <span class="w-48 font-semibold">Purpose of Purchase:</span>
-                        <span v-if="!editState.chainsaw">{{ applicationDetails.purpose }}</span>
-                        <InputText v-else v-model="editableChainsaw.purpose" class="w-full" />
+                        <span>{{ applicationDetails.purpose }}</span>
                     </div>
 
                     <div class="flex">
-                        <span class="w-24 font-semibold">Other Details:</span>
-                        <span v-if="!editState.chainsaw">{{ applicationDetails.other_details }}</span>
-                        <InputText v-else v-model="editableChainsaw.other_details" class="w-full" />
+                        <span class="w-48 font-semibold">Other Details:</span>
+                        <span>{{ applicationDetails.other_details }}</span>
                     </div>
 
                     <div class="flex">
-                        <span class="w-24 font-semibold">Official Receipt:</span>
-                        <Tag :value="applicationDetails.official_receipt" severity="success" class="text-center" />
-                        <br />
+                        <span class="w-48 font-semibold">Official Receipt:</span>
+                        <Tag :value="applicationDetails.official_receipt" severity="success" />
                     </div>
 
                     <div class="flex">
-                        <span class="w-24 font-semibold">Permit Fee:</span>
-                        <span>₱{{ applicationDetails.permit_fee }}.00</span>
+                        <span class="w-48 font-semibold">Permit Fee:</span>
+                        <span>₱ {{ applicationDetails.permit_fee }}.00</span>
                     </div>
 
+                    <!-- ✅ Brands & Models -->
+                    <div class="md:col-span-2">
+                        <span class="block mb-2 font-semibold">Chainsaw Details:</span>
+
+                        <div v-for="(brand, bIndex) in brands" :key="bIndex"
+                            class="mb-4 rounded-lg border bg-gray-50 p-4">
+                            <div class="mb-2">
+                                <span class="font-semibold">Brand:</span>
+                                <span class="ml-2">{{ brand.name }}</span>
+                            </div>
+
+                            <table class="w-full text-sm border">
+                                <thead class="bg-blue-900 text-white">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Model</th>
+                                        <th class="px-3 py-2 text-center w-32">Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(model, mIndex) in brand.models" :key="mIndex">
+                                        <td class="px-3 py-2">{{ model.model }}</td>
+                                        <td class="px-3 py-2 text-center">{{ model.quantity }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
                 </div>
             </Fieldset>
 
             <Fieldset legend="Registration Information">
 
-                <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
-                    <div class="flex">
-                        <span class="w-64 font-semibold">Encoded By:</span>
-                        <Tag severity="success">{{ applicationDetails.registered_by }}</Tag>
-                        {{ applicationDetails.office_title }} - {{ applicationDetails.role_title }}
-                    </div>
-                    <div class="flex">
-                        <span class="w-64 font-semibold">Registered Date & Time</span>
-                        {{ applicationDetails.created_at }}
-                    </div>
-                </div>
+                <table class="w-full text-sm border border-gray-300">
+                    <thead class="bg-blue-900 text-white">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Field</th>
+                            <th class="px-3 py-2 text-left">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-t border-gray-300">
+                            <td class="px-3 py-2 font-semibold">Encoded By</td>
+                            <td class="px-3 py-2">
+                                <Tag severity="success">{{ applicationDetails.registered_by }}</Tag><br>
+                                {{ applicationDetails.office_title }} - {{ applicationDetails.role_title }}
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-300">
+                            <td class="px-3 py-2 font-semibold">Registered Date & Time</td>
+                            <td class="px-3 py-2">{{ applicationDetails.created_at }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
             </Fieldset>
 
             <!-- Uploaded Files Section -->

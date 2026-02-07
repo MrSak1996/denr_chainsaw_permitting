@@ -273,7 +273,7 @@ export function useAppForm() {
         application_id: 0,
         application_attachment_id: 0,
         official_receipt: '',
-        permit_fee: 0,
+        permit_fee: 500,
         date_of_payment: new Date().toISOString().slice(0, 10),
         or_ccopy: null,
         remarks: ''

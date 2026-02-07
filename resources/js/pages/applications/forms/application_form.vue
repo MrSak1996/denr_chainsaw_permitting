@@ -275,12 +275,12 @@ const saveIndividualApplication = async () => {
         const response = await insertFormData('http://192.168.2.106:8000/api/chainsaw/apply', { ...individual_form, encoded_by: userId });
 
         // ⚡ Change URL WITHOUT RELOAD
-        const newUrl = route('applications.index', {
+        router.get(route('applications.index', {
             application_id: response.application_id,
             type: 'individual',
-        });
-        window.history.pushState({}, '', newUrl);
+            step: 2
 
+        }));
         toast.add({
             severity: 'success',
             summary: 'Saved',
@@ -301,6 +301,11 @@ const saveIndividualApplication = async () => {
         isLoading.value = false;
     }
 };
+const formatDate = (date: Date | string | null) => {
+    if (!date) return ''
+    const d = new Date(date)
+    return d.toISOString().split('T')[0] // YYYY-MM-DD
+}
 
 const submitChainsawForm = async () => {
 
@@ -312,6 +317,12 @@ const submitChainsawForm = async () => {
 
         formData.append('id', applicationId)
         formData.append('applicant_type', applicationData.value.application_type);
+        formData.append('supplier_name', applicationData.value.supplier_name);
+        formData.append('supplier_address', applicationData.value.supplier_address);
+        formData.append('purpose', applicationData.value.purpose);
+        formData.append('permit_validity', formatDate(applicationData.value.permit_validity));
+        formData.append('permit_chainsaw_no', applicationData.value.permit_chainsaw_no);
+        formData.append('other_details', applicationData.value.other_details);
 
         // ✅ send brands as JSON
         formData.append('brands', JSON.stringify(brands.value))
@@ -328,8 +339,10 @@ const submitChainsawForm = async () => {
             'http://192.168.2.106:8000/api/chainsaw/insertChainsawInfo',
             formData
         )
+        const newApplicationId = response.data.application_id
+
         router.get(route('applications.index', {
-            application_id: response.application_id,
+            application_id: newApplicationId,
             type: 'individual',
             step: 3
         }));
@@ -371,12 +384,13 @@ const submitORPayment = async () => {
         });
 
         // FIXED: Accessing correct response field
-        const newUrl = route('applications.index', {
-            application_id: response.data.application_id,
-            type: 'individual',
-        });
+        const newApplicationId = response.data.application_id
 
-        window.history.pushState({}, '', newUrl);
+        router.get(route('applications.index', {
+            application_id: newApplicationId,
+            type: 'individual',
+            step: 4
+        }));
 
         return true; // <-- THIS WILL NOW WORK
     } catch (error) {
@@ -421,6 +435,7 @@ const getApplicationDetails = async () => {
         const response = await axios.get(`http://192.168.2.106:8000/api/getApplicationDetails/${applicationId}`);
         // applicationData.value = response.data.data || [];
         Object.assign(individual_form, response.data.data);
+        applicationData.value = response.data.data;
         i_city_mun.value = response.data.data.i_city_mun;
     } catch (error) {
         errorMessage.value = error.message || 'Error fetching application data.';
@@ -456,6 +471,23 @@ const getEmbedUrl = (url) => {
     const fileId = match ? match[0] : null;
     return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : '';
 };
+const loadBrands = async () => {
+    const applicationId = getApplicationIdFromUrl();
+    if (!applicationId) {
+        errorMessage.value = 'No application ID found in the query.';
+        isLoading.value = false;
+        return;
+    }
+
+    const res = await axios.get(
+        `http://192.168.2.106:8000/api/chainsaw/${applicationId}/brands`
+    )
+
+    // If data exists, overwrite
+    if (res.data.length) {
+        brands.value = res.data
+    }
+}
 
 // ─────────────────────────────────────────────────────────────
 // CHAINSaw Section
@@ -583,6 +615,7 @@ const purposeOptions = [
     'Other Supporting Documents',
 ];
 
+
 onMounted(() => {
     if (props.mode === 'view') {
         currentStep.value = 4; // Jump to last step
@@ -591,6 +624,8 @@ onMounted(() => {
     currentStep.value = Number(urlParams.get('step')) || 1;
     getApplicationNumber(individual_form, chainsaw_form);
     getApplicationDetails();
+    loadBrands()
+
     getProvinceCode();
     getApplicantFile();
 });
@@ -617,15 +652,9 @@ onMounted(() => {
         </div>
 
         <div v-if="currentStep === 1" class="space-y-4">
-           <chainsaw_individualInfoField
-            :form="individual_form"
-            :insertFormData="insertFormData"
-      
-            :getProvinceCode="getProvinceCode"
-            :city_mun="i_city_mun"
-            :getApplicationNumber="getApplicationNumber"
-            :prov_name="prov_name"
-            />
+            <chainsaw_individualInfoField :form="individual_form" :insertFormData="insertFormData"
+                :getProvinceCode="getProvinceCode" :city_mun="i_city_mun" :getApplicationNumber="getApplicationNumber"
+                :prov_name="prov_name" />
 
         </div>
 
@@ -647,6 +676,7 @@ onMounted(() => {
 
                     <!-- BRANDS -->
                     <div class="space-y-6">
+
                         <div v-for="(brand, bIndex) in brands" :key="bIndex"
                             class="bg-white border rounded-lg shadow-sm p-5 space-y-4">
                             <!-- BRAND HEADER -->
@@ -750,9 +780,9 @@ onMounted(() => {
                                 </div>
 
                                 <!-- Other Details -->
-                                <div class="mt-4">
+                                <div class="mt-6">
                                     <FloatLabel>
-                                        <InputText v-model="applicationData.others_details" class="w-full" />
+                                        <InputText v-model="applicationData.other_details" class="w-full" />
                                         <label>Other Details</label>
                                     </FloatLabel>
                                 </div>
@@ -805,7 +835,7 @@ onMounted(() => {
                                             class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                             @change="(e) => handleApplicationFileUpload(e, 'affidavit')" />
 
-                                        />
+
                                     </div>
 
                                 </div>
@@ -879,13 +909,13 @@ onMounted(() => {
                     <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
                         <div>
                             <FloatLabel>
-                                <InputText v-model="applicationData.application_no" class="w-full" />
+                                <InputText v-model="individual_form.application_no" class="w-full" />
                                 <label>Application No.</label>
                             </FloatLabel>
                         </div>
-                        <div v-if="applicationData.permit_no">
+                        <div v-if="individual_form.permit_no">
                             <FloatLabel>
-                                <InputText v-model="applicationData.permit_no" class="w-full" />
+                                <InputText v-model="individual_form.permit_no" class="w-full" />
                                 <label>Permit No.</label>
                             </FloatLabel>
                         </div>
@@ -992,52 +1022,68 @@ onMounted(() => {
 
             <Fieldset legend="Chainsaw Information" :toggleable="true">
                 <div class="mt-6 grid grid-cols-1 gap-x-12 gap-y-4 text-sm text-gray-800 md:grid-cols-2">
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Chainsaw Permit No:</span>
-                        <Tag :value="applicationData.permit_chainsaw_no" severity="success" class="text-center" /><br />
-                    </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Validity:</span>
-                        <Tag :value="applicationData.permit_validity" severity="danger" class="text-center" /><br />
+                        <Tag :value="applicationData.permit_validity" severity="danger" />
                     </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Brand:</span>
-                        <span>{{ applicationData.brand }}</span>
-                    </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Model:</span>
-                        <span>{{ applicationData.model }}</span>
-                    </div>
-                    <div class="flex">
-                        <span class="w-48 font-semibold">Quantity:</span>
-                        <span>{{ applicationData.quantity }}</span>
-                    </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Supplier Name:</span>
                         <span>{{ applicationData.supplier_name }}</span>
                     </div>
-                    <!-- <div class="flex">
-                        <span class="w-48 font-semibold">Supplier Address:</span>
-                        <span>123 Supplier St., Calabarzon</span>
-                    </div> -->
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Purpose of Purchase:</span>
                         <span>{{ applicationData.purpose }}</span>
                     </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Other Details:</span>
                         <span>{{ applicationData.other_details }}</span>
                     </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Official Receipt:</span>
-                        <Tag :value="applicationData.official_receipt" severity="success" class="text-center" /><br />
+                        <Tag :value="applicationData.official_receipt" severity="success" />
                     </div>
+
                     <div class="flex">
                         <span class="w-48 font-semibold">Permit Fee:</span>
                         <span>₱ {{ applicationData.permit_fee }}.00</span>
                     </div>
+
+                    <!-- ✅ Brands & Models -->
+                    <div class="md:col-span-2">
+                        <span class="block mb-2 font-semibold">Chainsaw Details:</span>
+
+                        <div v-for="(brand, bIndex) in brands" :key="bIndex"
+                            class="mb-4 rounded-lg border bg-gray-50 p-4">
+                            <div class="mb-2">
+                                <span class="font-semibold">Brand:</span>
+                                <span class="ml-2">{{ brand.name }}</span>
+                            </div>
+
+                            <table class="w-full text-sm border">
+                                <thead class="bg-blue-900 text-white">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">Model</th>
+                                        <th class="px-3 py-2 text-center w-32">Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(model, mIndex) in brand.models" :key="mIndex">
+                                        <td class="px-3 py-2">{{ model.model }}</td>
+                                        <td class="px-3 py-2 text-center">{{ model.quantity }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                 </div>
             </Fieldset>
+
 
             <Fieldset legend="Uploaded Files" :toggleable="true">
                 <div class="container">

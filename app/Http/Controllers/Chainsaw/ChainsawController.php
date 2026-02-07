@@ -93,6 +93,16 @@ class ChainsawController extends Controller
                 default => "CHAINSAW_PERMITTING/Other/{$application->application_no}",
             };
 
+            $chainsaw = ChainsawInformation::create([
+                'application_id' => $application->id,
+                'engine_serial_no' => $request->input('engine_serial_no'),
+                'quantity' => $request->input('quantity'),
+                'supplier_name' => $request->input('supplier_name'),
+                'supplier_address' => $request->input('supplier_address'),
+                'purpose' => $request->input('purpose'),
+                'permit_validity' => Carbon::parse($request->permit_validity, 'Asia/Manila')->format('Y-m-d'),
+                'other_details' => $request->input('other_details'),
+            ]);
             $uploadResult = $driveService->storeAttachments(
                 $application->application_no,
                 $request,
@@ -105,6 +115,7 @@ class ChainsawController extends Controller
 
             return response()->json([
                 'message' => 'Chainsaw application saved successfully',
+                'application_id' => $application->id,
                 'google_drive' => $uploadResult,
             ], 201);
         } catch (\Throwable $e) {
@@ -129,18 +140,7 @@ class ChainsawController extends Controller
     //         $application_no = $application->application_no;
     //         $permit_no = $application->permit_no;
 
-    //         $chainsaw = ChainsawInformation::create([
-    //             'application_id' => $application_id,
-    //             'brand' => $request->input('brand'),
-    //             'model' => $request->input('model'),
-    //             'engine_serial_no' => $request->input('engine_serial_no'),
-    //             'quantity' => $request->input('quantity'),
-    //             'supplier_name' => $request->input('supplier_name'),
-    //             'supplier_address' => $request->input('supplier_address'),
-    //             'purpose' => $request->input('purpose'),
-    //             'permit_validity' => Carbon::parse( $request->permit_validity, 'Asia/Manila' )->format('Y-m-d'),
-    //             'other_details' => $request->input('other_details'),
-    //         ]);
+    //        
 
 
     //         $filesToUpload = [
@@ -318,7 +318,43 @@ class ChainsawController extends Controller
             ], 500);
         }
     }
+    public function getChainsawBrandsWithModels($applicationId)
+    {
+        $rows = DB::table('chainsaw_brands as cb')
+            ->leftJoin('chainsaw_models as cm', 'cm.brand_id', '=', 'cb.id')
+            ->where('cb.application_id', $applicationId)
+            ->select(
+                'cb.id as brand_id',
+                'cb.brand_name',
+                'cm.id as model_id',
+                'cm.model',
+                'cm.quantity'
+            )
+            ->orderBy('cb.id')
+            ->get();
 
+        // Group into Vue-friendly structure
+        $brands = [];
+
+        foreach ($rows as $row) {
+            if (!isset($brands[$row->brand_id])) {
+                $brands[$row->brand_id] = [
+                    'name'   => $row->brand_name,
+                    'models' => []
+                ];
+            }
+
+            if ($row->model_id) {
+                $brands[$row->brand_id]['models'][] = [
+                    'model'    => $row->model,
+                    'quantity' => $row->quantity
+                ];
+            }
+        }
+
+        // Reset array keys
+        return response()->json(array_values($brands));
+    }
     // public function updateApplicationStatus(Request $request, $id)
     // {
     //     DB::beginTransaction();
