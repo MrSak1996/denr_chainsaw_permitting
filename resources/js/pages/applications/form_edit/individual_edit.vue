@@ -27,10 +27,7 @@ const props = defineProps({
     application: Object,
     mode: String,
 });
-const onsite = {
-    findings: '',
-    recommendations: ''
-};
+
 const toast = useToast();
 const { createChainsaw, individual_form, chainsaw_form, payment_form } = useAppForm();
 const page = usePage();
@@ -69,27 +66,62 @@ const brands = ref([
     }
 ])
 
-const updateAssessment = (id, value) => {
-    const row = assessmentRows.value.find(r => r.checklist_entry_id === id);
+const onsite = ref({
+    findings: '',
+    recommendations: ''
+});
+
+
+const updateAssessment = (checklist_entry_id, assessment) => {
+    const row = individualRequirements.value.find(
+        r => r.checklist_entry_id === checklist_entry_id
+    );
     if (row) {
-        row.assessment = value; // reactive update
-        // do NOT set row.is_saved yet
+        row.assessment = assessment;
+        row.is_saved = false; // unlock save again if changed
     }
 };
 
-// Example function to save to DB
-const saveAssessment = async (row) => {
-    try {
-        await axios.post('/api/saveAssessment', {
+const updateRemarks = (checklist_entry_id, remarks) => {
+    const row = individualRequirements.value.find(
+        r => r.checklist_entry_id === checklist_entry_id
+    );
+    if (row) {
+        row.remarks = remarks;
+        row.is_saved = false;
+    }
+};
+
+const updateOnsite = ({ field, value }) => {
+    onsite.value[field] = value;
+};
+
+
+
+const submitAllAssessments = async () => {
+    // optional safety check
+    const incomplete = individualRequirements.value.some(
+        row => !row.assessment
+    );
+
+    if (incomplete) {
+        alert('Please complete all assessments before submitting.');
+        return;
+    }
+
+    await axios.post('/api/saveAssessment', {
+        assessments: individualRequirements.value.map(row => ({
             checklist_entry_id: row.checklist_entry_id,
             assessment: row.assessment,
             remarks: row.remarks
-        });
-        row.is_saved = true; // now lock buttons
-    } catch (err) {
-        console.error(err);
-    }
+        })),
+        onsite: {
+            findings: onsite.value.findings,
+            recommendations: onsite.value.recommendations
+        }
+    });
 };
+
 
 
 
@@ -712,7 +744,7 @@ onMounted(() => {
 
                     </div>
                     <!-- ALERT -->
-                   
+
 
                     <!-- BRANDS -->
                     <div class="space-y-6">
@@ -1128,12 +1160,17 @@ onMounted(() => {
                 </div>
             </Fieldset>
 
-            <AssessmentTable v-if="individual_form.application_type === 'Individual'"
-                title="Individual Applicant Requirements" 
-                :rows="individualRequirements" 
-                :onsite="onsite"
-                @view-file="openFileModal"
-                @update-assessment="updateAssessment" />
+
+         <AssessmentTable
+    v-if="individual_form.application_type === 'Individual'"
+    title="Individual Applicant Requirements"
+    :rows="individualRequirements"
+    :onsite="onsite"
+    @view-file="openFileModal"
+    @update-assessment="updateAssessment"
+    @update-remarks="updateRemarks"
+    @update-onsite="updateOnsite"
+/>
 
             <AssessmentTable v-else="individual_form.application_type === 'Company'"
                 title="Company Applicant Requirements" :rows="companyRequirements" @view-file="openFileModal"
@@ -1141,7 +1178,7 @@ onMounted(() => {
 
 
 
-    
+
 
 
 
@@ -1159,13 +1196,13 @@ onMounted(() => {
                 <LoaderCircle v-if="isLoading" class="h-4 w-4 animate-spin" />
                 <span>Save as Draft</span>
             </Button>
-              <Button class="ml-auto flex items-center justify-center gap-2 mr-2" @click="saveAssessment"
+            <Button class="ml-auto flex items-center justify-center gap-2 mr-2" @click="submitAllAssessments"
                 :disabled="isLoading" style="background-color: #004D40;">
                 Submit for Assessment
                 <LoaderCircle v-if="isLoading" class="h-4 w-4 animate-spin" />
                 <span></span>
             </Button>
-         
+
             <ConfirmModal v-if="currentStep === 4" :applicationId="Number(page.props.application.id)" />
         </div>
     </div>
