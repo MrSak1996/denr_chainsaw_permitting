@@ -56,7 +56,7 @@ class ApplicationController extends Controller
     /**
      * Mapping of statuses to their labels
      */
-    
+
 
 
 
@@ -399,83 +399,83 @@ class ApplicationController extends Controller
 
     public function getApplicationDetails($application_id)
     {
-       $applicationDetails = DB::table('tbl_application_checklist as ac')
-        ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
-        ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
-        ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
-        ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
-        ->leftJoin('users as u', 'u.id', '=', 'ac.encoded_by')
-        ->leftJoin('tbl_office as o', 'o.id', '=', 'u.office_id')
-        ->leftJoin('tbl_roles as r', 'r.id', '=', 'u.role_id')
-        ->select([
-        'ac.id',
-        'u.name as registered_by',
-        'o.office_title',
-        'r.role_title',
+        $applicationDetails = DB::table('tbl_application_checklist as ac')
+            ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
+            ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+            ->leftJoin('geo_map as g', 'g.prov_code', '=', 'ac.company_c_province')
+            ->leftJoin('tbl_status as s', 'ac.application_status', '=', 's.id')
+            ->leftJoin('users as u', 'u.id', '=', 'ac.encoded_by')
+            ->leftJoin('tbl_office as o', 'o.id', '=', 'u.office_id')
+            ->leftJoin('tbl_roles as r', 'r.id', '=', 'u.role_id')
+            ->select([
+                'ac.id',
+                'u.name as registered_by',
+                'o.office_title',
+                'r.role_title',
 
-        'ac.applicant_lastname as last_name',
-        'ac.applicant_firstname as first_name',
-        'ac.applicant_middlename as middle_name',
-        'ac.sex',
-        'ac.government_id as gov_id_type',
-        'ac.gov_id_number as gov_id_number',
-        'ac.applicant_contact_details as mobile_no',
-        'ac.applicant_telephone_no as telephone_no',
-        'ac.applicant_email_address as email_address',
+                'ac.applicant_lastname as last_name',
+                'ac.applicant_firstname as first_name',
+                'ac.applicant_middlename as middle_name',
+                'ac.sex',
+                'ac.government_id as gov_id_type',
+                'ac.gov_id_number as gov_id_number',
+                'ac.applicant_contact_details as mobile_no',
+                'ac.applicant_telephone_no as telephone_no',
+                'ac.applicant_email_address as email_address',
 
-        'ac.applicant_province_c as i_province',
-        'ac.applicant_city_mun_c as i_city_mun',
-        'ac.applicant_brgy_c as i_barangay',
-        'ac.applicant_complete_address',
-        'ac.classification',
+                'ac.applicant_province_c as i_province',
+                'ac.applicant_city_mun_c as i_city_mun',
+                'ac.applicant_brgy_c as i_barangay',
+                'ac.applicant_complete_address',
+                'ac.classification',
 
-        's.status_title',
-        'ac.return_reason',
-        'ac.application_no',
-        'ac.permit_no',
-        'ac.application_status',
-        'ac.application_type',
-        'ac.authorized_representative',
-        'ac.date_applied',
+                's.status_title',
+                'ac.return_reason',
+                'ac.application_no',
+                'ac.permit_no',
+                'ac.application_status',
+                'ac.application_type',
+                'ac.authorized_representative',
+                'ac.date_applied',
 
-        'ac.company_name',
-        'ac.company_address',
-        'ac.company_c_province',
-        'ac.company_c_province as prov_code',
-        'ac.company_c_city_mun',
-        'ac.company_c_barangay',
-        'ac.company_mobile_no',
-        'ac.operation_complete_address',
+                'ac.company_name',
+                'ac.company_address',
+                'ac.company_c_province',
+                'ac.company_c_province as prov_code',
+                'ac.company_c_city_mun',
+                'ac.company_c_barangay',
+                'ac.company_mobile_no',
+                'ac.operation_complete_address',
 
-        'ac.transaction_type as type_of_transaction',
-        'ac.rps_chief_comments',
-        'ac.cenro_comments',
-        'ac.tsd_chief_comments',
-        'ac.penro_comments',
-        'ac.ro_comments',
-        'ac.ardts_comments',
+                'ac.transaction_type as type_of_transaction',
+                'ac.rps_chief_comments',
+                'ac.cenro_comments',
+                'ac.tsd_chief_comments',
+                'ac.penro_comments',
+                'ac.ro_comments',
+                'ac.ardts_comments',
 
-        'g.prov_name',
+                'g.prov_name',
 
-        'ci.supplier_name',
-        'ci.supplier_address',
-        'ci.permit_chainsaw_no',
-        'ci.other_details',
-        'ci.brand',
-        'ci.model',
-        'ci.quantity',
-        'ci.purpose',
-        'ci.other_details',
-        'ci.permit_validity',
+                'ci.supplier_name',
+                'ci.supplier_address',
+                'ci.permit_chainsaw_no',
+                'ci.other_details',
+                'ci.brand',
+                'ci.model',
+                'ci.quantity',
+                'ci.purpose',
+                'ci.other_details',
+                'ci.permit_validity',
 
-        'ap.official_receipt',
-        'ap.permit_fee',
-        'ap.date_of_payment',
+                'ap.official_receipt',
+                'ap.permit_fee',
+                'ap.date_of_payment',
 
-        'ac.created_at',
-    ])
-    ->where('ac.id', $application_id) // 17
-    ->first();
+                'ac.created_at',
+            ])
+            ->where('ac.id', $application_id) // 17
+            ->first();
 
 
         if ($applicationDetails) {
@@ -508,24 +508,31 @@ class ApplicationController extends Controller
     public function getApplicantFile($application_id)
     {
         try {
-            $data = DB::table('tbl_application_attachments as aa')
-                ->leftJoin('tbl_application_checklist as ac', 'ac.id', '=', 'aa.application_id')
+            $data = DB::table('tbl_app_checklist_entry as e')
+                ->leftJoin('tbl_application_checklist as ac', 'ac.id', '=', 'e.parent_id')
+                ->leftJoin('tbl_app_permitchecklist as ap', 'ap.id', '=', 'e.chklist_id')
+                ->leftJoin('tbl_application_attachments as aa', 'aa.checklist_entry_id', '=', 'e.id')
                 ->select(
+                    'e.id as checklist_entry_id',
                     'ac.application_no',
-                    'aa.id',
-                    'aa.application_id',
+                    'ac.application_type',
+                    'ap.requirement',
+                    'e.answer',
+                    'e.remarks',
+                    'e.assessment',
+                    'aa.id as attachment_id',
                     'aa.file_name',
-                    'aa.file_id',
                     'aa.file_url',
                     'aa.created_at'
                 )
-                ->where('aa.application_id', $application_id)
+                ->where('e.parent_id', $application_id)
+                ->orderBy('e.id')
                 ->get();
 
             if ($data->isEmpty()) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'No application details found.'
+                    'message' => 'No checklist entries found for this application.'
                 ]);
             }
 
@@ -536,9 +543,9 @@ class ApplicationController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Error fetching application details.',
+                'message' => 'Error fetching assessment data.',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
@@ -719,7 +726,6 @@ class ApplicationController extends Controller
                 'status' => $updateResult ? 'success' : 'error',
                 'message' => $updateResult ? 'Application updated successfully.' : 'No changes were made.',
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -768,7 +774,6 @@ class ApplicationController extends Controller
                 'status' => $updateResult ? 'success' : 'error',
                 'message' => $updateResult ? 'Application updated successfully.' : 'No changes were made.',
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -933,7 +938,6 @@ class ApplicationController extends Controller
                     'file_url' => $result['file_url'],
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             Log::error('Error updating applicant file: ' . $e->getMessage());
 
@@ -981,7 +985,6 @@ class ApplicationController extends Controller
                 'status' => 'success',
                 'message' => 'Application marked as returned successfully.',
             ]);
-
         } catch (\Exception $e) {
 
             DB::rollBack();
@@ -1036,7 +1039,6 @@ class ApplicationController extends Controller
                 'status' => $updateResult ? 'success' : 'error',
                 'message' => $updateResult ? 'Payment info updated successfully' : 'No updates were made. Please check your data.',
             ], $updateResult ? 200 : 400);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -1240,7 +1242,6 @@ class ApplicationController extends Controller
                 'status' => 'success',
                 'message' => 'Application submitted and routed successfully.',
             ], 200);
-
         } catch (\Exception $e) {
             DB::rollBack();
 

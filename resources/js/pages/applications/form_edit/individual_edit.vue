@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, reactive, onMounted, toRaw } from 'vue';
+import { ref, watch, reactive, onMounted, toRaw, computed } from 'vue';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 import { useForm, usePage, router } from '@inertiajs/vue3';
-
+import AssessmentTable from './assessment_tbl.vue';
 // UI & Icons
 
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,10 @@ const props = defineProps({
     application: Object,
     mode: String,
 });
+const onsite = {
+    findings: '',
+    recommendations: ''
+};
 const toast = useToast();
 const { createChainsaw, individual_form, chainsaw_form, payment_form } = useAppForm();
 const page = usePage();
@@ -41,6 +45,8 @@ const { getProvinceCode, getApplicationNumber, prov_name } = useApi();
 const isLoading = ref(false);
 const applicationData = ref<any>({});
 const files = ref<any[]>([]);
+const assessmentRows = ref([])
+
 const i_city_mun = ref<number | string>(0);
 const errorMessage = ref('');
 const currentStep = ref(4);
@@ -62,6 +68,30 @@ const brands = ref([
         models: [{ model: '', quantity: 1 }]
     }
 ])
+
+const updateAssessment = (id, value) => {
+    const row = assessmentRows.value.find(r => r.checklist_entry_id === id);
+    if (row) {
+        row.assessment = value; // reactive update
+        // do NOT set row.is_saved yet
+    }
+};
+
+// Example function to save to DB
+const saveAssessment = async (row) => {
+    try {
+        await axios.post('/api/saveAssessment', {
+            checklist_entry_id: row.checklist_entry_id,
+            assessment: row.assessment,
+            remarks: row.remarks
+        });
+        row.is_saved = true; // now lock buttons
+    } catch (err) {
+        console.error(err);
+    }
+};
+
+
 
 
 // BRAND ACTIONS
@@ -498,42 +528,48 @@ const getApplicantFile = async (id) => {
     try {
         const response = await axios.get(
             `http://192.168.2.106:8000/api/getApplicantFile/${id}`
-        );
+        )
 
         if (response.data.status && Array.isArray(response.data.data)) {
+            assessmentRows.value = response.data.data.map(row => ({
+                checklist_entry_id: row.checklist_entry_id,
+                application_type: row.application_type,
+                requirement: row.requirement,
+                remarks: row.remarks,
+                file_name: row.file_name,
+                file_url: row.file_url,
+                uploaded_at: row.created_at
+                    ? new Date(row.created_at).toLocaleDateString()
+                    : null,
 
-            const fetchedFiles = response.data.data.map((file) => ({
-                attachment_id: file.id,
-                application_id: file.application_id,
-                name: file.file_name,
-                size: 'Unknown',
-                dateUploaded: new Date(file.created_at).toLocaleDateString(),
-                dateOpened: new Date().toLocaleDateString(),
-                icon: file.file_name.split('.').pop(),
-                thumbnail: null,
-                url: file.file_url,
-            }));
+                // 🔥 IMPORTANT NORMALIZATION
+                assessment: row.assessment === 'pass'
+                    ? 'passed'
+                    : row.assessment === 'fail'
+                        ? 'failed'
+                        : null,
 
-            // CLASSIFY FILES BY TAB
-            Object.keys(tabMap).forEach(tabId => {
-                const prefixes = tabMap[tabId];
-
-                filesByTab.value[tabId] = fetchedFiles.filter(f =>
-                    prefixes.some(prefix =>
-                        f.name.toLowerCase().startsWith(prefix)
-                    )
-                );
-            });
-
-            // NEW: Add ALL FILES tab
-            filesByTab.value[0] = fetchedFiles;
-
+                // 🔒 first-time assessment
+                is_saved: row.assessment === 'passed' || row.assessment === 'failed'
+            }))
 
         }
     } catch (err) {
-        console.error(err);
+        console.error(err)
     }
 }
+const individualRequirements = computed(() =>
+    assessmentRows.value.filter(
+        r => r.application_type === 'Individual'
+    )
+)
+
+const companyRequirements = computed(() =>
+    assessmentRows.value.filter(
+        r => r.application_type === 'Company'
+    )
+)
+
 
 const getEmbedUrl = (url: string) => {
     const match = url.match(/[-\w]{25,}/);
@@ -579,6 +615,7 @@ const purpose = ref({
         otherDocs: null,
     },
 });
+
 
 const handlePurposeFileUpload = (event: Event, field: string) => {
     const file = (event.target as HTMLInputElement).files?.[0] ?? null;
@@ -651,26 +688,13 @@ onMounted(() => {
 
 
 <template>
-    <div class="mt-10 space-y-6">
+    <div>
         <Toast />
         <!-- Stepper -->
-        <div class="mb-6 flex items-center justify-between">
-            <div v-for="step in steps" :key="step.id" class="flex-1 cursor-pointer text-center"
-                @click="handleStepClick(step.id)">
-                <div :class="[
-                    'mx-auto flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white',
-                    currentStep === step.id ? 'bg-green-900' : step.id < currentStep ? 'bg-blue-400' : 'cursor-not-allowed bg-gray-300',
-                ]">
-                    {{ step.id }}
-                </div>
-                <div class="mt-2 text-sm font-medium"
-                    :class="currentStep === step.id ? 'text-green-600' : 'text-gray-500'">
-                    {{ step.label }}
-                </div>
-            </div>
+        <div class="flex items-center justify-between">
+
         </div>
-        <Button class="ml-auto gap-2 mr-2" style="background-color: rgba(0,77,64,1);"
-            @click="nextStep">Received</Button>
+        <Button class="gap-2 mr-2" style="background-color: rgba(0,77,64,1);" @click="nextStep">Received</Button>
         <Button style="background-color: #bd1550;">Return</Button>
 
 
@@ -681,20 +705,14 @@ onMounted(() => {
         </div>
 
         <div v-if="currentStep === 2" class="space-y-4">
-            <Fieldset legend="Chainsaw Information">
+            <Fieldset legend="Chainsaw Information" :toggleable="false">
                 <div class="relative space-y-6">
                     <div class="ribbon">
                         {{ chainsaw_form.status_title || "DRAFT" }}
 
                     </div>
                     <!-- ALERT -->
-                    <div class="flex items-start gap-2 rounded-lg bg-blue-50 p-4 text-sm text-blue-700 shadow-sm">
-                        <ShieldAlert class="mt-1 h-5 w-5 text-blue-600" />
-                        <span>
-                            Please complete all fields to proceed with your application for a Permit to Purchase
-                            Chainsaw.
-                        </span>
-                    </div>
+                   
 
                     <!-- BRANDS -->
                     <div class="space-y-6">
@@ -1110,115 +1128,44 @@ onMounted(() => {
                 </div>
             </Fieldset>
 
-            <Fieldset legend="Uploaded Files" :toggleable="true">
-                <div class="overflow-x-auto mt-4">
-                    <table class="min-w-full border border-gray-300 rounded-lg bg-white">
-                        <thead class="bg-gray-100">
-                            <tr>
-                                <th class="px-4 py-2 border text-left" rowspan="2">#</th>
-                                <th class="px-4 py-2 border text-left" rowspan="2">
-                                    Requirements
-                                </th>
-                                <th class="px-4 py-2 border text-left" rowspan="2">
-                                    MOVs to be
-                                    Produced/ Uploaded
-                                </th>
+            <AssessmentTable v-if="individual_form.application_type === 'Individual'"
+                title="Individual Applicant Requirements" 
+                :rows="individualRequirements" 
+                :onsite="onsite"
+                @view-file="openFileModal"
+                @update-assessment="updateAssessment" />
+
+            <AssessmentTable v-else="individual_form.application_type === 'Company'"
+                title="Company Applicant Requirements" :rows="companyRequirements" @view-file="openFileModal"
+                @update-assessment="updateAssessment" />
 
 
-                                <th class="px-4 py-2 border text-left" rowspan="2">File Name</th>
-                                <th class="px-4 py-2 border text-left" rowspan="2">Comments</th>
-                                <th class="px-4 py-2 border text-left" rowspan="2">
-                                    Uploaded Date
-                                </th>
-                              
-                                <th class="px-4 py-2 border text-left" rowspan="2">
-                                    Assessment
-                                </th>
-                            </tr>
 
-                         
-
-                        </thead>
-
-                        <tbody>
-                            <tr v-for="(file, index) in files" :key="index" class="hover:bg-gray-50">
-                                <td class="px-4 py-2 border">{{ index + 1 }}</td>
-
-                                <!-- AUTOMATIC DOCUMENT TITLE -->
-                                <td class="px-4 py-2 border">{{ getDocumentTitle(file.name) }}<br>
-                                </td>
-
-                                <td class="px-4 py-2 border">
-                                    <button class="px-3 py-1 rounded bg-yellow-500 text-white text-xs"
-                                        @click="openFileModal(file)">
-                                        View
-                                    </button>
-                                </td>
-                                <td class="px-4 py-2 border">{{ file.name }}</td>
-
-                                <td class="px-2 py-2 border"><Textarea style="font-size: 11px;resize: none;" rows="9"
-                                        cols="50" /> </td>
-
-                                <td class="px-4 py-2 border">{{ file.dateUploaded }}</td>
-
-                              
-                                <td>
-                                    <div class="flex space-x-2">
-                                        <!-- Pass Button -->
-                                        <button 
-                                       
-                                       :class="[
-                                            'flex items-center px-3 py-1 rounded text-white text-sm',
-                                            file.isPassed === true ? 'bg-green-900' : 'bg-green-600'
-                                        ]" @click="file.isPassed = true">
-                                            <i class="fa fa-check mr-1"></i>
-                                            {{ file.isPassed === true ? 'Passed' : 'Pass' }}
-                                        </button>
-
-                                        <!-- Fail Button -->
-                                        <button :class="[
-                                            'flex items-center px-3 py-1 rounded text-white text-sm',
-                                            file.isPassed === false ? 'bg-red-900' : 'bg-red-600'
-                                        ]" @click="file.isPassed = false">
-                                            <i class="fa fa-times mr-1"></i>
-                                            {{ file.isPassed === false ? 'Failed' : 'Fail' }}
-                                        </button>
-                                    </div>
-
-                                </td>
+    
 
 
-                            </tr>
 
-                            <tr v-if="files.length === 0">
-                                <td colspan="7" class="text-center py-4 text-gray-500">
-                                    No uploaded files.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <Dialog v-model:visible="showModal" modal header="File Preview" :style="{ width: '70vw' }">
+                <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.file_url)" width="100%" height="500"
+                    allow="autoplay"></iframe>
+            </Dialog>
 
-                </div>
-
-                <Dialog v-model:visible="showModal" modal header="File Preview" :style="{ width: '70vw' }">
-                    <iframe v-if="selectedFile" :src="getEmbedUrl(selectedFile.url)" width="100%" height="500"
-                        allow="autoplay"></iframe>
-                </Dialog>
-
-            </Fieldset>
         </div>
 
         <div class="flex justify-between pt-6">
             <Button v-if="currentStep > 1" @click="prevStep" variant="outline">Back</Button>
-            <!-- <Button v-if="currentStep < 3" class="ml-auto" @click="nextStep">Next</Button> -->
             <Button v-if="currentStep <= 3" class="ml-auto flex items-center justify-center gap-2" @click="nextStep"
                 :disabled="isLoading" style="background-color: #004D40;">
                 <LoaderCircle v-if="isLoading" class="h-4 w-4 animate-spin" />
                 <span>Save as Draft</span>
             </Button>
-            <!-- 
-            <Button style="background-color: #004D40;" v-if="currentStep === 4" class="ml-auto" @click="submitForm"> Submit
-                Application </Button> -->
+              <Button class="ml-auto flex items-center justify-center gap-2 mr-2" @click="saveAssessment"
+                :disabled="isLoading" style="background-color: #004D40;">
+                Submit for Assessment
+                <LoaderCircle v-if="isLoading" class="h-4 w-4 animate-spin" />
+                <span></span>
+            </Button>
+         
             <ConfirmModal v-if="currentStep === 4" :applicationId="Number(page.props.application.id)" />
         </div>
     </div>

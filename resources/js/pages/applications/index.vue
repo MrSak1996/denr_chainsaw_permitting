@@ -136,7 +136,7 @@ onMounted(() => {
         <div class="flex flex-col gap-6 rounded-xl p-4 sm:grid-cols-3">
             <div class="flex items-center gap-2 text-sm">
                 <Folder class="h-5 w-5" />
-                <h1 class="text-xl font-semibold">Chainsaw Permit Application Form</h1>
+                <h1 class="text-xl font-semibold">Chainsaw Permit to Purchase Application Form</h1>
             </div>
 
             <div class="box">

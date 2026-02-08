@@ -44,7 +44,7 @@ const updateApplicationStatus = async (status) => {
         const response = await axios.post(route('applications.updateStatus'), {
             id: props.applicationId,
             status
-        });
+        })
 
         toast.add({
             severity: 'success',
@@ -86,8 +86,8 @@ const updateApplicationStatus = async (status) => {
         <Button @click="requireConfirmation()"
             class="ml-auto px-2 py-0.5 text-[11px] h-9 flex items-center justify-center gap-1 rounded-md"
             :disabled="isLoading" style="background-color: #004D40; border:#004D40">
-            <LoaderCircle v-if="isLoading" class="h-3 w-3 animate-spin" />
-            <span>Submit Application</span>
+            <LoaderCircle v-if="isLoading" class="h-4 w-4 animate-spin" />
+            Submit Application
         </Button>
 
     </div>
