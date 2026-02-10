@@ -12,7 +12,7 @@
 
 
         body {
-            font-family: "Times New Roman", serif;
+            font-family: "Arial", sans-serif;
             position: relative;
         }
 
@@ -277,7 +277,7 @@
         </table>
 
         <!-- Red Line -->
-        <div style="position:fixed;z-index:1000; width:100%; height:10px; background:#8D1010; margin-top:8px;"></div>
+        <!-- <div style="position:fixed;z-index:1000; width:100%; height:10px; background:#8D1010; margin-top:8px;"></div> -->
     </div>
 
 
@@ -365,13 +365,19 @@
     </table>
 
     <!-- DATES -->
-    <p>Issued on <span style="text-decoration:underline;">{{ $issued_date }}</span> at Brgy. Mayapa, Calamba City,
+<p>
+    Issued on 
+    <span style="text-decoration:underline;">
+        {{ now()->format('F d, Y') }}
+    </span> 
+    at Brgy. Mayapa, Calamba City
+</p>
         Laguna<br>Expiry Date: <span style="text-decoration:underline;">{{ $expiry_date }}</span></p>
 
     <!-- SIGNATURE -->
     <!-- SIGNATURE -->
     <div class="signature approved-signature">
-        <img src="{{ public_path('images/approved.png') }}" class="approved-img">
+        <!-- <img src="{{ public_path('images/approved.png') }}" class="approved-img"> -->
 
         <p style="margin-right:50px;margin-bottom:40px;">Approved:</p>
         <p><strong>NILO B. TAMORIA, CESO III</strong></p>

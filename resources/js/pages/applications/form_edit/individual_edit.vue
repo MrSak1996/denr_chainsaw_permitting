@@ -103,6 +103,7 @@ const submitAllAssessments = async () => {
     const incomplete = individualRequirements.value.some(
         row => !row.assessment
     );
+    
 
     if (incomplete) {
         alert('Please complete all assessments before submitting.');
@@ -110,16 +111,18 @@ const submitAllAssessments = async () => {
     }
 
     await axios.post('/api/saveAssessment', {
-        assessments: individualRequirements.value.map(row => ({
-            checklist_entry_id: row.checklist_entry_id,
-            assessment: row.assessment,
-            remarks: row.remarks
-        })),
-        onsite: {
-            findings: onsite.value.findings,
-            recommendations: onsite.value.recommendations
-        }
-    });
+    id: page.props.application.id,
+    assessments: individualRequirements.value.map(row => ({
+        checklist_entry_id: row.checklist_entry_id,
+        assessment: row.assessment,
+        remarks: row.remarks
+    })),
+    onsite: {
+        findings: onsite.value.findings,
+        recommendations: onsite.value.recommendations
+    }
+});
+
 };
 
 

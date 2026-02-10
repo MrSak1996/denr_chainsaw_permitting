@@ -6,6 +6,7 @@ use App\Http\Controllers\Application\ApplicationController;
 use App\Http\Controllers\Chainsaw\ChainsawController;
 use App\Http\Controllers\Payment\PaymentController;
 use App\Http\Controllers\Dashboard\RPSChiefDashboardController;
+use App\Http\Controllers\Assessment\AssessmentController;
 use App\Http\Controllers\Routing\RoutingController;
 use App\Http\Controllers\Reports\PDFController;
 
@@ -34,6 +35,7 @@ Route::post('/chainsaw/company_apply', [ApplicationController::class, 'company_a
 Route::post('/chainsaw/insertChainsawInfo', [ChainsawController::class,'insertChainsawInfo']);
 Route::post('chainsaw/insert_payment', [PaymentController::class,'insert_payment']);
 Route::post('/files/update',[ApplicationController::class,'updateApplicantFiles']);
+Route::post('/saveAssessment', [AssessmentController::class, 'saveAssessment']);
 
 // Route::post('/{id}/generate-table-pdf', [PDFController::class, 'generateTable']);
 Route::get('/application-routing/{id}', [RoutingController::class, 'show']);
