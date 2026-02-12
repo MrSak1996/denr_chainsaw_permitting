@@ -103,7 +103,7 @@ const submitAllAssessments = async () => {
     const incomplete = individualRequirements.value.some(
         row => !row.assessment
     );
-    
+
 
     if (incomplete) {
         alert('Please complete all assessments before submitting.');
@@ -111,17 +111,18 @@ const submitAllAssessments = async () => {
     }
 
     await axios.post('/api/saveAssessment', {
-    id: page.props.application.id,
-    assessments: individualRequirements.value.map(row => ({
-        checklist_entry_id: row.checklist_entry_id,
-        assessment: row.assessment,
-        remarks: row.remarks
-    })),
-    onsite: {
-        findings: onsite.value.findings,
-        recommendations: onsite.value.recommendations
-    }
-});
+        application_id: page.props.application.id, // ✅ rename for clarity
+        assessments: individualRequirements.value.map(row => ({
+            checklist_entry_id: row.checklist_entry_id,
+            assessment: row.assessment,
+            remarks: row.remarks
+        })),
+        onsite: {
+            findings: onsite.value.findings,
+            recommendations: onsite.value.recommendations
+        }
+    });
+
 
 };
 
@@ -1164,16 +1165,10 @@ onMounted(() => {
             </Fieldset>
 
 
-         <AssessmentTable
-    v-if="individual_form.application_type === 'Individual'"
-    title="Individual Applicant Requirements"
-    :rows="individualRequirements"
-    :onsite="onsite"
-    @view-file="openFileModal"
-    @update-assessment="updateAssessment"
-    @update-remarks="updateRemarks"
-    @update-onsite="updateOnsite"
-/>
+            <AssessmentTable v-if="individual_form.application_type === 'Individual'"
+                title="Individual Applicant Requirements" :rows="individualRequirements" :onsite="onsite"
+                @view-file="openFileModal" @update-assessment="updateAssessment" @update-remarks="updateRemarks"
+                @update-onsite="updateOnsite" />
 
             <AssessmentTable v-else="individual_form.application_type === 'Company'"
                 title="Company Applicant Requirements" :rows="companyRequirements" @view-file="openFileModal"

@@ -69,70 +69,117 @@ class PDFController extends Controller
      * Generate PDF for a given application ID
      */
     public function generateTable(Request $request, int $id)
-    {
-        $application = DB::table('tbl_application_checklist as ac')
-            ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
-            ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
-            ->where('ac.id', $id)
-            ->select([
-                'ac.permit_no as permit_number',
-                'ac.authorized_representative',
-                DB::raw("
-        CONCAT_WS(' ',
-            ac.applicant_firstname,
-            ac.applicant_middlename,
-            ac.applicant_lastname
-        ) AS applicant_name
-    "),
-    'ac.applicant_complete_address',
-                'ci.engine_serial_no',
-                'ac.company_address',
-                DB::raw("TRIM(CONCAT(ac.applicant_firstname, ' ', IFNULL(ac.applicant_middlename, ''), ' ', ac.applicant_lastname)) as name"),
-                'ac.applicant_complete_address as address',
-                'ci.quantity',
-                'ci.brand',
-                'ci.model',
-                'ci.supplier_name',
-                'ci.supplier_address',
-                'ci.purpose',
-                'ci.other_details',
-                'ac.approved_date as issued_date',
-                'ac.expiry_date',
-                'ap.official_receipt',
-                'ap.date_of_payment',
-            ])
-            ->first();
+{
+    // Get application info
+    $application = DB::table('tbl_application_checklist as ac')
+        ->leftJoin('tbl_chainsaw_information as ci', 'ci.application_id', '=', 'ac.id')
+        ->leftJoin('tbl_application_payment as ap', 'ap.application_id', '=', 'ac.id')
+        ->where('ac.id', $id)
+        ->select([
+            'ac.permit_no as permit_number',
+            'ac.authorized_representative',
+            DB::raw("CONCAT_WS(' ', ac.applicant_firstname, ac.applicant_middlename, ac.applicant_lastname) AS applicant_name"),
+            'ac.applicant_complete_address',
+            'ci.engine_serial_no',
+            'ac.company_address',
+            'ci.quantity',
+            'ci.supplier_name',
+            'ci.supplier_address',
+            'ci.purpose',
+            'ci.other_details',
+            'ac.approved_date as issued_date',
+            'ac.expiry_date',
+            'ap.official_receipt',
+            'ap.date_of_payment',
+        ])
+        ->first();
 
-        if (!$application) {
-            abort(404, 'Application not found');
+    if (!$application) {
+        abort(404, 'Application not found');
+    }
+
+    // Format quantity
+    $quantityInWords = ucfirst($this->numberToWords((int)$application->quantity));
+    $quantityText = "{$quantityInWords} ({$application->quantity}) unit" . ($application->quantity > 1 ? 's' : '') . " of Chainsaw";
+
+    // Get brands and models
+    $rows = DB::table('chainsaw_brands as cb')
+        ->leftJoin('chainsaw_models as cm', 'cm.brand_id', '=', 'cb.id')
+        ->where('cb.application_id', $id)
+        ->select('cb.brand_name', 'cm.model', 'cm.quantity')
+        ->get();
+
+    // Group by brand
+    $brands = $rows->groupBy('brand_name')->map(function ($items) {
+        return [
+            'brand_name' => $items->first()->brand_name,
+            'models' => $items->map(function ($item) {
+                return [
+                    'model' => $item->model,
+                    'quantity' => $item->quantity,
+                ];
+            })->filter(fn($m) => $m['model'] !== null)->values()
+        ];
+    })->values();
+
+    // Pass to PDF
+    $pdf = Pdf::loadView('pdf.table-template', [
+        'permit_number' => $application->permit_number,
+        'name' => $application->authorized_representative ?? $application->applicant_name,
+        'address' => $application->applicant_complete_address,
+        'complete_address' => $application->company_address ?? $application->applicant_complete_address,
+        'quantity' => $quantityText,
+        'brands' => $brands, // Pass the grouped brands array
+        'engine_serial_no' => $application->engine_serial_no,
+        'supplier_name' => $application->supplier_name,
+        'supplier_address' => $application->supplier_address,
+        'purpose' => $application->purpose,
+        'others' => $application->other_details,
+        'issued_date' => $application->issued_date ? \Carbon\Carbon::parse($application->issued_date)->format('F d, Y') : null,
+        'expiry_date' => $application->expiry_date ? \Carbon\Carbon::parse($application->expiry_date)->format('F d, Y') : null,
+        'or_number' => $application->official_receipt,
+        'or_date' => $application->date_of_payment ? \Carbon\Carbon::parse($application->date_of_payment)->format('F d, Y') : null,
+    ]);
+
+    return $pdf->stream('permit.pdf');
+}
+
+     public function getChainsawBrandsWithModels($applicationId)
+    {
+        $rows = DB::table('chainsaw_brands as cb')
+            ->leftJoin('chainsaw_models as cm', 'cm.brand_id', '=', 'cb.id')
+            ->where('cb.application_id', $applicationId)
+            ->select(
+                'cb.id as brand_id',
+                'cb.brand_name',
+                'cm.id as model_id',
+                'cm.model',
+                'cm.quantity'
+            )
+            ->orderBy('cb.id')
+            ->get();
+
+        // Group into Vue-friendly structure
+        $brands = [];
+
+        foreach ($rows as $row) {
+            if (!isset($brands[$row->brand_id])) {
+                $brands[$row->brand_id] = [
+                    'brand_name'   => $row->brand_name,
+                    'models' => []
+                ];
+            }
+
+            if ($row->model_id) {
+                $brands[$row->brand_id]['models'][] = [
+                    'model'    => $row->model,
+                    'quantity' => $row->quantity
+                ];
+            }
         }
 
-        // Format quantity as words + number + unit
-        $quantityInWords = ucfirst($this->numberToWords((int)$application->quantity));
-        $quantityText = "{$quantityInWords} ({$application->quantity}) unit" . ($application->quantity > 1 ? 's' : '') . " of Chainsaw";
-
-        // Load PDF view
-        $pdf = Pdf::loadView('pdf.table-template', [
-            'permit_number' => $application->permit_number,
-            'name' => $application->authorized_representative
-            ?? $application->applicant_name,
-            'address' => $application->address,
-            'complete_address' => $application->company_address ?? $application->applicant_complete_address,
-            'quantity' => $quantityText,
-            'brand' => $application->brand,
-            'model' => $application->model,
-            'engine_serial_no' => $application->engine_serial_no,
-            'supplier_name' => $application->supplier_name,
-            'supplier_address' => $application->supplier_address,
-            'purpose' => $application->purpose,
-            'others' => $application->other_details,
-            'issued_date' => $application->issued_date ? \Carbon\Carbon::parse($application->issued_date)->format('F d, Y') : null,
-            'expiry_date' => $application->expiry_date ? \Carbon\Carbon::parse($application->expiry_date)->format('F d, Y') : null,
-            'or_number' => $application->official_receipt,
-            'or_date' => $application->date_of_payment ? \Carbon\Carbon::parse($application->date_of_payment)->format('F d, Y') : null,
-        ]);
-
-        return $pdf->stream('permit.pdf');
+        // Reset array keys
+        return response()->json(array_values($brands));
     }
 
     /**

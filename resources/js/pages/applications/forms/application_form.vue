@@ -279,7 +279,6 @@ const saveIndividualApplication = async () => {
             application_id: response.application_id,
             type: 'individual',
             step: 2
-
         }));
         toast.add({
             severity: 'success',

@@ -255,12 +255,12 @@
 
                 <!-- LEFT LOGO -->
                 <td style="width:50px; text-align:left; vertical-align:middle;">
-                    <img src="{{ public_path('images/denr_logo.png') }}" style="width:90px;">
+                    <img src="{{ public_path('images/denr_logo.png') }}" style="width:80px;">
                 </td>
 
                 <!-- CENTER TEXT -->
                 <td style="width:100%; text-align:left; vertical-align:middle; padding:0 15px;">
-                    <h2 style="margin-top:10px; margin-left:85px; font-size:18px; line-height:1.3; font-weight:bold;">
+                    <h2 style="margin-top:10px; margin-left:85px; font-size:17px; line-height:1.3; font-weight:bold;">
                         Republic of the Philippines<br>
                         Department of Environment and Natural Resources<br>
                         Regional Office No. IV-A (CALABARZON)
@@ -270,7 +270,7 @@
 
                 <!-- RIGHT LOGO -->
                 <td style="width:50px; text-align:right; vertical-align:middle;">
-                    <img src="{{ public_path('images/bp.png') }}" style="width:90px;">
+                    <img src="{{ public_path('images/bp.png') }}" style="width:80px;">
                 </td>
 
             </tr>
@@ -313,56 +313,59 @@
         hereby enumerated:</p>
 
     <table class="info-table chainsaw-details" style="width: 100%;font-size: 14px !important;">
-        <tr>
-            <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Quantity:</td>
-            <td><span class="field">{{ $quantity }}</span></td>
-        </tr>
+    <tr>
+        <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Quantity:</td>
+        <td><span class="field">{{ $quantity }}</span></td>
+    </tr>
 
+    @foreach($brands as $brand)
         <tr>
             <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Brand:</td>
-            <td><span class="field">{{ $brand }}</span></td>
+            <td><span class="field">{{ $brand['brand_name'] }}</span></td>
         </tr>
-
         <tr>
             <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Model:</td>
-            <td><span class="field">{{ $model }}</span></td>
-        </tr>
-
-        <tr>
-            <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Engine Serial No.:</td>
-            <td><span class="field">{{ $engine_serial_no }}</span></td>
-        </tr>
-
-        <tr>
-            <td colspan="2"> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Source of Chainsaw /
-                Supplier:</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td colspan="3"
-                style="font-weight: normal !important;text-decoration:underline;font-size: 14px !important;">
-                {{ $supplier_name }}<br>
-                {{ $supplier_address }}
+            <td>
+                <span class="field">
+                    (
+                    {{ 
+                        $brand['models']
+                            ->map(fn($m) => $m['model'])
+                            ->implode(', ')
+                    }}
+                    )
+                </span>
             </td>
-
         </tr>
+    @endforeach
 
+    <tr>
+        <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Engine Serial No.:</td>
+        <td><span class="field">{{ $engine_serial_no }}</span></td>
+    </tr>
 
-        <!-- <tr>
-            <td>Purchase Price:</td>
-            <td><span class="field"></span></td>
-        </tr> -->
+    <tr>
+        <td colspan="2"> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Source of Chainsaw / Supplier:</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td colspan="3" style="font-weight: normal !important;text-decoration:underline;font-size: 14px !important;">
+            {{ $supplier_name }}<br>
+            {{ $supplier_address }}
+        </td>
+    </tr>
 
-        <tr>
-            <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Purpose:</td>
-            <td><span style="text-decoration:underline;">{{ $purpose }}</span></td>
-        </tr>
+    <tr>
+        <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Purpose:</td>
+        <td><span style="text-decoration:underline;">{{ $purpose }}</span></td>
+    </tr>
 
-        <tr>
-            <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Others:</td>
-            <td><span style="text-decoration:underline;">{{ $others }}</span></td>
-        </tr>
-    </table>
+    <tr>
+        <td> <img src="{{ public_path('images/bullet.png') }}" style="width:10px;">Others:</td>
+        <td><span style="text-decoration:underline;">{{ $others }}</span></td>
+    </tr>
+</table>
+
 
     <!-- DATES -->
 <p>
@@ -370,9 +373,7 @@
     <span style="text-decoration:underline;">
         {{ now()->format('F d, Y') }}
     </span> 
-    at Brgy. Mayapa, Calamba City
-</p>
-        Laguna<br>Expiry Date: <span style="text-decoration:underline;">{{ $expiry_date }}</span></p>
+    at Brgy. Mayapa, Calamba City Laguna<br>Expiry Date: <span style="text-decoration:underline;">{{ $expiry_date }}</span></p>
 
     <!-- SIGNATURE -->
     <!-- SIGNATURE -->
@@ -387,7 +388,7 @@
 
     <!-- FEES SECTION -->
 
-    <div style="font-size:12px;margin-top:15px;">
+    <div style="font-size:12px;margin-top:10px;">
         <p>Permit Fee: P500.00<br>
             O.R. No.: <span class="field">{{ $or_number }}</span><br>
             Date: <span class="field">{{ $or_date }}</span></p>
